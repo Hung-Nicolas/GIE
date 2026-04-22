@@ -108,7 +108,7 @@ async function cargarInformes() {
 
 async function cargarUsuariosSupa() {
     if (!USE_SUPABASE) return;
-    const { data, error } = await supabaseClient.from('perfiles').select('*').order('created_at', { ascending: false });
+    const { data, error } = await supabaseClient.rpc('listar_usuarios_completos');
     if (error) { console.error('[GIE] ❌ Error cargando usuarios:', error); mostrarToast('Error cargando usuarios', 'error'); return; }
     usuarios = data || [];
     console.log('[GIE] 👥 Usuarios cargados desde Supabase:', usuarios.length);
@@ -254,6 +254,19 @@ function setupEventListeners() {
     const btnLogout = document.getElementById('btn-logout');
     if (btnLogout) btnLogout.addEventListener('click', logout);
 
+    ['filtroAlumnoCurso', 'filtroAlumnoDivision'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', filtrarAlumnos);
+    });
+    const filtroAlumnoNombre = document.getElementById('filtroAlumnoNombre');
+    if (filtroAlumnoNombre) filtroAlumnoNombre.addEventListener('input', filtrarAlumnos);
+
+    const btnVolverNuevo = document.getElementById('btn-volver-nuevo');
+    if (btnVolverNuevo) btnVolverNuevo.addEventListener('click', () => showSection('informes'));
+
+    const btnVolverAlumno = document.getElementById('btn-volver-alumno');
+    if (btnVolverAlumno) btnVolverAlumno.addEventListener('click', () => showSection('informes'));
+
     // Suscripción realtime (solo Supabase)
     if (USE_SUPABASE) {
         supabaseClient.channel('informes_changes')
@@ -278,6 +291,7 @@ function showSection(sectionId) {
     if (sectionId === 'usuarios') cargarUsuarios();
     if (sectionId === 'dashboard') actualizarDashboard();
     if (sectionId === 'informes') filtrarInformes();
+    if (sectionId === 'alumnos') filtrarAlumnos();
     if (window.innerWidth < 1024) {
         document.getElementById('sidebar').classList.add('sidebar-hidden');
         document.getElementById('overlay').classList.add('hidden');
@@ -357,6 +371,74 @@ function seleccionarAlumno(id, nombre, apellido, curso, division) {
 function limpiarAlumno() {
     document.getElementById('alumnoId').value = '';
     document.getElementById('alumnoSeleccionado').classList.add('hidden');
+}
+
+// ==================== ALUMNOS - LISTADO ====================
+function filtrarAlumnos() {
+    const curso = document.getElementById('filtroAlumnoCurso')?.value || '';
+    const division = document.getElementById('filtroAlumnoDivision')?.value || '';
+    const nombre = document.getElementById('filtroAlumnoNombre')?.value.toLowerCase().trim() || '';
+
+    // Eliminar duplicados por ID (defensa contra datos corruptos)
+    const unicos = [...new Map(alumnos.map(a => [a.id, a])).values()];
+
+    const filtrados = unicos.filter(a => {
+        const matchCurso = !curso || a.curso === curso;
+        const matchDivision = !division || a.division === division;
+        const matchNombre = !nombre ||
+            `${a.nombre} ${a.apellido}`.toLowerCase().includes(nombre) ||
+            `${a.apellido} ${a.nombre}`.toLowerCase().includes(nombre);
+        return matchCurso && matchDivision && matchNombre;
+    });
+
+    renderizarAlumnos(filtrados);
+}
+
+function renderizarAlumnos(lista) {
+    const container = document.getElementById('listaAlumnos');
+    const empty = document.getElementById('alumnosEmpty');
+    if (!container) return;
+
+    if (lista.length === 0) {
+        container.innerHTML = '';
+        empty?.classList.remove('hidden');
+        return;
+    }
+    empty?.classList.add('hidden');
+
+    // Calcular cantidad de informes por alumno
+    const informesPorAlumno = {};
+    informes.forEach(i => {
+        informesPorAlumno[i.alumno_id] = (informesPorAlumno[i.alumno_id] || 0) + 1;
+    });
+
+    // Ordenar: primero los que tienen más informes, luego por apellido
+    const ordenados = lista.slice().sort((a, b) => {
+        const cantA = informesPorAlumno[a.id] || 0;
+        const cantB = informesPorAlumno[b.id] || 0;
+        if (cantB !== cantA) return cantB - cantA; // más informes primero
+        return `${a.apellido} ${a.nombre}`.localeCompare(`${b.apellido} ${b.nombre}`);
+    });
+
+    container.innerHTML = ordenados.map(a => {
+        const cant = informesPorAlumno[a.id] || 0;
+        return `
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hover:shadow-md transition-shadow cursor-pointer" onclick="verAlumno('${a.id}')">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
+                    ${a.nombre[0]}${a.apellido[0]}
+                </div>
+                <div>
+                    <h3 class="font-semibold text-slate-800 text-sm">${a.apellido}, ${a.nombre}</h3>
+                    <p class="text-xs text-slate-500">${a.curso} ${a.division}</p>
+                </div>
+            </div>
+            <div class="flex items-center justify-between pt-3 border-t border-slate-100">
+                <span class="text-xs ${cant > 0 ? 'text-amber-600 font-semibold' : 'text-slate-500'}">${cant} informe${cant !== 1 ? 's' : ''}</span>
+                <span class="text-xs text-blue-600 font-medium">Ver historial <i class="fas fa-arrow-right text-xs"></i></span>
+            </div>
+        </div>
+    `}).join('');
 }
 
 // ==================== INFORMES - CRUD ====================
@@ -891,18 +973,43 @@ function actualizarDashboard() {
 }
 
 // ==================== ESTADÍSTICAS ====================
+let _drillDownPorCurso = {};
+
 function cargarEstadisticas() {
+    // Gráfico por CURSO (año/grado) con drill-down por división
     const porCurso = {};
+    _drillDownPorCurso = {};
     informes.forEach(i => {
         const alumno = getAlumno(i.alumno_id);
-        if (alumno) porCurso[alumno.curso] = (porCurso[alumno.curso] || 0) + 1;
+        if (!alumno) return;
+        porCurso[alumno.curso] = (porCurso[alumno.curso] || 0) + 1;
+        const divKey = `${alumno.curso} ${alumno.division}`;
+        if (!_drillDownPorCurso[alumno.curso]) _drillDownPorCurso[alumno.curso] = {};
+        _drillDownPorCurso[alumno.curso][divKey] = (_drillDownPorCurso[alumno.curso][divKey] || 0) + 1;
+    });
+    const cursos = Object.keys(porCurso).sort((a, b) => {
+        // Ordenar numéricamente: 1°, 2°, 3°... quitando el ° para comparar
+        const na = parseInt(a.replace('°', ''));
+        const nb = parseInt(b.replace('°', ''));
+        return na - nb;
     });
     const ctxCursos = document.getElementById('chartCursos').getContext('2d');
     if (charts.cursos) charts.cursos.destroy();
     charts.cursos = new Chart(ctxCursos, {
         type: 'bar',
-        data: { labels: Object.keys(porCurso), datasets: [{ label: 'Informes', data: Object.values(porCurso), backgroundColor: '#3b82f6', borderRadius: 6 }] },
-        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+        data: { labels: cursos, datasets: [{ label: 'Informes', data: cursos.map(c => porCurso[c]), backgroundColor: '#3b82f6', borderRadius: 6 }] },
+        options: {
+            responsive: true,
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
+            onClick: (e, elements) => {
+                if (elements.length > 0) {
+                    const idx = elements[0].index;
+                    const curso = cursos[idx];
+                    mostrarDrillDownAnio(curso, _drillDownPorCurso[curso]);
+                }
+            }
+        }
     });
 
     const porTipo = {};
@@ -1008,22 +1115,32 @@ async function cargarUsuarios() {
     if (getPerfil().rol !== 'regente') return;
     await cargarUsuariosSupa();
     const lista = usuarios.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-    document.getElementById('listaUsuarios').innerHTML = lista.map(u => `
-        <tr class="hover:bg-slate-50 transition-colors">
-            <td class="px-4 py-3 font-medium">${u.apellido}, ${u.nombre}</td>
+    document.getElementById('listaUsuarios').innerHTML = lista.map(u => {
+        const sinPerfil = !u.tiene_perfil;
+        const nombreCompleto = sinPerfil ? '<span class="text-slate-400 italic">Sin perfil</span>' : `${u.apellido}, ${u.nombre}`;
+        const rolBadge = sinPerfil
+            ? '<span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">sin perfil</span>'
+            : `<span class="px-2 py-1 rounded-full text-xs font-medium capitalize ${u.rol === 'regente' ? 'bg-purple-100 text-purple-700' : u.rol === 'preceptor' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}">${u.rol}</span>`;
+        const activoBadge = sinPerfil
+            ? '<span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">-</span>'
+            : `<span class="px-2 py-1 rounded-full text-xs font-medium ${u.activo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${u.activo ? 'Activo' : 'Inactivo'}</span>`;
+        const acciones = sinPerfil
+            ? `<button onclick="sincronizarPerfilUsuario('${u.id}', '${u.email}')" class="text-sm text-amber-600 hover:text-amber-700" title="Crear perfil"><i class="fas fa-user-plus"></i></button>`
+            : `${u.id === getPerfil().id ? '<span class="text-xs text-slate-400">Usted</span>' : `
+                <button onclick="editarUsuarioForm('${u.id}')" class="text-sm text-blue-600 hover:text-blue-700" title="Editar"><i class="fas fa-edit"></i></button>
+                ${u.rol !== 'regente' ? `<button onclick="eliminarUsuario('${u.id}')" class="text-sm text-red-600 hover:text-red-700" title="Eliminar"><i class="fas fa-trash-alt"></i></button>` : ''}
+            `}`;
+        return `
+        <tr id="user-row-${u.id}" class="hover:bg-slate-50 transition-colors ${sinPerfil ? 'bg-amber-50/50' : ''}">
+            <td class="px-4 py-3 font-medium">${nombreCompleto}</td>
             <td class="px-4 py-3 text-slate-500">${u.email}</td>
-            <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-medium capitalize ${u.rol === 'regente' ? 'bg-purple-100 text-purple-700' : u.rol === 'preceptor' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}">${u.rol}</span></td>
-            <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-medium ${u.activo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${u.activo ? 'Activo' : 'Inactivo'}</span></td>
+            <td class="px-4 py-3">${rolBadge}</td>
+            <td class="px-4 py-3">${activoBadge}</td>
             <td class="px-4 py-3">
-                <div class="flex items-center gap-2">
-                    ${u.id === getPerfil().id ? '<span class="text-xs text-slate-400">Usted</span>' : `
-                        <button onclick="editarUsuarioForm('${u.id}')" class="text-sm text-blue-600 hover:text-blue-700" title="Editar"><i class="fas fa-edit"></i></button>
-                        ${u.rol !== 'regente' ? `<button onclick="eliminarUsuario('${u.id}')" class="text-sm text-red-600 hover:text-red-700" title="Eliminar"><i class="fas fa-trash-alt"></i></button>` : ''}
-                    `}
-                </div>
+                <div class="flex items-center gap-2">${acciones}</div>
             </td>
         </tr>
-    `).join('');
+    `}).join('');
 }
 
 async function crearUsuario(e) {
@@ -1046,8 +1163,9 @@ async function crearUsuario(e) {
 
     if (USE_SUPABASE) {
         console.log('[GIE] ➕ Creando usuario en Supabase:', email);
-        const { data: existente } = await supabaseClient.from('perfiles').select('email').eq('email', email).single();
-        if (existente) {
+        // Verificar si ya existe en auth.users (usando la función RPC)
+        const { data: usuariosExistentes } = await supabaseClient.rpc('listar_usuarios_completos');
+        if (usuariosExistentes?.some(u => u.email === email)) {
             return mostrarToast('El email ya está registrado', 'error');
         }
         const { data: authData, error: authError } = await supabaseClient.auth.signUp({
@@ -1061,10 +1179,22 @@ async function crearUsuario(e) {
         if (!authData.user) {
             return mostrarToast('No se pudo crear el usuario', 'error');
         }
-        // Verificar que el trigger generó el perfil
-        const { data: perfilCreado, error: perfilError } = await supabaseClient.from('perfiles').select('*').eq('id', authData.user.id).single();
-        if (perfilError || !perfilCreado) {
-            return mostrarToast('Usuario creado pero el perfil no se generó. Revisá el trigger.', 'error');
+        // Si el trigger no generó el perfil, crearlo manualmente
+        const { data: perfilCreado } = await supabaseClient.from('perfiles').select('*').eq('id', authData.user.id).single();
+        if (!perfilCreado) {
+            console.log('[GIE] ⚠️ Trigger no generó perfil, creando manualmente...');
+            const { error: syncError } = await supabaseClient.rpc('sincronizar_perfil', {
+                p_id: authData.user.id,
+                p_email: email,
+                p_nombre: nombre,
+                p_apellido: apellido,
+                p_rol: rol,
+                p_activo: true
+            });
+            if (syncError) {
+                console.error('[GIE] ❌ Error sincronizando perfil:', syncError);
+                return mostrarToast('Usuario creado pero error al generar perfil', 'error');
+            }
         }
         mostrarToast(`Usuario ${nombre} ${apellido} creado exitosamente`);
     } else {
@@ -1075,14 +1205,31 @@ async function crearUsuario(e) {
 }
 
 // ==================== EDITAR / ELIMINAR USUARIOS ====================
+window.sincronizarPerfilUsuario = async function(id, email) {
+    const { error } = await supabaseClient.rpc('sincronizar_perfil', {
+        p_id: id,
+        p_email: email,
+        p_nombre: 'Sin',
+        p_apellido: 'Nombre',
+        p_rol: 'docente',
+        p_activo: true
+    });
+    if (error) {
+        console.error('[GIE] ❌ Error sincronizando perfil:', error);
+        return mostrarToast('Error al crear perfil', 'error');
+    }
+    mostrarToast('Perfil creado correctamente');
+    await cargarUsuarios();
+};
+
 window.editarUsuarioForm = function(id) {
     const u = usuarios.find(x => x.id === id);
     if (!u) return mostrarToast('Usuario no encontrado', 'error');
     document.getElementById('editUserId').value = u.id;
-    document.getElementById('editUserNombre').value = u.nombre;
-    document.getElementById('editUserApellido').value = u.apellido;
+    document.getElementById('editUserNombre').value = u.nombre || '';
+    document.getElementById('editUserApellido').value = u.apellido || '';
     document.getElementById('editUserEmail').value = u.email;
-    document.getElementById('editUserRol').value = u.rol;
+    document.getElementById('editUserRol').value = u.rol || 'docente';
     document.getElementById('editUserActivo').checked = u.activo !== false;
     document.getElementById('editUserPassword').value = '';
     // Email no editable en Supabase (requiere confirmación), contraseña sí vía RPC
@@ -1148,17 +1295,32 @@ window.guardarEdicionUsuario = async function() {
 window.eliminarUsuario = async function(id) {
     const u = usuarios.find(x => x.id === id);
     if (!u) return;
-    if (u.rol === 'regente') {
+    if (u.rol === 'regente' && id !== getPerfil().id) {
         return mostrarToast('No se puede eliminar a un usuario con rol regente', 'error');
     }
-    if (!confirm(`¿Estás seguro de que querés eliminar a ${u.nombre} ${u.apellido} (${u.email})?\n\nEsta acción no se puede deshacer.`)) return;
+    if (!confirm(`¿Estás seguro de que querés eliminar a ${u.nombre || u.email} (${u.email})?\n\nEsta acción no se puede deshacer.`)) return;
 
-    // Eliminamos de perfiles. El auth.user queda huérfano, pero sin perfil no puede loguearse.
-    const { error } = await supabaseClient.from('perfiles').delete().eq('id', id);
-    if (error) { console.error('[GIE] ❌ Error eliminando usuario:', error); return mostrarToast('Error eliminando usuario', 'error'); }
-    console.log('[GIE] 🗑️ Usuario eliminado de perfiles:', id);
-    mostrarToast(`Usuario ${u.nombre} ${u.apellido} eliminado`);
-    await cargarUsuarios();
+    const row = document.getElementById(`user-row-${id}`);
+    if (row) {
+        row.classList.add('animate-slide-out');
+    }
+
+    const { error } = await supabaseClient.rpc('eliminar_usuario_completo', { user_id: id });
+    if (error) {
+        console.error('[GIE] ❌ Error eliminando usuario:', error);
+        if (row) row.classList.remove('animate-slide-out');
+        return mostrarToast('Error eliminando usuario: ' + error.message, 'error');
+    }
+
+    console.log('[GIE] 🗑️ Usuario eliminado completamente:', id);
+    mostrarToast(`Usuario ${u.nombre || u.email} eliminado`);
+
+    // Remover del DOM después de la animación
+    setTimeout(() => {
+        if (row) row.remove();
+        // Actualizar array local sin recargar toda la lista
+        usuarios = usuarios.filter(x => x.id !== id);
+    }, 400);
 };
 
 // ==================== PLANTILLAS CRUD ====================
@@ -1361,6 +1523,28 @@ function exportarPDF(id) {
     document.body.appendChild(container);
     html2pdf().set({ margin: 0, filename: `informe_${alumno ? alumno.apellido : 'doc'}_${informe.fecha_creacion.split('T')[0]}.pdf`, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(container).save().then(() => { document.body.removeChild(container); });
 }
+
+function mostrarDrillDownAnio(anio, data) {
+    const container = document.getElementById('drillDownAnio');
+    const titulo = document.getElementById('drillDownTitulo');
+    const contenido = document.getElementById('drillDownContenido');
+    if (!container || !data) return;
+
+    titulo.textContent = `Desglose ${anio}`;
+    const items = Object.entries(data).sort((a, b) => a[0].localeCompare(b[0]));
+    contenido.innerHTML = items.map(([cursoDiv, cantidad]) => `
+        <div class="flex items-center justify-between py-1.5 px-3 bg-slate-50 rounded-lg">
+            <span class="text-sm font-medium text-slate-700">${cursoDiv}</span>
+            <span class="text-sm font-bold text-blue-600">${cantidad}</span>
+        </div>
+    `).join('');
+    container.classList.remove('hidden');
+}
+
+window.cerrarDrillDownAnio = function() {
+    const container = document.getElementById('drillDownAnio');
+    if (container) container.classList.add('hidden');
+};
 
 // Exponer funciones usadas en onclick al scope global
 window.showSection = showSection;

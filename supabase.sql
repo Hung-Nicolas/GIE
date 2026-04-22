@@ -37,8 +37,8 @@ CREATE TABLE IF NOT EXISTS public.informes (
     resumen TEXT NOT NULL,
     descargo TEXT,
     estado TEXT NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'aprobado', 'rechazado')),
-    creado_por UUID REFERENCES public.perfiles(id),
-    revisado_por UUID REFERENCES public.perfiles(id),
+    creado_por UUID REFERENCES public.perfiles(id) ON DELETE SET NULL,
+    revisado_por UUID REFERENCES public.perfiles(id) ON DELETE SET NULL,
     fecha_creacion TIMESTAMPTZ DEFAULT timezone('utc'::text, now()),
     fecha_revision TIMESTAMPTZ,
     motivo_rechazo TEXT
@@ -171,7 +171,8 @@ BEGIN
         COALESCE(new.raw_user_meta_data->>'apellido', 'Nombre'),
         COALESCE(new.raw_user_meta_data->>'rol', 'docente'),
         TRUE
-    );
+    )
+    ON CONFLICT (id) DO NOTHING;
     RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -212,26 +213,26 @@ ALTER TABLE public.informes ADD COLUMN IF NOT EXISTS observaciones TEXT;
 
 -- Insertar alumnos demo
 INSERT INTO public.alumnos (nombre, apellido, curso, division) VALUES
-('Lucas', 'Alvarez', '1°', 'A'),
-('Sofía', 'Benítez', '1°', 'A'),
-('Mateo', 'Castro', '1°', 'B'),
-('Valentina', 'Díaz', '2°', 'A'),
-('Thiago', 'Espósito', '2°', 'A'),
-('Camila', 'Fernández', '2°', 'B'),
-('Benjamín', 'García', '3°', 'A'),
-('Isabella', 'Hernández', '3°', 'A'),
-('Santiago', 'Ibáñez', '3°', 'B'),
-('Martina', 'Jiménez', '4°', 'A'),
-('Emiliano', 'Klein', '4°', 'A'),
-('Julieta', 'Luna', '4°', 'B'),
-('Máximo', 'Moreno', '5°', 'A'),
-('Victoria', 'Navarro', '5°', 'A'),
-('Bruno', 'Ortiz', '5°', 'B'),
-('Catalina', 'Pérez', '6°', 'A'),
-('Tomás', 'Quinteros', '6°', 'A'),
-('Emma', 'Ramírez', '6°', 'B'),
-('Facundo', 'Silva', '7°', 'A'),
-('Agustina', 'Torres', '7°', 'A')
+('Lucas', 'Alvarez', '1°', '1'),
+('Sofía', 'Benítez', '1°', '1'),
+('Mateo', 'Castro', '1°', '2'),
+('Valentina', 'Díaz', '2°', '1'),
+('Thiago', 'Espósito', '2°', '1'),
+('Camila', 'Fernández', '2°', '2'),
+('Benjamín', 'García', '3°', '1'),
+('Isabella', 'Hernández', '3°', '1'),
+('Santiago', 'Ibáñez', '3°', '2'),
+('Martina', 'Jiménez', '4°', '1'),
+('Emiliano', 'Klein', '4°', '1'),
+('Julieta', 'Luna', '4°', '2'),
+('Máximo', 'Moreno', '5°', '1'),
+('Victoria', 'Navarro', '5°', '1'),
+('Bruno', 'Ortiz', '5°', '2'),
+('Catalina', 'Pérez', '6°', '1'),
+('Tomás', 'Quinteros', '6°', '1'),
+('Emma', 'Ramírez', '6°', '2'),
+('Facundo', 'Silva', '7°', '1'),
+('Agustina', 'Torres', '7°', '1')
 ON CONFLICT DO NOTHING;
 
 -- Nota: los usuarios de demo deben crearse vía Auth de Supabase.
@@ -267,6 +268,115 @@ $$;
 -- Dar permisos para que usuarios autenticados (y anon por el flujo demo) puedan llamarla
 GRANT EXECUTE ON FUNCTION public.actualizar_password_usuario(UUID, TEXT) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.actualizar_password_usuario(UUID, TEXT) TO anon;
+
+-- ============================================================
+-- MIGRACIONES: actualizar constraints para permitir eliminación de usuarios
+-- ============================================================
+
+-- Permitir que al eliminar un perfil/usuario, los informes queden sin referencia
+ALTER TABLE public.informes DROP CONSTRAINT IF EXISTS informes_creado_por_fkey;
+ALTER TABLE public.informes ADD CONSTRAINT informes_creado_por_fkey FOREIGN KEY (creado_por) REFERENCES public.perfiles(id) ON DELETE SET NULL;
+
+ALTER TABLE public.informes DROP CONSTRAINT IF EXISTS informes_revisado_por_fkey;
+ALTER TABLE public.informes ADD CONSTRAINT informes_revisado_por_fkey FOREIGN KEY (revisado_por) REFERENCES public.perfiles(id) ON DELETE SET NULL;
+
+-- ============================================================
+-- FUNCIONES RPC PARA GESTIÓN DE USUARIOS
+-- ============================================================
+
+-- Listar todos los usuarios de auth.users con sus perfiles (LEFT JOIN)
+CREATE OR REPLACE FUNCTION public.listar_usuarios_completos()
+RETURNS TABLE(
+    id UUID,
+    email TEXT,
+    created_at TIMESTAMPTZ,
+    nombre TEXT,
+    apellido TEXT,
+    rol TEXT,
+    activo BOOLEAN,
+    tiene_perfil BOOLEAN
+)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT
+    u.id,
+    u.email,
+    u.created_at,
+    COALESCE(p.nombre, 'Sin')::TEXT as nombre,
+    COALESCE(p.apellido, 'Nombre')::TEXT as apellido,
+    COALESCE(p.rol, 'docente')::TEXT as rol,
+    COALESCE(p.activo, true)::BOOLEAN as activo,
+    (p.id IS NOT NULL)::BOOLEAN as tiene_perfil
+  FROM auth.users u
+  LEFT JOIN public.perfiles p ON u.id = p.id
+  ORDER BY u.created_at DESC;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.listar_usuarios_completos() TO authenticated;
+
+-- Sincronizar perfil para un usuario que no lo tiene
+CREATE OR REPLACE FUNCTION public.sincronizar_perfil(
+    p_id UUID,
+    p_email TEXT,
+    p_nombre TEXT DEFAULT 'Sin',
+    p_apellido TEXT DEFAULT 'Nombre',
+    p_rol TEXT DEFAULT 'docente',
+    p_activo BOOLEAN DEFAULT true
+)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    INSERT INTO public.perfiles (id, email, nombre, apellido, rol, activo)
+    VALUES (p_id, p_email, p_nombre, p_apellido, p_rol, p_activo)
+    ON CONFLICT (id) DO UPDATE SET
+        nombre = EXCLUDED.nombre,
+        apellido = EXCLUDED.apellido,
+        email = EXCLUDED.email,
+        rol = EXCLUDED.rol,
+        activo = EXCLUDED.activo;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.sincronizar_perfil(UUID, TEXT, TEXT, TEXT, TEXT, BOOLEAN) TO authenticated;
+
+-- Eliminar usuario completamente (auth.users + perfiles via CASCADE)
+CREATE OR REPLACE FUNCTION public.eliminar_usuario_completo(user_id UUID)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+    caller_rol TEXT;
+    target_rol TEXT;
+BEGIN
+    -- Verificar que el llamante sea regente
+    SELECT rol INTO caller_rol FROM public.perfiles WHERE id = auth.uid();
+    IF caller_rol IS NULL OR caller_rol != 'regente' THEN
+        RAISE EXCEPTION 'Solo el regente puede eliminar usuarios';
+    END IF;
+
+    -- No permitir eliminar a otro regente
+    SELECT rol INTO target_rol FROM public.perfiles WHERE id = user_id;
+    IF target_rol = 'regente' AND user_id != auth.uid() THEN
+        RAISE EXCEPTION 'No se puede eliminar a un usuario con rol regente';
+    END IF;
+
+    -- Limpiar referencias en informes
+    UPDATE public.informes SET creado_por = NULL WHERE creado_por = user_id;
+    UPDATE public.informes SET revisado_por = NULL WHERE revisado_por = user_id;
+
+    -- Eliminar de auth.users (perfiles se elimina por ON DELETE CASCADE)
+    DELETE FROM auth.users WHERE id = user_id;
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.eliminar_usuario_completo(UUID) TO authenticated;
 
 -- ============================================================
 -- CONFIGURACIÓN RECOMENDADA EN SUPABASE DASHBOARD

@@ -22,6 +22,7 @@ if (USE_SUPABASE) {
                 storage: window.sessionStorage
             }
         });
+        window.supabaseClient = supabaseClient;
         console.log('[GIE] ✅ Cliente Supabase inicializado:', SUPABASE_URL);
     } catch (err) {
         console.error('[GIE] ❌ Error conectando a Supabase:', err.message);
