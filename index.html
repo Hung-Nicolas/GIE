@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GIE - Panel de Control</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="/src/styles.css">
+    <script type="module" src="/src/main.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <!-- LOGIN -->
+    <section id="login" class="hidden min-h-screen flex items-center justify-center p-4 animate-fade-in-slow">
+        <div class="w-full max-w-md">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4 shadow-lg">
+                    <i class="fas fa-graduation-cap text-2xl text-white"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-800">GIE</h1>
+                <p class="text-slate-500">Gestor de Informes Escolares</p>
+            </div>
+            <div class="bg-white rounded-2xl shadow-xl border border-slate-200 p-8">
+                <h2 class="text-xl font-semibold text-slate-800 mb-6 text-center">Iniciar Sesión</h2>
+                <form id="loginForm" class="space-y-5">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Correo electrónico</label>
+                        <div class="relative">
+                            <i class="fas fa-envelope absolute left-3 top-3 text-slate-400"></i>
+                            <input type="text" id="email" required class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" placeholder="usuario">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Contraseña</label>
+                        <div class="relative">
+                            <i class="fas fa-lock absolute left-3 top-3 text-slate-400"></i>
+                            <input type="password" id="password" required class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" placeholder="••••••••">
+                        </div>
+                    </div>
+                    <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2">
+                        <i class="fas fa-sign-in-alt"></i><span id="txtBtn">Ingresar</span>
+                    </button>
+                </form>
+                <div id="modoDemoBox" class="hidden mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
+                    <p class="text-xs font-medium text-amber-800 mb-2"><i class="fas fa-exclamation-triangle mr-1"></i> Supabase no configurado</p>
+                    <p class="text-xs text-amber-700 mb-3">Las credenciales de Supabase están en modo placeholder. Podés probar la app en modo demo local.</p>
+                    <button id="btn-activar-demo" class="w-full bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold py-2 rounded-lg transition-colors">
+                        <i class="fas fa-play-circle mr-2"></i>Usar modo demo local
+                    </button>
+                </div>
+                <div id="demoCreds" class="hidden mt-6 p-4 bg-slate-50 rounded-lg border border-slate-100">
+                    <p class="text-xs font-medium text-slate-500 mb-2">Credenciales de demostración:</p>
+                    <div class="space-y-1 text-xs text-slate-600">
+                        <div class="flex justify-between"><span><i class="fas fa-shield-alt text-red-500 mr-1"></i>Admin:</span><span class="font-mono bg-white px-2 py-0.5 rounded border">asd123 / asd123</span></div>
+                        <div class="flex justify-between"><span><i class="fas fa-crown text-amber-500 mr-1"></i>Regente:</span><span class="font-mono bg-white px-2 py-0.5 rounded border">regente@gie.com / regente123</span></div>
+                        <div class="flex justify-between"><span><i class="fas fa-chalkboard-teacher text-blue-500 mr-1"></i>Docente:</span><span class="font-mono bg-white px-2 py-0.5 rounded border">docente@gie.com / docente123</span></div>
+                    </div>
+                </div>
+            </div>
+            <p class="text-center text-xs text-slate-400 mt-6">Sistema cerrado • Usuarios creados por la regente</p>
+        </div>
+    </section>
+
+    <!-- APP CONTAINER -->
+    <div id="appContainer">
+
+    <!-- Mobile Header -->
+    <header class="lg:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
+        <button id="menuBtn" class="p-2 hover:bg-slate-100 rounded-lg"><i class="fas fa-bars text-slate-600"></i></button>
+        <span class="font-semibold text-slate-700">GIE</span>
+        <div class="w-8"></div>
+    </header>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar sidebar-hidden fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white flex flex-col">
+        <div class="p-6 border-b border-slate-700">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-graduation-cap text-lg"></i>
+                </div>
+                <div>
+                    <h2 class="font-bold text-lg">GIE</h2>
+                    <p class="text-xs text-slate-400">Gestor de Informes</p>
+                </div>
+            </div>
+        </div>
+        <nav class="flex-1 p-4 space-y-1 overflow-y-auto">
+            <button class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" data-section="dashboard">
+                <i class="fas fa-chart-pie w-5"></i><span>Dashboard</span>
+            </button>
+            <button class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" data-section="informes">
+                <i class="fas fa-file-alt w-5"></i><span>Informes</span>
+            </button>
+            <button class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" data-section="nuevo">
+                <i class="fas fa-plus-circle w-5"></i><span>Nuevo Informe</span>
+            </button>
+            <button class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" data-section="estadisticas">
+                <i class="fas fa-chart-bar w-5"></i><span>Estadísticas</span>
+            </button>
+            <button id="btnUsuarios" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left hidden" data-section="usuarios">
+                <i class="fas fa-users w-5"></i><span>Usuarios</span>
+            </button>
+            <button class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" data-section="ajustes">
+                <i class="fas fa-cog w-5"></i><span>Ajustes</span>
+            </button>
+        </nav>
+        <div class="p-4 border-t border-slate-700">
+            <div class="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-800 mb-3">
+                <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-sm font-bold">
+                    <span id="userInitials">U</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium truncate" id="userName">Usuario</p>
+                    <p class="text-xs text-slate-400 capitalize" id="userRole">rol</p>
+                </div>
+            </div>
+            <button id="btn-logout" class="w-full flex items-center gap-3 px-4 py-2 text-red-400 hover:bg-slate-800 rounded-lg transition-colors">
+                <i class="fas fa-sign-out-alt w-5"></i><span>Cerrar sesión</span>
+            </button>
+        </div>
+    </aside>
+
+    <div id="overlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden"></div>
+
+    <main class="lg:ml-64 min-h-screen">
+        <!-- DASHBOARD -->
+        <section id="dashboard" class="section p-6 max-w-7xl mx-auto animate-fade-in">
+            <h1 class="text-2xl font-bold text-slate-800 mb-6">Panel de Regente</h1>
+
+            <!-- Stats cards -->
+            <div class="grid grid-cols-3 gap-4 mb-6">
+                <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center"><i class="fas fa-clock text-amber-600"></i></div>
+                        <span class="text-xl font-bold text-slate-800" id="dashPendientes">0</span>
+                    </div>
+                    <p class="text-xs text-slate-500">Pendientes</p>
+                </div>
+                <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center"><i class="fas fa-check-circle text-green-600"></i></div>
+                        <span class="text-xl font-bold text-slate-800" id="dashAprobados">0</span>
+                    </div>
+                    <p class="text-xs text-slate-500">Aprobados</p>
+                </div>
+                <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center"><i class="fas fa-file-alt text-purple-600"></i></div>
+                        <span class="text-xl font-bold text-slate-800" id="dashTotal">0</span>
+                    </div>
+                    <p class="text-xs text-slate-500">Total</p>
+                </div>
+            </div>
+
+            <!-- Fila 1: Calendario + Pendientes -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                        <i class="fas fa-calendar-check text-blue-500"></i> Próximas reuniones
+                    </h3>
+                    <!-- Calendario -->
+                    <div id="calendarioReuniones" class="mb-4 select-none">
+                        <div class="flex justify-between items-center mb-3">
+                            <button id="calPrev" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"><i class="fas fa-chevron-left text-xs"></i></button>
+                            <span id="calMesAnio" class="text-sm font-semibold text-slate-700"></span>
+                            <button id="calNext" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"><i class="fas fa-chevron-right text-xs"></i></button>
+                        </div>
+                        <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-medium text-slate-400 mb-1">
+                            <div>Dom</div><div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div>
+                        </div>
+                        <div id="calGrid" class="grid grid-cols-7 gap-1"></div>
+                        <button id="calVerTodos" class="mt-2 w-full text-xs text-blue-600 hover:text-blue-800 font-medium py-1 rounded-lg hover:bg-blue-50 transition-colors hidden">
+                            <i class="fas fa-list mr-1"></i> Ver todos los pendientes del mes
+                        </button>
+                    </div>
+                    <div id="dashReuniones" class="space-y-2 max-h-48 overflow-y-auto border-t border-slate-100 pt-3"></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                        <i class="fas fa-gavel text-amber-500"></i> Pendientes de revisión
+                    </h3>
+                    <div id="dashPendientesLista" class="space-y-3 max-h-80 overflow-y-auto"></div>
+                </div>
+            </div>
+
+            <!-- Fila 2: Historial + Gráfico de gravedad -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                        <i class="fas fa-history text-slate-500"></i> Historial reciente
+                    </h3>
+                    <div id="dashHistorial" class="space-y-3 max-h-80 overflow-y-auto"></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                        <i class="fas fa-chart-pie text-red-500"></i> Distribución por Gravedad
+                    </h3>
+                    <div class="relative h-64">
+                        <canvas id="dashChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- INFORMES -->
+        <section id="informes" class="section hidden p-6 max-w-7xl mx-auto animate-fade-in">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                <h1 class="text-2xl font-bold text-slate-800">Informes</h1>
+                <button id="btn-nuevo-informe" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm">
+                    <i class="fas fa-plus"></i><span>Nuevo Informe</span>
+                </button>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-3 text-slate-400"></i>
+                        <input type="text" id="filtroBusqueda" placeholder="Buscar alumno o título..."
+                            class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <select id="filtroCurso" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="">Todos los cursos</option>
+                    </select>
+                    <select id="filtroEstado" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="">Todos los estados</option>
+                        <option value="pendiente">Pendiente</option>
+                        <option value="aprobado">Aprobado</option>
+                        <option value="rechazado">Rechazado</option>
+                    </select>
+                    <select id="filtroInstancia" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="">Todas las instancias</option>
+                        <option value="leve">Leve</option>
+                        <option value="grave">Grave</option>
+                        <option value="muy_grave">Muy Grave</option>
+                    </select>
+                </div>
+            </div>
+            <div id="listaInformes" class="space-y-3"></div>
+            <div id="sinResultados" class="hidden text-center py-12 text-slate-400">
+                <i class="fas fa-inbox text-4xl mb-3"></i>
+                <p>No se encontraron informes</p>
+            </div>
+        </section>
+
+        <!-- NUEVO/EDITAR INFORME -->
+        <section id="nuevo" class="section hidden p-6 max-w-3xl mx-auto animate-fade-in">
+            <div class="flex items-center gap-3 mb-6">
+                <button id="btn-volver-nuevo" class="text-slate-400 hover:text-slate-600"><i class="fas fa-arrow-left text-xl"></i></button>
+                <h1 class="text-2xl font-bold text-slate-800" id="tituloForm">Nuevo Informe</h1>
+            </div>
+            <form id="formInforme" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
+                <input type="hidden" id="editId">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Alumno *</label>
+                    <div class="relative">
+                        <input type="text" id="searchAlumno" placeholder="Escriba para buscar alumno..."
+                            class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" autocomplete="off">
+                        <div id="resultadosAlumno" class="absolute z-10 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto hidden"></div>
+                        <input type="hidden" id="alumnoId" required>
+                    </div>
+                    <div id="alumnoSeleccionado" class="hidden mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
+                        <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold"><i class="fas fa-user"></i></div>
+                        <div>
+                            <p class="font-medium text-sm" id="alumnoNombre"></p>
+                            <p class="text-xs text-slate-500" id="alumnoCurso"></p>
+                        </div>
+                        <button type="button" id="btn-limpiar-alumno" class="ml-auto text-slate-400 hover:text-red-500"><i class="fas fa-times"></i></button>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-sm font-medium text-slate-700">Plantilla rápida <span class="text-xs text-slate-400 font-normal">(opcional)</span></label>
+                        <button type="button" onclick="abrirModalPlantillas()" class="text-xs text-blue-600 hover:text-blue-800 font-medium"><i class="fas fa-cog mr-1"></i>Gestionar</button>
+                    </div>
+                    <select id="plantillaInforme" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="">Seleccionar plantilla...</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Título del informe *</label>
+                    <input type="text" id="titulo" required
+                        class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                        placeholder="Ej: Falta de respeto en clase">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Descripción de la problemática *</label>
+                    <textarea id="resumen" required rows="4"
+                        class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                        placeholder="Describa los hechos detalladamente..."></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Solicitud de sanción (datos del docente) *</label>
+                    <textarea id="descargo" required rows="3"
+                        class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                        placeholder="Indique la sanción que solicita..."></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Observaciones</label>
+                    <textarea id="observaciones" rows="3"
+                        class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
+                        placeholder="Observaciones adicionales (opcional)..."></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Tipo de instancia *</label>
+                    <select id="instancia" required class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="">Seleccione...</option>
+                        <option value="leve">Leve</option>
+                        <option value="grave">Grave</option>
+                        <option value="muy_grave">Muy Grave</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+                <div class="flex gap-3 pt-4">
+                    <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition-colors shadow-sm">
+                        <i class="fas fa-save mr-2"></i><span id="txtBtnGuardar">Guardar Informe</span>
+                    </button>
+                    <button type="button" id="btn-cancelar-form" class="px-6 py-2.5 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">Cancelar</button>
+                </div>
+            </form>
+        </section>
+
+        <!-- ESTADÍSTICAS -->
+        <section id="estadisticas" class="section hidden p-6 max-w-7xl mx-auto animate-fade-in">
+            <h1 class="text-2xl font-bold text-slate-800 mb-6">Estadísticas</h1>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="font-semibold text-slate-700 mb-4">Informes por Curso</h3>
+                    <canvas id="chartCursos"></canvas>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="font-semibold text-slate-700 mb-4">Informes por Tipo de Falta</h3>
+                    <canvas id="chartTipos"></canvas>
+                </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                <h3 class="font-semibold text-slate-700 mb-4">Tendencia Mensual</h3>
+                <canvas id="chartMensual"></canvas>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 class="font-semibold text-slate-700 mb-4">Alumnos con más Informes</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-50 text-slate-600 font-medium">
+                            <tr>
+                                <th class="px-4 py-3">Alumno</th>
+                                <th class="px-4 py-3">Curso</th>
+                                <th class="px-4 py-3 text-center">Total</th>
+                                <th class="px-4 py-3 text-center">Leves</th>
+                                <th class="px-4 py-3 text-center">Graves</th>
+                                <th class="px-4 py-3 text-center">Muy Graves</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bodyTopAlumnos" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- USUARIOS (solo regente) -->
+        <section id="usuarios" class="section hidden p-6 max-w-4xl mx-auto animate-fade-in">
+            <h1 class="text-2xl font-bold text-slate-800 mb-6">Gestión de Usuarios</h1>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                <h3 class="font-semibold text-slate-700 mb-4">Crear Nuevo Usuario</h3>
+                <form id="formUsuario" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <input type="text" id="newNombre" placeholder="Nombre" required class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <input type="text" id="newApellido" placeholder="Apellido" required class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <input type="email" id="newEmail" placeholder="Email" required class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <select id="newRol" required class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="docente">Docente</option>
+                        <option value="preceptor">Preceptor</option>
+                        <option value="regente">Regente</option>
+                    </select>
+                    <input type="password" id="newPassword" placeholder="Contraseña" required class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition-colors">
+                        <i class="fas fa-user-plus mr-2"></i>Crear Usuario
+                    </button>
+                </form>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                <table class="w-full text-sm text-left">
+                    <thead class="bg-slate-50 text-slate-600 font-medium">
+                        <tr>
+                            <th class="px-4 py-3">Nombre</th>
+                            <th class="px-4 py-3">Email</th>
+                            <th class="px-4 py-3">Rol</th>
+                            <th class="px-4 py-3">Estado</th>
+                            <th class="px-4 py-3">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="listaUsuarios" class="divide-y divide-slate-100"></tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- AJUSTES -->
+        <section id="ajustes" class="section hidden p-6 max-w-4xl mx-auto animate-fade-in">
+            <h1 class="text-2xl font-bold text-slate-800 mb-6">Ajustes</h1>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                    <i class="fas fa-info-circle text-blue-500"></i> Acerca de
+                </h3>
+                <div class="space-y-3 text-sm text-slate-600">
+                    <p><strong class="text-slate-800">GIE - Gestor de Informes Escolares</strong></p>
+                    <p>Creada por:</p>
+                    <ul class="list-disc list-inside space-y-1 ml-2">
+                        <li>Hung Nicolas</li>
+                        <li>Espinoza Tiziano</li>
+                        <li>Marquez Cristhian</li>
+                        <li>Enrique Santino</li>
+                    </ul>
+                    <p class="pt-2 text-slate-500">Versión <span class="font-mono font-medium text-slate-700">v1.0</span></p>
+                </div>
+            </div>
+        </section>
+
+        <!-- VISTA ALUMNO -->
+        <section id="vistaAlumno" class="section hidden p-6 max-w-4xl mx-auto animate-fade-in">
+            <div class="flex items-center gap-3 mb-6">
+                <button id="btn-volver-alumno" class="text-slate-400 hover:text-slate-600"><i class="fas fa-arrow-left text-xl"></i></button>
+                <h1 class="text-2xl font-bold text-slate-800">Resumen del Alumno</h1>
+            </div>
+            <div id="tarjetaAlumno" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                <!-- Se llena dinámicamente -->
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                <h3 class="font-semibold text-slate-700 mb-4">Distribución por Gravedad</h3>
+                <canvas id="chartAlumno" height="180"></canvas>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <h3 class="font-semibold text-slate-700 mb-4">Historial de Informes</h3>
+                <div id="historialAlumno" class="space-y-3"></div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modal Detalle -->
+    <div id="modalDetalle" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
+            <div class="p-6 border-b border-slate-200 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-800">Detalle del Informe</h3>
+                <button id="btn-cerrar-modal" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div id="contenidoModal" class="p-6 space-y-4"></div>
+            <div id="accionesModal" class="p-6 border-t border-slate-200 bg-slate-50 flex flex-wrap gap-3"></div>
+        </div>
+    </div>
+
+    <!-- Modal Rechazo -->
+    <div id="modalRechazo" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full animate-fade-in">
+            <div class="p-6 border-b border-slate-200">
+                <h3 class="text-lg font-bold text-slate-800">Rechazar Informe</h3>
+            </div>
+            <div class="p-6">
+                <label class="block text-sm font-medium text-slate-700 mb-2">Motivo del rechazo *</label>
+                <textarea id="motivoRechazo" rows="3" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="Indique el motivo..."></textarea>
+            </div>
+            <div class="p-6 border-t border-slate-200 bg-slate-50 flex gap-3">
+                <button id="btn-confirmar-rechazo" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition-colors">Rechazar</button>
+                <button id="btn-cerrar-rechazo" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">Cancelar</button>
+            </div>
+        </div>
+    </div>
+    </div>
+
+    <!-- Modal Editar Usuario -->
+    <div id="modalEditarUsuario" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full animate-fade-in">
+            <div class="p-6 border-b border-slate-200 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-800">Editar Usuario</h3>
+                <button onclick="cerrarModalEditarUsuario()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="editUserId">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
+                    <input type="text" id="editUserNombre" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Apellido</label>
+                    <input type="text" id="editUserApellido" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
+                    <input type="email" id="editUserEmail" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Rol</label>
+                    <select id="editUserRol" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                        <option value="docente">Docente</option>
+                        <option value="preceptor">Preceptor</option>
+                        <option value="regente">Regente</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Nueva contraseña <span class="text-xs text-slate-400">(dejar vacío para no cambiar)</span></label>
+                    <input type="password" id="editUserPassword" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <div>
+                        <p class="text-sm font-medium text-slate-700">Usuario activo</p>
+                        <p class="text-xs text-slate-500">Si está desactivado, no podrá iniciar sesión</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="editUserActivo" class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
+            </div>
+            <div class="p-6 border-t border-slate-200 bg-slate-50 flex gap-3">
+                <button onclick="guardarEdicionUsuario()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors">Guardar cambios</button>
+                <button onclick="cerrarModalEditarUsuario()" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Gestionar Plantillas -->
+    <div id="modalPlantillas" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-fade-in">
+            <div class="p-6 border-b border-slate-200 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-800">Gestionar Plantillas</h3>
+                <button onclick="cerrarModalPlantillas()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-3">
+                    <h4 class="text-sm font-semibold text-slate-700">Nueva plantilla</h4>
+                    <input type="text" id="newPlantillaTitulo" placeholder="Título" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    <select id="newPlantillaInstancia" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
+                        <option value="">Instancia...</option>
+                        <option value="leve">Leve</option>
+                        <option value="grave">Grave</option>
+                        <option value="muy_grave">Muy Grave</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                    <textarea id="newPlantillaResumen" rows="3" placeholder="Resumen / descripción..." class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none text-sm"></textarea>
+                    <button onclick="crearPlantilla()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors"><i class="fas fa-plus mr-1"></i> Agregar plantilla</button>
+                </div>
+                <div>
+                    <h4 class="text-sm font-semibold text-slate-700 mb-2">Mis plantillas</h4>
+                    <div id="listaPlantillas" class="space-y-2 max-h-64 overflow-y-auto"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="fixed bottom-4 right-4 bg-slate-800 text-white px-6 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center gap-3">
+        <i id="toastIcon" class="fas fa-check-circle text-green-400"></i>
+        <span id="toastMsg">Operación exitosa</span>
+    </div>
+
+</body>
+</html>
