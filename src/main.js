@@ -621,6 +621,9 @@ async function guardarInforme(e) {
 function cancelarForm() {
     document.getElementById('formInforme').reset();
     limpiarAlumno();
+    document.getElementById('searchAlumno').value = '';
+    document.getElementById('resultadosAlumno').classList.add('hidden');
+    document.getElementById('plantillaInforme').value = '';
     document.getElementById('editId').value = '';
     document.getElementById('tituloForm').textContent = 'Nuevo Informe';
     document.getElementById('txtBtnGuardar').textContent = 'Guardar Informe';
