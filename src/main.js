@@ -95,7 +95,7 @@ async function cargarAlumnos() {
 async function cargarInformes() {
     if (!USE_SUPABASE) return;
     let query = supabaseClient.from('informes')
-        .select('*, alumno:alumnos(nombre, apellido, curso, division), creador:perfiles!informes_creado_por_fkey(nombre, apellido), revisor:perfiles!informes_revisado_por_fkey(nombre, apellido)')
+        .select('*, alumno:alumnos(nombre, apellido, curso, division), creador:perfiles!informes_creado_por_fkey(nombre, apellido), revisor:perfiles!informes_revisado_por_fkey(nombre, apellido), fecha_reunion')
         .order('fecha_creacion', { ascending: false });
     if (getPerfil().rol !== 'regente') query = query.eq('creado_por', getPerfil().id);
     const { data, error } = await query;
@@ -343,8 +343,10 @@ function buscarAlumno(query) {
         `${a.nombre} ${a.apellido}`.toLowerCase().includes(query.toLowerCase()) ||
         `${a.apellido} ${a.nombre}`.toLowerCase().includes(query.toLowerCase())
     ).slice(0, 10);
+    const btnCrear = document.getElementById('btn-crear-alumno-inline');
     if (filtrados.length === 0) {
         resultados.innerHTML = '<div class="p-3 text-sm text-slate-500">No se encontraron alumnos</div>';
+        if (btnCrear) btnCrear.classList.remove('hidden');
     } else {
         resultados.innerHTML = filtrados.map(a => `
             <div onclick="seleccionarAlumno('${a.id}', '${a.nombre}', '${a.apellido}', '${a.curso}', '${a.division}')"
@@ -352,6 +354,7 @@ function buscarAlumno(query) {
                 <p class="font-medium text-sm">${a.apellido}, ${a.nombre}</p>
                 <p class="text-xs text-slate-500">${a.curso} ${a.division}</p>
             </div>`).join('');
+        if (btnCrear) btnCrear.classList.add('hidden');
     }
     resultados.classList.remove('hidden');
 }
@@ -368,6 +371,8 @@ function seleccionarAlumno(id, nombre, apellido, curso, division) {
 function limpiarAlumno() {
     document.getElementById('alumnoId').value = '';
     document.getElementById('alumnoSeleccionado').classList.add('hidden');
+    const btnCrear = document.getElementById('btn-crear-alumno-inline');
+    if (btnCrear) btnCrear.classList.add('hidden');
 }
 
 // ==================== ALUMNOS - LISTADO ====================
@@ -500,18 +505,15 @@ function renderizarInformes(lista) {
 window.accionRapidaAprobar = async function(id, btn) {
     const item = document.getElementById('item-' + id);
     if (!item) return;
-    // Animación del botón
-    btn.innerHTML = '<span class="btn-spinner"></span>';
-    btn.disabled = true;
-    // Esperar un poco para que se vea el spinner
-    await new Promise(r => setTimeout(r, 300));
-    // Animación slide-out del item
-    item.classList.add('animate-slide-out');
-    await new Promise(r => setTimeout(r, 400));
-    // Remover del DOM inmediatamente (feedback visual)
-    item.remove();
-    // Actualizar DB en segundo plano (sin recargar la lista, ya quitamos el item)
-    await cambiarEstado(id, 'aprobado', { cerrarModal: false, recargarLista: false });
+    mostrarModalFechaReunion(id, async (informeId, fechaReunion) => {
+        btn.innerHTML = '<span class="btn-spinner"></span>';
+        btn.disabled = true;
+        await new Promise(r => setTimeout(r, 300));
+        item.classList.add('animate-slide-out');
+        await new Promise(r => setTimeout(r, 400));
+        item.remove();
+        await cambiarEstado(informeId, 'aprobado', { cerrarModal: false, recargarLista: false, fecha_reunion: fechaReunion });
+    });
 };
 
 window.accionRapidaRechazar = function(id, btn) {
@@ -526,13 +528,15 @@ window.accionRapidaRechazar = function(id, btn) {
 window.aprobarDesdeDashboard = async function(id, btn) {
     const item = document.getElementById('dash-item-' + id);
     if (!item) return;
-    btn.innerHTML = '<span class="btn-spinner"></span>';
-    btn.disabled = true;
-    await new Promise(r => setTimeout(r, 300));
-    item.classList.add('animate-slide-out');
-    await new Promise(r => setTimeout(r, 400));
-    item.remove();
-    await cambiarEstado(id, 'aprobado', { cerrarModal: false, recargarLista: false });
+    mostrarModalFechaReunion(id, async (informeId, fechaReunion) => {
+        btn.innerHTML = '<span class="btn-spinner"></span>';
+        btn.disabled = true;
+        await new Promise(r => setTimeout(r, 300));
+        item.classList.add('animate-slide-out');
+        await new Promise(r => setTimeout(r, 400));
+        item.remove();
+        await cambiarEstado(informeId, 'aprobado', { cerrarModal: false, recargarLista: false, fecha_reunion: fechaReunion });
+    });
 };
 
 window.rechazarDesdeDashboard = function(id, btn) {
@@ -544,15 +548,16 @@ window.rechazarDesdeDashboard = function(id, btn) {
 };
 
 window.aprobarConAnimacion = async function(id, btn) {
-    btn.disabled = true;
-    btn.innerHTML = '<span class="btn-spinner mr-2"></span> Aprobando...';
-    await new Promise(r => setTimeout(r, 500));
-    // Cambiar a checkmark verde brevemente
-    btn.innerHTML = '<i class="fas fa-check animate-pop mr-2"></i> Aprobado';
-    btn.classList.remove('bg-green-600', 'hover:bg-green-700');
-    btn.classList.add('bg-green-700');
-    await new Promise(r => setTimeout(r, 400));
-    await cambiarEstado(id, 'aprobado');
+    mostrarModalFechaReunion(id, async (informeId, fechaReunion) => {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="btn-spinner mr-2"></span> Aprobando...';
+        await new Promise(r => setTimeout(r, 500));
+        btn.innerHTML = '<i class="fas fa-check animate-pop mr-2"></i> Aprobado';
+        btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+        btn.classList.add('bg-green-700');
+        await new Promise(r => setTimeout(r, 400));
+        await cambiarEstado(informeId, 'aprobado', { fecha_reunion: fechaReunion });
+    });
 };
 
 async function guardarInforme(e) {
@@ -560,14 +565,25 @@ async function guardarInforme(e) {
     const alumnoId = document.getElementById('alumnoId').value;
     if (!alumnoId) return mostrarToast('Debe seleccionar un alumno', 'error');
     const editId = document.getElementById('editId').value;
+    const titulo = document.getElementById('titulo').value.trim();
+    const resumen = document.getElementById('resumen').value.trim();
+    const descargo = document.getElementById('descargo').value.trim();
+    const observaciones = document.getElementById('observaciones').value.trim();
+
+    // Validación de límites
+    if (titulo.length > 200) return mostrarToast('El título no puede exceder 200 caracteres', 'error');
+    if (resumen.length > 2000) return mostrarToast('La descripción no puede exceder 2000 caracteres', 'error');
+    if (descargo.length > 1000) return mostrarToast('La sanción no puede exceder 1000 caracteres', 'error');
+    if (observaciones.length > 1000) return mostrarToast('Las observaciones no pueden exceder 1000 caracteres', 'error');
+
     const datos = {
         alumno_id: alumnoId,
         tipo_falta: 'Otra',
         instancia: document.getElementById('instancia').value,
-        titulo: document.getElementById('titulo').value.trim(),
-        resumen: document.getElementById('resumen').value.trim(),
-        descargo: document.getElementById('descargo').value.trim() || null,
-        observaciones: document.getElementById('observaciones').value.trim() || null
+        titulo,
+        resumen,
+        descargo: descargo || null,
+        observaciones: observaciones || null
     };
 
     if (editId) {
@@ -673,13 +689,14 @@ function verDetalle(id) {
 function cerrarModal() { document.getElementById('modalDetalle').classList.add('hidden'); }
 
 async function cambiarEstado(id, nuevoEstado, options = {}) {
-    const { silent = false, cerrarModal: debeCerrarModal = true, recargarLista = true } = options;
+    const { silent = false, cerrarModal: debeCerrarModal = true, recargarLista = true, fecha_reunion } = options;
     const updates = {
         estado: nuevoEstado,
         revisado_por: getPerfil().id,
         fecha_revision: new Date().toISOString()
     };
     if (nuevoEstado !== 'rechazado') updates.motivo_rechazo = null;
+    if (fecha_reunion !== undefined) updates.fecha_reunion = fecha_reunion;
 
     const { error } = await supabaseClient.from('informes').update(updates).eq('id', id);
     if (error) { return mostrarToast('Error actualizando estado', 'error'); }
@@ -789,10 +806,10 @@ function renderCalendarioReuniones() {
     const firstDay = new Date(year, month, 1).getDay(); // 0=Dom
     const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-    // Reuniones del mes (pendientes)
+    // Reuniones del mes (con fecha_reunion asignada)
     const reunionesMes = informes.filter(i => {
-        if (i.estado !== 'pendiente') return false;
-        const d = new Date(i.fecha_creacion);
+        if (!i.fecha_reunion) return false;
+        const d = new Date(i.fecha_reunion);
         return d.getFullYear() === year && d.getMonth() === month;
     });
 
@@ -853,11 +870,11 @@ function renderReunionesDiaSeleccionado() {
     const dia = calSelectedDate ? calSelectedDate.getDate() : null;
 
     const reuniones = informes.filter(i => {
-        if (i.estado !== 'pendiente') return false;
-        const d = new Date(i.fecha_creacion);
+        if (!i.fecha_reunion) return false;
+        const d = new Date(i.fecha_reunion);
         if (dia !== null) return d.getFullYear() === year && d.getMonth() === month && d.getDate() === dia;
         return d.getFullYear() === year && d.getMonth() === month;
-    }).sort((a, b) => new Date(a.fecha_creacion) - new Date(b.fecha_creacion));
+    }).sort((a, b) => new Date(a.fecha_reunion) - new Date(b.fecha_reunion));
 
     if (reuniones.length === 0) {
         const msg = dia !== null
@@ -867,17 +884,24 @@ function renderReunionesDiaSeleccionado() {
         return;
     }
 
+    const hoy = new Date();
+    hoy.setHours(0,0,0,0);
+
     container.innerHTML = reuniones.map(i => {
         const alumno = getAlumno(i.alumno_id);
-        const hora = new Date(i.fecha_creacion).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+        const fechaReunion = new Date(i.fecha_reunion);
+        const esPasada = fechaReunion < hoy;
+        const estadoClase = esPasada ? 'bg-slate-400' : 'bg-blue-500';
         return `
-        <div class="flex items-start gap-2 p-2 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer" onclick="verDetalle('${i.id}')">
-            <div class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white bg-amber-500">${alumno ? alumno.nombre[0] + alumno.apellido[0] : '?'}</div>
-            <div class="flex-1 min-w-0">
+        <div class="flex items-start gap-2 p-2 hover:bg-slate-50 rounded-lg transition-colors">
+            <div class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${estadoClase}">${alumno ? alumno.nombre[0] + alumno.apellido[0] : '?'}</div>
+            <div class="flex-1 min-w-0 cursor-pointer" onclick="verDetalle('${i.id}')">
                 <p class="text-sm font-medium text-slate-800 truncate">${i.titulo}</p>
-                <p class="text-xs text-slate-500">${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'} • ${hora}</p>
+                <p class="text-xs text-slate-500">${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'} • ${formatearFechaCorta(i.fecha_reunion)}</p>
             </div>
-            <span class="status-${i.estado} px-1.5 py-0.5 rounded text-[10px] capitalize">${i.estado.replace('_', ' ')}</span>
+            <div class="flex gap-1">
+                <button onclick="event.stopPropagation(); mostrarModalGestionReunion('${i.id}', '${i.fecha_reunion}')" class="text-xs text-blue-600 hover:text-blue-800 p-1" title="Gestionar"><i class="fas fa-edit"></i></button>
+            </div>
         </div>`;
     }).join('');
 }
@@ -1157,6 +1181,9 @@ async function crearUsuario(e) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
         return mostrarToast('El email no tiene un formato válido', 'error');
     }
+    if (nombre.length > 100) return mostrarToast('El nombre no puede exceder 100 caracteres', 'error');
+    if (apellido.length > 100) return mostrarToast('El apellido no puede exceder 100 caracteres', 'error');
+    if (email.length > 200) return mostrarToast('El email no puede exceder 200 caracteres', 'error');
 
     if (USE_SUPABASE) {
         // Creando usuario en Supabase
@@ -1255,6 +1282,9 @@ window.guardarEdicionUsuario = async function() {
     if (!nombre || !apellido || !email) {
         return mostrarToast('Nombre, apellido y email son obligatorios', 'error');
     }
+    if (nombre.length > 100) return mostrarToast('El nombre no puede exceder 100 caracteres', 'error');
+    if (apellido.length > 100) return mostrarToast('El apellido no puede exceder 100 caracteres', 'error');
+    if (email.length > 200) return mostrarToast('El email no puede exceder 200 caracteres', 'error');
 
     if (USE_SUPABASE) {
         // 1. Actualizar perfil
@@ -1430,6 +1460,8 @@ window.crearPlantilla = async function() {
     if (!titulo || !instancia || !resumen) {
         return mostrarToast('Completa todos los campos', 'error');
     }
+    if (titulo.length > 200) return mostrarToast('El título no puede exceder 200 caracteres', 'error');
+    if (resumen.length > 2000) return mostrarToast('El resumen no puede exceder 2000 caracteres', 'error');
 
     if (USE_SUPABASE) {
         const { data, error } = await supabaseClient.from('plantillas').insert({
@@ -1569,3 +1601,101 @@ window.abrirModalPlantillas = abrirModalPlantillas;
 window.cerrarModalPlantillas = cerrarModalPlantillas;
 window.crearPlantilla = crearPlantilla;
 window.eliminarPlantilla = eliminarPlantilla;
+
+// ==================== CREAR ALUMNO INLINE ====================
+window.mostrarModalCrearAlumno = function() {
+    document.getElementById('modalCrearAlumno').classList.remove('hidden');
+    document.getElementById('newAlumnoNombre').value = '';
+    document.getElementById('newAlumnoApellido').value = '';
+    document.getElementById('newAlumnoCurso').value = '';
+    document.getElementById('newAlumnoDivision').value = '';
+};
+window.cerrarModalCrearAlumno = function() {
+    document.getElementById('modalCrearAlumno').classList.add('hidden');
+};
+window.guardarNuevoAlumno = async function() {
+    const nombre = document.getElementById('newAlumnoNombre').value.trim();
+    const apellido = document.getElementById('newAlumnoApellido').value.trim();
+    const curso = document.getElementById('newAlumnoCurso').value;
+    const division = document.getElementById('newAlumnoDivision').value;
+    if (!nombre || !apellido || !curso || !division) {
+        return mostrarToast('Todos los campos son obligatorios', 'error');
+    }
+    const { data, error } = await supabaseClient.from('alumnos').insert({ nombre, apellido, curso, division }).select().single();
+    if (error) {
+        return mostrarToast('Error creando alumno: ' + error.message, 'error');
+    }
+    await cargarAlumnos();
+    seleccionarAlumno(data.id, data.nombre, data.apellido, data.curso, data.division);
+    cerrarModalCrearAlumno();
+    mostrarToast('Alumno creado correctamente');
+};
+
+// ==================== FECHA DE REUNIÓN ====================
+let _reunionCallback = null;
+window.mostrarModalFechaReunion = function(informeId, callback) {
+    _reunionCallback = callback;
+    document.getElementById('reunionInformeId').value = informeId;
+    document.getElementById('fechaReunionInput').value = '';
+    document.getElementById('reunionObservacion').value = '';
+    document.getElementById('modalFechaReunion').classList.remove('hidden');
+};
+window.cerrarModalFechaReunion = function() {
+    document.getElementById('modalFechaReunion').classList.add('hidden');
+    _reunionCallback = null;
+};
+window.confirmarFechaReunion = async function(omitir) {
+    const informeId = document.getElementById('reunionInformeId').value;
+    let fechaReunion = null;
+    if (!omitir) {
+        fechaReunion = document.getElementById('fechaReunionInput').value || null;
+    }
+    document.getElementById('modalFechaReunion').classList.add('hidden');
+    if (_reunionCallback) {
+        await _reunionCallback(informeId, fechaReunion);
+        _reunionCallback = null;
+    }
+};
+
+// ==================== GESTIÓN DE REUNIONES ====================
+window.mostrarModalGestionReunion = function(informeId, fechaActual) {
+    document.getElementById('gestionReunionInformeId').value = informeId;
+    document.getElementById('gestionReunionFecha').value = fechaActual || '';
+    document.getElementById('modalGestionReunion').classList.remove('hidden');
+};
+window.cerrarModalGestionReunion = function() {
+    document.getElementById('modalGestionReunion').classList.add('hidden');
+};
+window.guardarCambioReunion = async function() {
+    const id = document.getElementById('gestionReunionInformeId').value;
+    const fecha = document.getElementById('gestionReunionFecha').value || null;
+    const { error } = await supabaseClient.from('informes').update({ fecha_reunion: fecha }).eq('id', id);
+    if (error) return mostrarToast('Error actualizando reunión', 'error');
+    await cargarInformes();
+    actualizarDashboard();
+    cerrarModalGestionReunion();
+    mostrarToast('Reunión actualizada');
+};
+window.posponerReunion = async function(dias) {
+    const id = document.getElementById('gestionReunionInformeId').value;
+    const fechaActual = document.getElementById('gestionReunionFecha').value;
+    const fecha = new Date(fechaActual || new Date());
+    fecha.setDate(fecha.getDate() + dias);
+    const fechaStr = fecha.toISOString().split('T')[0];
+    const { error } = await supabaseClient.from('informes').update({ fecha_reunion: fechaStr }).eq('id', id);
+    if (error) return mostrarToast('Error posponiendo reunión', 'error');
+    await cargarInformes();
+    actualizarDashboard();
+    cerrarModalGestionReunion();
+    mostrarToast(`Reunión pospuesta ${dias} días`);
+};
+window.eliminarReunion = async function() {
+    const id = document.getElementById('gestionReunionInformeId').value;
+    if (!confirm('¿Eliminar la fecha de reunión?')) return;
+    const { error } = await supabaseClient.from('informes').update({ fecha_reunion: null }).eq('id', id);
+    if (error) return mostrarToast('Error eliminando reunión', 'error');
+    await cargarInformes();
+    actualizarDashboard();
+    cerrarModalGestionReunion();
+    mostrarToast('Reunión eliminada');
+};

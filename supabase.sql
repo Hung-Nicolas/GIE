@@ -41,7 +41,8 @@ CREATE TABLE IF NOT EXISTS public.informes (
     revisado_por UUID REFERENCES public.perfiles(id) ON DELETE SET NULL,
     fecha_creacion TIMESTAMPTZ DEFAULT timezone('utc'::text, now()),
     fecha_revision TIMESTAMPTZ,
-    motivo_rechazo TEXT
+    motivo_rechazo TEXT,
+    fecha_reunion DATE
 );
 
 -- ============================================================

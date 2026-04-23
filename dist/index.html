@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GIE - Panel de Control</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  <script type="module" crossorigin src="/assets/index-DJJa0tdQ.js"></script>
-  <link rel="stylesheet" crossorigin href="/assets/index-CkKecfNZ.css">
+  <script type="module" crossorigin src="/GIE/assets/index-TIXSgAgZ.js"></script>
+  <link rel="stylesheet" crossorigin href="/GIE/assets/index-dI5THT3i.css">
 </head>
 <body class="bg-slate-50 text-slate-800">
 
@@ -157,12 +157,12 @@
 
             <!-- Fila 1: Calendario + Pendientes -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
-                        <i class="fas fa-calendar-check text-blue-500"></i> Próximas reuniones
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-[480px] flex flex-col">
+                    <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2 shrink-0">
+                        <i class="fas fa-calendar-check text-blue-500"></i> Reuniones programadas
                     </h3>
                     <!-- Calendario -->
-                    <div id="calendarioReuniones" class="mb-4 select-none">
+                    <div id="calendarioReuniones" class="mb-4 select-none shrink-0">
                         <div class="flex justify-between items-center mb-3">
                             <button id="calPrev" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"><i class="fas fa-chevron-left text-xs"></i></button>
                             <span id="calMesAnio" class="text-sm font-semibold text-slate-700"></span>
@@ -176,13 +176,13 @@
                             <i class="fas fa-list mr-1"></i> Ver todos los pendientes del mes
                         </button>
                     </div>
-                    <div id="dashReuniones" class="space-y-2 max-h-48 overflow-y-auto border-t border-slate-100 pt-3"></div>
+                    <div id="dashReuniones" class="space-y-2 flex-1 overflow-y-auto border-t border-slate-100 pt-3 min-h-0"></div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-[480px] flex flex-col">
+                    <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2 shrink-0">
                         <i class="fas fa-gavel text-amber-500"></i> Pendientes de revisión
                     </h3>
-                    <div id="dashPendientesLista" class="space-y-3 max-h-80 overflow-y-auto"></div>
+                    <div id="dashPendientesLista" class="space-y-3 flex-1 overflow-y-auto min-h-0"></div>
                 </div>
             </div>
 
@@ -255,7 +255,7 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Alumno *</label>
                     <div class="relative">
-                        <input type="text" id="searchAlumno" placeholder="Escriba para buscar alumno..."
+                        <input type="text" id="searchAlumno" placeholder="Escriba para buscar alumno..." maxlength="100"
                             class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none" autocomplete="off">
                         <div id="resultadosAlumno" class="absolute z-10 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto hidden"></div>
                         <input type="hidden" id="alumnoId" required>
@@ -268,6 +268,9 @@
                         </div>
                         <button type="button" id="btn-limpiar-alumno" class="ml-auto text-slate-400 hover:text-red-500"><i class="fas fa-times"></i></button>
                     </div>
+                    <button type="button" id="btn-crear-alumno-inline" onclick="mostrarModalCrearAlumno()" class="hidden mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
+                        <i class="fas fa-plus-circle"></i> Crear nuevo alumno
+                    </button>
                 </div>
                 <div>
                     <div class="flex justify-between items-center mb-2">
@@ -280,25 +283,25 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Título del informe *</label>
-                    <input type="text" id="titulo" required
+                    <input type="text" id="titulo" required maxlength="200"
                         class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
                         placeholder="Ej: Falta de respeto en clase">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Descripción de la problemática *</label>
-                    <textarea id="resumen" required rows="4"
+                    <textarea id="resumen" required rows="4" maxlength="2000"
                         class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
                         placeholder="Describa los hechos detalladamente..."></textarea>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Solicitud de sanción (datos del docente) *</label>
-                    <textarea id="descargo" required rows="3"
+                    <textarea id="descargo" required rows="3" maxlength="1000"
                         class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
                         placeholder="Indique la sanción que solicita..."></textarea>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Observaciones</label>
-                    <textarea id="observaciones" rows="3"
+                    <textarea id="observaciones" rows="3" maxlength="1000"
                         class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
                         placeholder="Observaciones adicionales (opcional)..."></textarea>
                 </div>
@@ -528,15 +531,15 @@
                 <input type="hidden" id="editUserId">
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Nombre</label>
-                    <input type="text" id="editUserNombre" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <input type="text" id="editUserNombre" maxlength="100" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Apellido</label>
-                    <input type="text" id="editUserApellido" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <input type="text" id="editUserApellido" maxlength="100" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Email</label>
-                    <input type="email" id="editUserEmail" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <input type="email" id="editUserEmail" maxlength="200" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Rol</label>
@@ -548,7 +551,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Nueva contraseña <span class="text-xs text-slate-400">(dejar vacío para no cambiar)</span></label>
-                    <input type="password" id="editUserPassword" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <input type="password" id="editUserPassword" maxlength="100" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                 </div>
                 <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
                     <div>
@@ -578,7 +581,7 @@
             <div class="p-6 space-y-4">
                 <div class="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-3">
                     <h4 class="text-sm font-semibold text-slate-700">Nueva plantilla</h4>
-                    <input type="text" id="newPlantillaTitulo" placeholder="Título" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    <input type="text" id="newPlantillaTitulo" placeholder="Título" maxlength="200" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
                     <select id="newPlantillaInstancia" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
                         <option value="">Instancia...</option>
                         <option value="leve">Leve</option>
@@ -586,13 +589,112 @@
                         <option value="muy_grave">Muy Grave</option>
                         <option value="otro">Otro</option>
                     </select>
-                    <textarea id="newPlantillaResumen" rows="3" placeholder="Resumen / descripción..." class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none text-sm"></textarea>
+                    <textarea id="newPlantillaResumen" rows="3" maxlength="2000" placeholder="Resumen / descripción..." class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none text-sm"></textarea>
                     <button onclick="crearPlantilla()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors"><i class="fas fa-plus mr-1"></i> Agregar plantilla</button>
                 </div>
                 <div>
                     <h4 class="text-sm font-semibold text-slate-700 mb-2">Mis plantillas</h4>
                     <div id="listaPlantillas" class="space-y-2 max-h-64 overflow-y-auto"></div>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Crear Alumno (inline desde Nuevo Informe) -->
+    <div id="modalCrearAlumno" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full animate-fade-in">
+            <div class="p-6 border-b border-slate-200 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-800">Crear Nuevo Alumno</h3>
+                <button onclick="cerrarModalCrearAlumno()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Nombre *</label>
+                        <input type="text" id="newAlumnoNombre" maxlength="100" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Apellido *</label>
+                        <input type="text" id="newAlumnoApellido" maxlength="100" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Curso *</label>
+                        <select id="newAlumnoCurso" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                            <option value="">Seleccione...</option>
+                            <option value="1°">1°</option>
+                            <option value="2°">2°</option>
+                            <option value="3°">3°</option>
+                            <option value="4°">4°</option>
+                            <option value="5°">5°</option>
+                            <option value="6°">6°</option>
+                            <option value="7°">7°</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">División *</label>
+                        <select id="newAlumnoDivision" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
+                            <option value="">Seleccione...</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 border-t border-slate-200 bg-slate-50 flex gap-3">
+                <button onclick="guardarNuevoAlumno()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors">Crear alumno</button>
+                <button onclick="cerrarModalCrearAlumno()" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Fecha Reunión (al aprobar informe) -->
+    <div id="modalFechaReunion" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full animate-fade-in">
+            <div class="p-6 border-b border-slate-200">
+                <h3 class="text-lg font-bold text-slate-800">Agendar Reunión</h3>
+                <p class="text-sm text-slate-500 mt-1">Opcional: seleccioná una fecha para la reunión con padres/tutores</p>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="reunionInformeId">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Fecha de reunión</label>
+                    <input type="date" id="fechaReunionInput" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Nota</label>
+                    <textarea id="reunionObservacion" rows="2" maxlength="500" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none" placeholder="Observaciones sobre la reunión..."></textarea>
+                </div>
+            </div>
+            <div class="p-6 border-t border-slate-200 bg-slate-50 flex gap-3">
+                <button onclick="confirmarFechaReunion()" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors">Guardar y aprobar</button>
+                <button onclick="confirmarFechaReunion(true)" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors text-sm">Omitir fecha</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Gestionar Reunión (editar/posponer/eliminar) -->
+    <div id="modalGestionReunion" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full animate-fade-in">
+            <div class="p-6 border-b border-slate-200 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-800">Gestionar Reunión</h3>
+                <button onclick="cerrarModalGestionReunion()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="gestionReunionInformeId">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Nueva fecha</label>
+                    <input type="date" id="gestionReunionFecha" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                </div>
+            </div>
+            <div class="p-6 border-t border-slate-200 bg-slate-50 flex flex-wrap gap-3">
+                <button onclick="guardarCambioReunion()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors">Guardar cambio</button>
+                <button onclick="posponerReunion(7)" class="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg transition-colors text-sm"><i class="fas fa-calendar-plus mr-1"></i>+7 días</button>
+                <button onclick="eliminarReunion()" class="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg transition-colors text-sm"><i class="fas fa-trash mr-1"></i>Eliminar</button>
             </div>
         </div>
     </div>
