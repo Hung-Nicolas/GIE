@@ -157,12 +157,12 @@
 
             <!-- Fila 1: Calendario + Pendientes -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-[480px] flex flex-col">
+                    <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2 shrink-0">
                         <i class="fas fa-calendar-check text-blue-500"></i> Próximas reuniones
                     </h3>
                     <!-- Calendario -->
-                    <div id="calendarioReuniones" class="mb-4 select-none">
+                    <div id="calendarioReuniones" class="mb-4 select-none shrink-0">
                         <div class="flex justify-between items-center mb-3">
                             <button id="calPrev" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"><i class="fas fa-chevron-left text-xs"></i></button>
                             <span id="calMesAnio" class="text-sm font-semibold text-slate-700"></span>
@@ -176,13 +176,13 @@
                             <i class="fas fa-list mr-1"></i> Ver todos los pendientes del mes
                         </button>
                     </div>
-                    <div id="dashReuniones" class="space-y-2 max-h-48 overflow-y-auto border-t border-slate-100 pt-3"></div>
+                    <div id="dashReuniones" class="space-y-2 flex-1 overflow-y-auto border-t border-slate-100 pt-3 min-h-0"></div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
-                    <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-[480px] flex flex-col">
+                    <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2 shrink-0">
                         <i class="fas fa-gavel text-amber-500"></i> Pendientes de revisión
                     </h3>
-                    <div id="dashPendientesLista" class="space-y-3 max-h-80 overflow-y-auto"></div>
+                    <div id="dashPendientesLista" class="space-y-3 flex-1 overflow-y-auto min-h-0"></div>
                 </div>
             </div>
 
