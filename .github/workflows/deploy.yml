@@ -41,18 +41,22 @@ jobs:
 
       - name: Clean dist for deployment
         run: |
-          # Remove sourcemaps (not needed for production deploy)
+          # Remove sourcemaps
           rm -f ./dist/assets/*.map
-          # Remove any symlinks just in case
+          # Remove any symlinks
           find ./dist -type l -delete
+          # Remove hidden files
+          find ./dist -name ".*" -type f -delete
           # Fix permissions
           find ./dist -type f -exec chmod 644 {} +
           find ./dist -type d -exec chmod 755 {} +
-          # Debug: show what we're uploading
+          # Debug
           echo "=== dist contents ==="
           ls -laR ./dist
           echo "=== total size ==="
           du -sh ./dist
+          echo "=== check for hard links ==="
+          find ./dist -type f -links +1 || true
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
@@ -68,4 +72,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v3
