@@ -211,8 +211,8 @@ function setupEventListeners() {
             document.getElementById('titulo').value = p.titulo;
             document.getElementById('resumen').value = p.resumen;
             document.getElementById('instancia').value = p.instancia;
-            // Hacer foco en el campo de descargo para que el docente complete la sanción
-            document.getElementById('descargo').focus();
+            // Hacer foco en el campo de observaciones
+            document.getElementById('observaciones').focus();
         });
     }
 
@@ -629,13 +629,11 @@ async function guardarInforme(e) {
     const editId = document.getElementById('editId').value;
     const titulo = document.getElementById('titulo').value.trim();
     const resumen = document.getElementById('resumen').value.trim();
-    const descargo = document.getElementById('descargo').value.trim();
     const observaciones = document.getElementById('observaciones').value.trim();
 
     // Validación de límites
     if (titulo.length > 200) return mostrarToast('El título no puede exceder 200 caracteres', 'error');
     if (resumen.length > 2000) return mostrarToast('La descripción no puede exceder 2000 caracteres', 'error');
-    if (descargo.length > 1000) return mostrarToast('La sanción no puede exceder 1000 caracteres', 'error');
     if (observaciones.length > 1000) return mostrarToast('Las observaciones no pueden exceder 1000 caracteres', 'error');
 
     const datos = {
@@ -644,7 +642,6 @@ async function guardarInforme(e) {
         instancia: document.getElementById('instancia').value,
         titulo,
         resumen,
-        descargo: descargo || null,
         observaciones: observaciones || null
     };
 
@@ -726,7 +723,7 @@ function verDetalle(id) {
                 <div><p class="text-sm font-medium text-slate-700 mb-1">Creado por</p><p class="text-slate-600">${getNombreUsuario(informe.creado_por)}</p></div>
             </div>
             <div><p class="text-sm font-medium text-slate-700 mb-1">Descripción de la problemática</p><p class="text-slate-600 whitespace-pre-wrap">${informe.resumen}</p></div>
-            ${informe.descargo ? `<div class="p-3 bg-amber-50 border border-amber-200 rounded-lg"><p class="text-sm font-medium text-amber-800 mb-1">Solicitud de sanción</p><p class="text-amber-700 whitespace-pre-wrap">${informe.descargo}</p></div>` : ''}
+
             ${informe.observaciones ? `<div class="p-3 bg-blue-50 border border-blue-200 rounded-lg"><p class="text-sm font-medium text-blue-800 mb-1">Observaciones</p><p class="text-blue-700 whitespace-pre-wrap">${informe.observaciones}</p></div>` : ''}
             ${informe.motivo_rechazo ? `<div class="p-3 bg-red-50 border border-red-200 rounded-lg"><p class="text-sm font-medium text-red-800 mb-1">Motivo del rechazo</p><p class="text-red-700">${informe.motivo_rechazo}</p></div>` : ''}
             ${informe.fecha_revision ? `<div class="text-sm text-slate-500"><i class="fas fa-check-double mr-1"></i>Revisado por ${getNombreUsuario(informe.revisado_por)} el ${formatearFecha(informe.fecha_revision)}</div>` : ''}
@@ -850,7 +847,7 @@ function editarInforme(id) {
     document.getElementById('instancia').value = informe.instancia;
     document.getElementById('titulo').value = informe.titulo;
     document.getElementById('resumen').value = informe.resumen;
-    document.getElementById('descargo').value = informe.descargo || '';
+
     document.getElementById('observaciones').value = informe.observaciones || '';
     document.getElementById('tituloForm').textContent = 'Editar Informe';
     document.getElementById('txtBtnGuardar').textContent = 'Actualizar Informe';
@@ -1595,11 +1592,6 @@ function exportarPDF(id) {
             <h3 style="font-size:14px; font-weight:700; color:#1e293b; margin-bottom:8px;">Descripción de la problemática</h3>
             <p style="margin:0; line-height:1.6; white-space:pre-wrap;">${informe.resumen}</p>
         </div>
-        ${informe.descargo ? `
-        <div style="margin-bottom:20px; background:#fffbeb; border:1px solid #fcd34d; padding:16px; border-radius:8px;">
-            <h3 style="font-size:14px; font-weight:700; color:#92400e; margin-bottom:8px;">Solicitud de sanción</h3>
-            <p style="margin:0; line-height:1.6; white-space:pre-wrap; color:#78350f;">${informe.descargo}</p>
-        </div>` : ''}
         ${informe.observaciones ? `
         <div style="margin-bottom:20px; background:#eff6ff; border:1px solid #bfdbfe; padding:16px; border-radius:8px;">
             <h3 style="font-size:14px; font-weight:700; color:#1e40af; margin-bottom:8px;">Observaciones</h3>
