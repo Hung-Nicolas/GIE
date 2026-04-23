@@ -28,13 +28,13 @@ export async function crearUsuario(e) {
     const rol = document.getElementById('newRol').value;
 
     if (USE_SUPABASE) {
-        console.log('[GIE] ➕ Creando usuario en Supabase:', email);
+        
         const { data: authData, error: authError } = await supabaseClient.auth.signUp({
             email, password,
             options: { data: { nombre, apellido, rol } }
         });
-        if (authError) { console.error('[GIE] ❌ Error creando usuario:', authError); return mostrarToast(authError.message, 'error'); }
-        console.log('[GIE] ✅ Usuario creado en auth:', authData.user?.id);
+        if (authError) { 
+        
         mostrarToast('Usuario creado. El perfil se generará automáticamente.');
     } else {
         const db = getDB();
@@ -54,8 +54,8 @@ export async function crearUsuario(e) {
 export async function toggleUsuario(id, activo) {
     if (USE_SUPABASE) {
         const { error } = await supabaseClient.from('perfiles').update({ activo }).eq('id', id);
-        if (error) { console.error('[GIE] ❌ Error actualizando usuario:', error); return mostrarToast('Error actualizando usuario', 'error'); }
-        console.log('[GIE] 🔄 Usuario', id, 'activo =', activo);
+        if (error) { 
+        
         await cargarUsuariosSupa();
     } else {
         const db = getDB();

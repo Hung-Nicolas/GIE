@@ -44,10 +44,10 @@ export async function restoreSession() {
             apellido: perfilData.apellido,
             rol: perfilData.rol
         };
-        console.log('[GIE] 🔐 Sesión restaurada:', _perfil.email);
+        // Sesión restaurada
         return _perfil;
     } catch (err) {
-        console.error('[GIE] ⚠️ Error restaurando sesión:', err.message);
+        // Error restaurando sesión
         _perfil = null;
         return null;
     }
@@ -91,7 +91,7 @@ export async function doLogin(email, password) {
         apellido: perfilData.apellido,
         rol: perfilData.rol
     };
-    console.log('[GIE] ✅ Login exitoso:', _perfil.email);
+    // Login exitoso
     return { ok: true };
 }
 

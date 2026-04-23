@@ -82,10 +82,9 @@ const PLANTILLAS_INFORME = {
 async function cargarAlumnos() {
     if (!USE_SUPABASE) return;
     const { data, error } = await supabaseClient.from('alumnos').select('*').eq('activo', true).order('apellido');
-    if (error) { console.error('[GIE] ❌ Error cargando alumnos:', error); mostrarToast('Error cargando alumnos', 'error'); return; }
+    if (error) { mostrarToast('Error cargando alumnos', 'error'); return; }
     alumnos = data || [];
-    console.log('[GIE] 📚 Alumnos cargados desde Supabase:', alumnos.length);
-    console.table(alumnos);
+    // Alumnos cargados
     // Poblar filtro de cursos
     const cursos = [...new Set(alumnos.map(a => a.curso))].sort();
     const select = document.getElementById('filtroCurso');
@@ -100,19 +99,17 @@ async function cargarInformes() {
         .order('fecha_creacion', { ascending: false });
     if (getPerfil().rol !== 'regente') query = query.eq('creado_por', getPerfil().id);
     const { data, error } = await query;
-    if (error) { console.error('[GIE] ❌ Error cargando informes:', error); mostrarToast('Error cargando informes', 'error'); return; }
+    if (error) { mostrarToast('Error cargando informes', 'error'); return; }
     informes = data || [];
-    console.log('[GIE] 📝 Informes cargados desde Supabase:', informes.length);
-    console.table(informes);
+    // Informes cargados
 }
 
 async function cargarUsuariosSupa() {
     if (!USE_SUPABASE) return;
     const { data, error } = await supabaseClient.rpc('listar_usuarios_completos');
-    if (error) { console.error('[GIE] ❌ Error cargando usuarios:', error); mostrarToast('Error cargando usuarios', 'error'); return; }
+    if (error) { mostrarToast('Error cargando usuarios', 'error'); return; }
     usuarios = data || [];
-    console.log('[GIE] 👥 Usuarios cargados desde Supabase:', usuarios.length);
-    console.table(usuarios);
+    // Usuarios cargados
 }
 
 // --- Helpers de acceso sincrónico ---
@@ -580,8 +577,8 @@ async function guardarInforme(e) {
         if (inf.creado_por !== getPerfil().id && getPerfil().rol !== 'regente') return mostrarToast('No tiene permiso para editar', 'error');
 
         const { error } = await supabaseClient.from('informes').update(datos).eq('id', editId);
-        if (error) { console.error('[GIE] ❌ Error actualizando informe:', error); return mostrarToast('Error actualizando informe', 'error'); }
-        console.log('[GIE] ✏️ Informe actualizado:', editId);
+        if (error) { return mostrarToast('Error actualizando informe', 'error'); }
+        // Informe actualizado
         await cargarInformes();
         mostrarToast('Informe actualizado correctamente');
     } else {
@@ -596,8 +593,8 @@ async function guardarInforme(e) {
             motivo_rechazo: null
         };
         const { error } = await supabaseClient.from('informes').insert(nuevo);
-        if (error) { console.error('[GIE] ❌ Error guardando informe:', error); return mostrarToast('Error guardando informe', 'error'); }
-        console.log('[GIE] ➕ Informe creado:', nuevo.id);
+        if (error) { return mostrarToast('Error guardando informe', 'error'); }
+        // Informe creado
         await cargarInformes();
         mostrarToast('Informe creado correctamente');
     }
@@ -685,8 +682,8 @@ async function cambiarEstado(id, nuevoEstado, options = {}) {
     if (nuevoEstado !== 'rechazado') updates.motivo_rechazo = null;
 
     const { error } = await supabaseClient.from('informes').update(updates).eq('id', id);
-    if (error) { console.error('[GIE] ❌ Error cambiando estado:', error); return mostrarToast('Error actualizando estado', 'error'); }
-    console.log('[GIE] 🔄 Estado cambiado a', nuevoEstado, 'para informe', id);
+    if (error) { return mostrarToast('Error actualizando estado', 'error'); }
+    // Estado cambiado
     await cargarInformes();
     if (!silent) mostrarToast(`Informe ${nuevoEstado.replace('_', ' ')} correctamente`);
     if (debeCerrarModal) cerrarModal();
@@ -743,8 +740,8 @@ async function confirmarRechazo() {
         fecha_revision: new Date().toISOString()
     };
     const { error } = await supabaseClient.from('informes').update(updates).eq('id', rechazoId);
-    if (error) { console.error('[GIE] ❌ Error rechazando informe:', error); return mostrarToast('Error rechazando informe', 'error'); }
-    console.log('[GIE] ❌ Informe rechazado:', rechazoId);
+    if (error) { return mostrarToast('Error rechazando informe', 'error'); }
+    // Informe rechazado
     await cargarInformes();
 
     mostrarToast('Informe rechazado');
@@ -1162,7 +1159,7 @@ async function crearUsuario(e) {
     }
 
     if (USE_SUPABASE) {
-        console.log('[GIE] ➕ Creando usuario en Supabase:', email);
+        // Creando usuario en Supabase
         // Verificar si ya existe en auth.users (usando la función RPC)
         const { data: usuariosExistentes } = await supabaseClient.rpc('listar_usuarios_completos');
         if (usuariosExistentes?.some(u => u.email === email)) {
@@ -1173,7 +1170,7 @@ async function crearUsuario(e) {
             options: { data: { nombre, apellido, rol } }
         });
         if (authError) {
-            console.error('[GIE] ❌ Error creando usuario:', authError);
+            // Error creando usuario
             return mostrarToast('Error: ' + authError.message, 'error');
         }
         if (!authData.user) {
@@ -1182,7 +1179,7 @@ async function crearUsuario(e) {
         // Si el trigger no generó el perfil, crearlo manualmente
         const { data: perfilCreado } = await supabaseClient.from('perfiles').select('*').eq('id', authData.user.id).single();
         if (!perfilCreado) {
-            console.log('[GIE] ⚠️ Trigger no generó perfil, creando manualmente...');
+            // Trigger no generó perfil, creando manualmente
             const { error: syncError } = await supabaseClient.rpc('sincronizar_perfil', {
                 p_id: authData.user.id,
                 p_email: email,
@@ -1192,7 +1189,7 @@ async function crearUsuario(e) {
                 p_activo: true
             });
             if (syncError) {
-                console.error('[GIE] ❌ Error sincronizando perfil:', syncError);
+                // Error sincronizando perfil
                 return mostrarToast('Usuario creado pero error al generar perfil', 'error');
             }
         }
@@ -1215,7 +1212,7 @@ window.sincronizarPerfilUsuario = async function(id, email) {
         p_activo: true
     });
     if (error) {
-        console.error('[GIE] ❌ Error sincronizando perfil:', error);
+        // Error sincronizando perfil
         return mostrarToast('Error al crear perfil', 'error');
     }
     mostrarToast('Perfil creado correctamente');
@@ -1263,7 +1260,7 @@ window.guardarEdicionUsuario = async function() {
         // 1. Actualizar perfil
         const updates = { nombre, apellido, rol, activo };
         const { error } = await supabaseClient.from('perfiles').update(updates).eq('id', id);
-        if (error) { console.error('[GIE] ❌ Error editando usuario:', error); return mostrarToast('Error editando usuario', 'error'); }
+        if (error) { return mostrarToast('Error editando usuario', 'error'); }
 
         // 2. Actualizar contraseña vía RPC si se ingresó una nueva
         if (password) {
@@ -1275,15 +1272,15 @@ window.guardarEdicionUsuario = async function() {
                 new_password: password
             });
             if (rpcError) {
-                console.error('[GIE] ❌ Error cambiando contraseña:', rpcError);
+                // Error cambiando contraseña
                 if (rpcError.message?.includes('function') || rpcError.message?.includes('does not exist') || rpcError.code === '42883') {
                     return mostrarToast('La función RPC no está configurada en Supabase. Ejecutá el SQL de supabase.sql en el SQL Editor.', 'error');
                 }
                 return mostrarToast('Error cambiando contraseña: ' + rpcError.message, 'error');
             }
-            console.log('[GIE] ✅ Contraseña actualizada vía RPC');
+            // Contraseña actualizada
         }
-        console.log('[GIE] ✅ Usuario editado en Supabase:', id);
+        // Usuario editado
     } else {
         return mostrarToast('Servicio de autenticación no disponible', 'error');
     }
@@ -1307,12 +1304,12 @@ window.eliminarUsuario = async function(id) {
 
     const { error } = await supabaseClient.rpc('eliminar_usuario_completo', { user_id: id });
     if (error) {
-        console.error('[GIE] ❌ Error eliminando usuario:', error);
+        // Error eliminando usuario
         if (row) row.classList.remove('animate-slide-out');
         return mostrarToast('Error eliminando usuario: ' + error.message, 'error');
     }
 
-    console.log('[GIE] 🗑️ Usuario eliminado completamente:', id);
+    // Usuario eliminado
     mostrarToast(`Usuario ${u.nombre || u.email} eliminado`);
 
     // Remover del DOM después de la animación
@@ -1327,9 +1324,9 @@ window.eliminarUsuario = async function(id) {
 async function cargarPlantillas() {
     if (!USE_SUPABASE) return;
     const { data, error } = await supabaseClient.from('plantillas').select('*').eq('activo', true).order('created_at', { ascending: false });
-    if (error) { console.error('[GIE] ❌ Error cargando plantillas:', error); return; }
+    if (error) { return; }
     plantillas = data || [];
-    console.log('[GIE] 📋 Plantillas cargadas:', plantillas.length);
+    // Plantillas cargadas
     renderizarSelectPlantillas();
 }
 
@@ -1438,8 +1435,8 @@ window.crearPlantilla = async function() {
         const { data, error } = await supabaseClient.from('plantillas').insert({
             titulo, instancia, resumen, creado_por: getPerfil().id, usos: 0, activo: true
         }).select().single();
-        if (error) { console.error('[GIE] ❌ Error creando plantilla:', error); return mostrarToast('Error creando plantilla', 'error'); }
-        console.log('[GIE] ➕ Plantilla creada:', data.id);
+        if (error) { return mostrarToast('Error creando plantilla', 'error'); }
+        // Plantilla creada
     } else {
         return mostrarToast('Servicio de autenticación no disponible', 'error');
     }
@@ -1458,7 +1455,7 @@ window.eliminarPlantilla = async function(id) {
     if (!confirm(`¿Eliminar la plantilla "${p.titulo}"?`)) return;
 
     const { error } = await supabaseClient.from('plantillas').delete().eq('id', id);
-    if (error) { console.error('[GIE] ❌ Error eliminando plantilla:', error); return mostrarToast('Error eliminando plantilla', 'error'); }
+    if (error) { return mostrarToast('Error eliminando plantilla', 'error'); }
 
     mostrarToast('Plantilla eliminada');
     await cargarPlantillas();
@@ -1552,15 +1549,7 @@ window.logout = logout;
 
 // Debug helper: ejecutar debugGIE() en la consola del navegador
 window.debugGIE = function() {
-    console.log('%c[GIE] 🔍 ESTADO ACTUAL', 'font-size:14px; font-weight:bold; color:#3b82f6;');
-    console.log('Perfil:', getPerfil());
-    console.log('USE_SUPABASE:', USE_SUPABASE);
-    console.log('Alumnos:', alumnos.length, alumnos);
-    console.log('Informes:', informes.length, informes);
-    console.log('Usuarios:', usuarios.length, usuarios);
-    console.table(alumnos);
-    console.table(informes);
-    console.table(usuarios);
+    // Debug helper desactivado en producción
 };
 
 window.verDetalle = verDetalle;

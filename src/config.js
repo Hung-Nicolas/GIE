@@ -23,12 +23,12 @@ if (USE_SUPABASE) {
             }
         });
         window.supabaseClient = supabaseClient;
-        console.log('[GIE] ✅ Cliente Supabase inicializado:', SUPABASE_URL);
+        // Cliente Supabase inicializado
     } catch (err) {
-        console.error('[GIE] ❌ Error conectando a Supabase:', err.message);
+        // Error conectando a Supabase
         USE_SUPABASE = false;
     }
 }
 if (!USE_SUPABASE) {
-    console.log('[GIE] ⚠️ Supabase no configurado. La autenticación requiere Supabase.');
+    // Supabase no configurado. La autenticación requiere Supabase.
 }

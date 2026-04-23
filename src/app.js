@@ -208,8 +208,8 @@ export async function cambiarEstado(id, nuevoEstado) {
 
     if (USE_SUPABASE) {
         const { error } = await supabaseClient.from('informes').update(updates).eq('id', id);
-        if (error) { console.error('[GIE] ❌ Error cambiando estado:', error); return mostrarToast('Error actualizando estado', 'error'); }
-        console.log('[GIE] 🔄 Estado cambiado a', nuevoEstado, 'para informe', id);
+        if (error) { 
+        
         await cargarInformes();
     } else {
         const db = getDB();
@@ -246,8 +246,8 @@ export async function confirmarRechazo() {
     };
     if (USE_SUPABASE) {
         const { error } = await supabaseClient.from('informes').update(updates).eq('id', rechazoId);
-        if (error) { console.error('[GIE] ❌ Error rechazando informe:', error); return mostrarToast('Error rechazando informe', 'error'); }
-        console.log('[GIE] ❌ Informe rechazado:', rechazoId);
+        if (error) { 
+        
         await cargarInformes();
     } else {
         const db = getDB();

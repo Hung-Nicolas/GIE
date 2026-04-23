@@ -24,8 +24,8 @@ export async function guardarInforme(e) {
 
         if (USE_SUPABASE) {
             const { error } = await supabaseClient.from('informes').update(datos).eq('id', editId);
-            if (error) { console.error('[GIE] ❌ Error actualizando informe:', error); return mostrarToast('Error actualizando informe', 'error'); }
-            console.log('[GIE] ✏️ Informe actualizado:', editId);
+            if (error) { 
+            
             await cargarInformes();
         } else {
             const db = getDB();
@@ -48,8 +48,8 @@ export async function guardarInforme(e) {
         };
         if (USE_SUPABASE) {
             const { error } = await supabaseClient.from('informes').insert(nuevo);
-            if (error) { console.error('[GIE] ❌ Error guardando informe:', error); return mostrarToast('Error guardando informe', 'error'); }
-            console.log('[GIE] ➕ Informe creado:', nuevo.id);
+            if (error) { 
+            
             await cargarInformes();
         } else {
             const db = getDB();
