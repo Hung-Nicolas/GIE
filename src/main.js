@@ -264,6 +264,18 @@ function setupEventListeners() {
     const btnVolverAlumno = document.getElementById('btn-volver-alumno');
     if (btnVolverAlumno) btnVolverAlumno.addEventListener('click', () => showSection('informes'));
 
+    const btnNuevoInforme = document.getElementById('btn-nuevo-informe');
+    if (btnNuevoInforme) btnNuevoInforme.addEventListener('click', () => {
+        cancelarForm();
+        showSection('nuevo');
+    });
+
+    const btnCancelarForm = document.getElementById('btn-cancelar-form');
+    if (btnCancelarForm) btnCancelarForm.addEventListener('click', () => {
+        cancelarForm();
+        showSection('informes');
+    });
+
     // Suscripción realtime (solo Supabase)
     if (USE_SUPABASE) {
         supabaseClient.channel('informes_changes')
