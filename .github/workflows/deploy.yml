@@ -39,17 +39,24 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
-      - name: Fix permissions and remove symlinks
+      - name: Clean dist for deployment
         run: |
+          # Remove sourcemaps (not needed for production deploy)
+          rm -f ./dist/assets/*.map
+          # Remove any symlinks just in case
           find ./dist -type l -delete
+          # Fix permissions
           find ./dist -type f -exec chmod 644 {} +
           find ./dist -type d -exec chmod 755 {} +
+          # Debug: show what we're uploading
+          echo "=== dist contents ==="
           ls -laR ./dist
+          echo "=== total size ==="
+          du -sh ./dist
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-pages-artifact@v3
         with:
-          name: github-pages
           path: ./dist
 
   deploy:
