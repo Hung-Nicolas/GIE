@@ -1753,3 +1753,23 @@ window.eliminarReunion = async function() {
     cerrarModalGestionReunion();
     mostrarToast('Reunión eliminada');
 };
+
+// ==================== VER CONTRASEÑA ====================
+window.togglePassword = function(inputId, btn) {
+    const input = document.getElementById(inputId);
+    const icon = btn.querySelector('i');
+    if (!input || !icon) return;
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.classList.remove('fa-eye');
+        icon.classList.add('fa-eye-slash');
+        btn.classList.add('text-blue-500');
+        btn.classList.remove('text-slate-400');
+    } else {
+        input.type = 'password';
+        icon.classList.remove('fa-eye-slash');
+        icon.classList.add('fa-eye');
+        btn.classList.remove('text-blue-500');
+        btn.classList.add('text-slate-400');
+    }
+};
