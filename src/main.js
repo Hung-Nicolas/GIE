@@ -13,6 +13,18 @@ let rechazoId = null;
 let calCurrentDate = new Date();
 let calSelectedDate = null;
 let plantillas = [];
+let tabInformesActivo = 'todos'; // 'todos' | 'pendientes' | 'resueltos'
+
+// IntersectionObserver para animar cards al hacer scroll (repite al subir/bajar)
+const cardObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('is-visible');
+        } else {
+            entry.target.classList.remove('is-visible');
+        }
+    });
+}, { threshold: 0.05, rootMargin: '20px 0px 20px 0px' });
 
 // ==================== PLANTILLAS DE INFORMES ====================
 const PLANTILLAS_INFORME = {
@@ -90,6 +102,9 @@ async function cargarAlumnos() {
     const select = document.getElementById('filtroCurso');
     select.innerHTML = '<option value="">Todos los cursos</option>';
     cursos.forEach(c => select.innerHTML += `<option value="${c}">${c}</option>`);
+    // Restaurar filtro persistido
+    const savedCurso = sessionStorage.getItem('gie_filtro_filtroCurso');
+    if (savedCurso) { select.value = savedCurso; }
 }
 
 async function cargarInformes() {
@@ -119,6 +134,17 @@ function getNombreUsuario(id) {
     if (!id) return 'N/A';
     const u = usuarios.find(x => x.id === id);
     return u ? `${u.apellido}, ${u.nombre}` : 'N/A';
+}
+
+// Parsea una fecha DATE de Supabase (string 'YYYY-MM-DD') sin problemas de zona horaria
+function parseFechaLocal(dateStr) {
+    if (!dateStr) return null;
+    const [y, m, d] = dateStr.split('-').map(Number);
+    return new Date(y, m - 1, d);
+}
+
+function getEstadoVisual(informe) {
+    return informe.estado;
 }
 
 // ==================== INICIALIZACIÓN ====================
@@ -190,8 +216,12 @@ function setupEventListeners() {
     ['filtroBusqueda', 'filtroCurso', 'filtroEstado', 'filtroInstancia'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
-        el.addEventListener('change', filtrarInformes);
-        if (id === 'filtroBusqueda') el.addEventListener('input', filtrarInformes);
+        const handler = () => {
+            sessionStorage.setItem('gie_filtro_' + id, el.value);
+            filtrarInformes();
+        };
+        el.addEventListener('change', handler);
+        if (id === 'filtroBusqueda') el.addEventListener('input', handler);
     });
 
     const formInforme = document.getElementById('formInforme');
@@ -253,16 +283,28 @@ function setupEventListeners() {
 
     ['filtroAlumnoCurso', 'filtroAlumnoDivision'].forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.addEventListener('change', filtrarAlumnos);
+        if (!el) return;
+        el.addEventListener('change', () => {
+            sessionStorage.setItem('gie_filtro_' + id, el.value);
+            filtrarAlumnos();
+        });
     });
     const filtroAlumnoNombre = document.getElementById('filtroAlumnoNombre');
-    if (filtroAlumnoNombre) filtroAlumnoNombre.addEventListener('input', filtrarAlumnos);
+    if (filtroAlumnoNombre) filtroAlumnoNombre.addEventListener('input', () => {
+        sessionStorage.setItem('gie_filtro_filtroAlumnoNombre', filtroAlumnoNombre.value);
+        filtrarAlumnos();
+    });
+    const ordenAlumnos = document.getElementById('ordenAlumnos');
+    if (ordenAlumnos) ordenAlumnos.addEventListener('change', () => {
+        sessionStorage.setItem('gie_orden_alumnos', ordenAlumnos.value);
+        filtrarAlumnos();
+    });
 
     const btnVolverNuevo = document.getElementById('btn-volver-nuevo');
     if (btnVolverNuevo) btnVolverNuevo.addEventListener('click', () => showSection('informes'));
 
     const btnVolverAlumno = document.getElementById('btn-volver-alumno');
-    if (btnVolverAlumno) btnVolverAlumno.addEventListener('click', () => showSection('informes'));
+    if (btnVolverAlumno) btnVolverAlumno.addEventListener('click', () => showSection('alumnos'));
 
     const btnNuevoInforme = document.getElementById('btn-nuevo-informe');
     if (btnNuevoInforme) btnNuevoInforme.addEventListener('click', () => {
@@ -274,6 +316,13 @@ function setupEventListeners() {
         cancelarForm();
         showSection('informes');
     });
+
+    const selectInstancia = document.getElementById('instancia');
+    if (selectInstancia) {
+        selectInstancia.addEventListener('change', () => {
+            selectInstancia.required = true;
+        });
+    }
 
     // Suscripción realtime (solo Supabase)
     if (USE_SUPABASE) {
@@ -298,8 +347,34 @@ function showSection(sectionId) {
     if (sectionId === 'estadisticas') cargarEstadisticas();
     if (sectionId === 'usuarios') cargarUsuarios();
     if (sectionId === 'dashboard') actualizarDashboard();
-    if (sectionId === 'informes') filtrarInformes();
-    if (sectionId === 'alumnos') filtrarAlumnos();
+    if (sectionId === 'informes') {
+        ['filtroBusqueda', 'filtroCurso', 'filtroEstado', 'filtroInstancia'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const saved = sessionStorage.getItem('gie_filtro_' + id);
+            if (saved !== null && el.value !== saved) el.value = saved;
+        });
+        const savedTab = sessionStorage.getItem('gie_tab_informes');
+        if (savedTab && savedTab !== tabInformesActivo) {
+            tabInformesActivo = savedTab;
+        }
+        actualizarTabsInformes();
+        filtrarInformes();
+    }
+    if (sectionId === 'alumnos') {
+        ['filtroAlumnoCurso', 'filtroAlumnoDivision', 'filtroAlumnoNombre'].forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const saved = sessionStorage.getItem('gie_filtro_' + id);
+            if (saved !== null && el.value !== saved) el.value = saved;
+        });
+        const ordenEl = document.getElementById('ordenAlumnos');
+        if (ordenEl) {
+            const savedOrden = sessionStorage.getItem('gie_orden_alumnos');
+            if (savedOrden !== null && ordenEl.value !== savedOrden) ordenEl.value = savedOrden;
+        }
+        filtrarAlumnos();
+    }
     if (window.innerWidth < 1024) {
         document.getElementById('sidebar').classList.add('sidebar-hidden');
         document.getElementById('overlay').classList.add('hidden');
@@ -442,6 +517,7 @@ function filtrarAlumnos() {
     const curso = document.getElementById('filtroAlumnoCurso')?.value || '';
     const division = document.getElementById('filtroAlumnoDivision')?.value || '';
     const nombre = document.getElementById('filtroAlumnoNombre')?.value.toLowerCase().trim() || '';
+    const orden = document.getElementById('ordenAlumnos')?.value || 'informes_desc';
 
     // Eliminar duplicados por ID (defensa contra datos corruptos)
     const unicos = [...new Map(alumnos.map(a => [a.id, a])).values()];
@@ -455,10 +531,58 @@ function filtrarAlumnos() {
         return matchCurso && matchDivision && matchNombre;
     });
 
-    renderizarAlumnos(filtrados);
+    // Calcular cantidad de informes por alumno para ordenamiento
+    const informesPorAlumno = {};
+    informes.forEach(i => {
+        informesPorAlumno[i.alumno_id] = (informesPorAlumno[i.alumno_id] || 0) + 1;
+    });
+
+    const numCurso = c => {
+        const n = parseInt(c, 10);
+        return isNaN(n) ? 0 : n;
+    };
+
+    filtrados.sort((a, b) => {
+        switch (orden) {
+            case 'informes_desc': {
+                const ca = informesPorAlumno[a.id] || 0;
+                const cb = informesPorAlumno[b.id] || 0;
+                if (cb !== ca) return cb - ca;
+                return `${a.apellido} ${a.nombre}`.localeCompare(`${b.apellido} ${b.nombre}`);
+            }
+            case 'informes_asc': {
+                const ca = informesPorAlumno[a.id] || 0;
+                const cb = informesPorAlumno[b.id] || 0;
+                if (ca !== cb) return ca - cb;
+                return `${a.apellido} ${a.nombre}`.localeCompare(`${b.apellido} ${b.nombre}`);
+            }
+            case 'apellido_asc':
+                return `${a.apellido} ${a.nombre}`.localeCompare(`${b.apellido} ${b.nombre}`);
+            case 'apellido_desc':
+                return `${b.apellido} ${b.nombre}`.localeCompare(`${a.apellido} ${a.nombre}`);
+            case 'nombre_asc':
+                return `${a.nombre} ${a.apellido}`.localeCompare(`${b.nombre} ${b.apellido}`);
+            case 'curso_asc': {
+                const na = numCurso(a.curso);
+                const nb = numCurso(b.curso);
+                if (na !== nb) return na - nb;
+                return (a.division || '').localeCompare(b.division || '');
+            }
+            case 'curso_desc': {
+                const na = numCurso(a.curso);
+                const nb = numCurso(b.curso);
+                if (nb !== na) return nb - na;
+                return (b.division || '').localeCompare(a.division || '');
+            }
+            default:
+                return 0;
+        }
+    });
+
+    renderizarAlumnos(filtrados, informesPorAlumno);
 }
 
-function renderizarAlumnos(lista) {
+function renderizarAlumnos(lista, informesPorAlumno) {
     const container = document.getElementById('listaAlumnos');
     const empty = document.getElementById('alumnosEmpty');
     if (!container) return;
@@ -470,24 +594,10 @@ function renderizarAlumnos(lista) {
     }
     empty?.classList.add('hidden');
 
-    // Calcular cantidad de informes por alumno
-    const informesPorAlumno = {};
-    informes.forEach(i => {
-        informesPorAlumno[i.alumno_id] = (informesPorAlumno[i.alumno_id] || 0) + 1;
-    });
-
-    // Ordenar: primero los que tienen más informes, luego por apellido
-    const ordenados = lista.slice().sort((a, b) => {
-        const cantA = informesPorAlumno[a.id] || 0;
-        const cantB = informesPorAlumno[b.id] || 0;
-        if (cantB !== cantA) return cantB - cantA; // más informes primero
-        return `${a.apellido} ${a.nombre}`.localeCompare(`${b.apellido} ${b.nombre}`);
-    });
-
-    container.innerHTML = ordenados.map(a => {
+    container.innerHTML = lista.map(a => {
         const cant = informesPorAlumno[a.id] || 0;
         return `
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hover:shadow-md transition-shadow cursor-pointer" onclick="verAlumno('${a.id}')">
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hover:shadow-md transition-shadow cursor-pointer card-scroll" onclick="verAlumno('${a.id}')">
             <div class="flex items-center gap-3 mb-3">
                 <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
                     ${a.nombre[0]}${a.apellido[0]}
@@ -503,9 +613,31 @@ function renderizarAlumnos(lista) {
             </div>
         </div>
     `}).join('');
+    container.querySelectorAll('.card-scroll').forEach(card => cardObserver.observe(card));
 }
 
 // ==================== INFORMES - CRUD ====================
+function actualizarTabsInformes() {
+    const tabs = { todos: document.getElementById('tabTodos'), pendientes: document.getElementById('tabPendientes'), resueltos: document.getElementById('tabResueltos') };
+    Object.entries(tabs).forEach(([key, btn]) => {
+        if (!btn) return;
+        if (key === tabInformesActivo) {
+            btn.classList.remove('bg-slate-100', 'text-slate-600', 'hover:bg-slate-200');
+            btn.classList.add('bg-blue-600', 'text-white');
+        } else {
+            btn.classList.remove('bg-blue-600', 'text-white');
+            btn.classList.add('bg-slate-100', 'text-slate-600', 'hover:bg-slate-200');
+        }
+    });
+}
+
+window.setTabInformes = function(tab) {
+    tabInformesActivo = tab;
+    sessionStorage.setItem('gie_tab_informes', tab);
+    actualizarTabsInformes();
+    filtrarInformes();
+};
+
 function filtrarInformes() {
     const busqueda = document.getElementById('filtroBusqueda').value.toLowerCase();
     const curso = document.getElementById('filtroCurso').value;
@@ -520,9 +652,67 @@ function filtrarInformes() {
         const matchCurso = !curso || (alumno && alumno.curso === curso);
         const matchEstado = !estado || i.estado === estado;
         const matchInstancia = !instancia || i.instancia === instancia;
+        // Filtro rápido por tab
+        const matchTab = tabInformesActivo === 'todos' ? true :
+            tabInformesActivo === 'pendientes' ? i.estado === 'pendiente' :
+            i.estado !== 'pendiente';
+        return matchBusqueda && matchCurso && matchEstado && matchInstancia && matchTab;
+    });
+
+    // Actualizar badges (usando los datos ya filtrados por búsqueda/curso/instancia pero SIN el filtro de tab/estado)
+    const baseFiltrados = informes.filter(i => {
+        const alumno = getAlumno(i.alumno_id);
+        const matchBusqueda = !busqueda ||
+            `${alumno?.apellido || ''} ${alumno?.nombre || ''}`.toLowerCase().includes(busqueda) ||
+            i.titulo.toLowerCase().includes(busqueda) ||
+            i.resumen.toLowerCase().includes(busqueda);
+        const matchCurso = !curso || (alumno && alumno.curso === curso);
+        const matchEstado = !estado || i.estado === estado;
+        const matchInstancia = !instancia || i.instancia === instancia;
         return matchBusqueda && matchCurso && matchEstado && matchInstancia;
     });
+    const badgeTodos = document.getElementById('badgeTodos');
+    const badgePendientes = document.getElementById('badgePendientes');
+    const badgeResueltos = document.getElementById('badgeResueltos');
+    if (badgeTodos) badgeTodos.textContent = baseFiltrados.length;
+    if (badgePendientes) badgePendientes.textContent = baseFiltrados.filter(i => i.estado === 'pendiente').length;
+    if (badgeResueltos) badgeResueltos.textContent = baseFiltrados.filter(i => i.estado !== 'pendiente').length;
+
     renderizarInformes(filtrados);
+}
+
+function renderCardInforme(i) {
+    const alumno = getAlumno(i.alumno_id);
+    const esRegente = getPerfil()?.rol === 'regente';
+    const estadoVisual = i.estado;
+    const accionesRapidas = (esRegente && i.estado === 'pendiente') ? `
+        <div class="flex gap-2 mt-3 pt-3 border-t border-slate-100">
+            <button onclick="event.stopPropagation(); accionRapidaAprobar('${i.id}', this)" class="flex-1 bg-green-50 hover:bg-green-100 text-green-700 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1">
+                <i class="fas fa-check"></i> Aprobar
+            </button>
+            <button onclick="event.stopPropagation(); accionRapidaRechazar('${i.id}', this)" class="flex-1 bg-red-50 hover:bg-red-100 text-red-700 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1">
+                <i class="fas fa-times"></i> Rechazar
+            </button>
+        </div>` : '';
+    return `
+    <div id="item-${i.id}" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 cursor-pointer hover:shadow-md transition-all instancia-${i.instancia} card-scroll">
+        <div class="flex flex-col sm:flex-row justify-between items-start gap-3" onclick="verDetalle('${i.id}')">
+            <div class="flex-1">
+                <div class="flex items-center gap-2 mb-1 flex-wrap">
+                    <span class="status-${estadoVisual} px-2 py-0.5 rounded-full text-xs font-medium capitalize">${estadoVisual.replace('_', ' ')}</span>
+                    <span class="text-xs text-slate-500">${formatearFechaCorta(i.fecha_creacion)}</span>
+                </div>
+                <h3 class="font-semibold text-slate-800 mb-1">${i.titulo}</h3>
+                <p class="text-sm text-slate-600 mb-2"><i class="fas fa-user mr-1"></i>${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'} • ${alumno ? `${alumno.curso} ${alumno.division}` : ''}</p>
+                <p class="text-sm text-slate-500 line-clamp-2">${i.resumen}</p>
+            </div>
+            <div class="flex items-center gap-2">
+                ${i.instancia === 'muy_grave' ? '<i class="fas fa-exclamation-triangle text-red-500" title="Muy Grave"></i>' : ''}
+                <i class="fas fa-chevron-right text-slate-400"></i>
+            </div>
+        </div>
+        ${accionesRapidas}
+    </div>`;
 }
 
 function renderizarInformes(lista) {
@@ -530,38 +720,41 @@ function renderizarInformes(lista) {
     const sinResultados = document.getElementById('sinResultados');
     if (lista.length === 0) { contenedor.innerHTML = ''; sinResultados.classList.remove('hidden'); return; }
     sinResultados.classList.add('hidden');
-    const esRegente = getPerfil()?.rol === 'regente';
-    contenedor.innerHTML = lista.map(i => {
-        const alumno = getAlumno(i.alumno_id);
-        const accionesRapidas = (esRegente && i.estado === 'pendiente') ? `
-            <div class="flex gap-2 mt-3 pt-3 border-t border-slate-100">
-                <button onclick="event.stopPropagation(); accionRapidaAprobar('${i.id}', this)" class="flex-1 bg-green-50 hover:bg-green-100 text-green-700 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1">
-                    <i class="fas fa-check"></i> Aprobar
-                </button>
-                <button onclick="event.stopPropagation(); accionRapidaRechazar('${i.id}', this)" class="flex-1 bg-red-50 hover:bg-red-100 text-red-700 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1">
-                    <i class="fas fa-times"></i> Rechazar
-                </button>
-            </div>` : '';
-        return `
-        <div id="item-${i.id}" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 cursor-pointer hover:shadow-md transition-all instancia-${i.instancia}">
-            <div class="flex flex-col sm:flex-row justify-between items-start gap-3" onclick="verDetalle('${i.id}')">
-                <div class="flex-1">
-                    <div class="flex items-center gap-2 mb-1 flex-wrap">
-                        <span class="status-${i.estado} px-2 py-0.5 rounded-full text-xs font-medium capitalize">${i.estado.replace('_', ' ')}</span>
-                        <span class="text-xs text-slate-500">${formatearFechaCorta(i.fecha_creacion)}</span>
-                    </div>
-                    <h3 class="font-semibold text-slate-800 mb-1">${i.titulo}</h3>
-                    <p class="text-sm text-slate-600 mb-2"><i class="fas fa-user mr-1"></i>${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'} • ${alumno ? `${alumno.curso} ${alumno.division}` : ''}</p>
-                    <p class="text-sm text-slate-500 line-clamp-2">${i.resumen}</p>
-                </div>
-                <div class="flex items-center gap-2">
-                    ${i.instancia === 'muy_grave' ? '<i class="fas fa-exclamation-triangle text-red-500" title="Muy Grave"></i>' : ''}
-                    <i class="fas fa-chevron-right text-slate-400"></i>
-                </div>
-            </div>
-            ${accionesRapidas}
-        </div>`;
-    }).join('');
+
+    const pendientes = lista.filter(i => i.estado === 'pendiente');
+    const resueltos = lista.filter(i => i.estado !== 'pendiente');
+
+    // Ordenar pendientes por instancia (muy_grave > grave > leve), luego fecha
+    const ordenInstancia = { muy_grave: 0, grave: 1, leve: 2 };
+    pendientes.sort((a, b) => {
+        const ordA = ordenInstancia[a.instancia] ?? 3;
+        const ordB = ordenInstancia[b.instancia] ?? 3;
+        if (ordA !== ordB) return ordA - ordB;
+        return new Date(b.fecha_creacion) - new Date(a.fecha_creacion);
+    });
+    // Ordenar resueltos por fecha más reciente
+    resueltos.sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
+
+    let html = '';
+    if (pendientes.length > 0) {
+        html += `
+        <div class="flex items-center gap-2 mb-3">
+            <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Pendientes</h3>
+            <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">${pendientes.length}</span>
+        </div>
+        <div class="space-y-3 mb-6">${pendientes.map(renderCardInforme).join('')}</div>`;
+    }
+    if (resueltos.length > 0) {
+        html += `
+        <div class="flex items-center gap-2 mb-3">
+            <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Resueltos</h3>
+            <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">${resueltos.length}</span>
+        </div>
+        <div class="space-y-3">${resueltos.map(renderCardInforme).join('')}</div>`;
+    }
+    contenedor.innerHTML = html;
+    // Registrar cards nuevas en el observer para animar al hacer scroll
+    contenedor.querySelectorAll('.card-scroll').forEach(card => cardObserver.observe(card));
 }
 
 window.accionRapidaAprobar = async function(id, btn) {
@@ -630,16 +823,18 @@ async function guardarInforme(e) {
     const titulo = document.getElementById('titulo').value.trim();
     const resumen = document.getElementById('resumen').value.trim();
     const observaciones = document.getElementById('observaciones').value.trim();
+    const instancia = document.getElementById('instancia').value;
 
     // Validación de límites
     if (titulo.length > 200) return mostrarToast('El título no puede exceder 200 caracteres', 'error');
     if (resumen.length > 2000) return mostrarToast('La descripción no puede exceder 2000 caracteres', 'error');
     if (observaciones.length > 1000) return mostrarToast('Las observaciones no pueden exceder 1000 caracteres', 'error');
+    if (!instancia) return mostrarToast('Debe seleccionar una instancia', 'error');
 
     const datos = {
         alumno_id: alumnoId,
         tipo_falta: 'Otra',
-        instancia: document.getElementById('instancia').value,
+        instancia,
         titulo,
         resumen,
         observaciones: observaciones || null
@@ -683,6 +878,7 @@ function cancelarForm() {
     document.getElementById('searchAlumno').value = '';
     document.getElementById('resultadosAlumno').classList.add('hidden');
     document.getElementById('plantillaInforme').value = '';
+
     document.getElementById('editId').value = '';
     document.getElementById('tituloForm').textContent = 'Nuevo Informe';
     document.getElementById('txtBtnGuardar').textContent = 'Guardar Informe';
@@ -718,7 +914,7 @@ function verDetalle(id) {
             <div><p class="text-sm font-medium text-slate-700 mb-1">Título</p><p class="text-slate-600">${informe.titulo}</p></div>
             <div class="grid grid-cols-2 gap-4">
                 <div><p class="text-sm font-medium text-slate-700 mb-1">Instancia</p>
-                    <p class="text-slate-600 capitalize font-medium ${informe.instancia === 'muy_grave' ? 'text-red-600' : informe.instancia === 'grave' ? 'text-orange-600' : 'text-amber-600'}">${informe.instancia.replace('_', ' ')}</p>
+                    <p class="text-slate-600 capitalize font-medium ${informe.instancia === 'muy_grave' ? 'text-red-600' : informe.instancia === 'grave' ? 'text-orange-600' : informe.instancia === 'leve' ? 'text-amber-600' : 'text-blue-600'}">${informe.instancia.replace('_', ' ')}</p>
                 </div>
                 <div><p class="text-sm font-medium text-slate-700 mb-1">Creado por</p><p class="text-slate-600">${getNombreUsuario(informe.creado_por)}</p></div>
             </div>
@@ -749,6 +945,36 @@ function verDetalle(id) {
 }
 
 function cerrarModal() { document.getElementById('modalDetalle').classList.add('hidden'); }
+
+function cerrarModalGrupo() { document.getElementById('modalGrupoInformes').classList.add('hidden'); }
+
+function abrirModalGrupoInformes(informesGrupo, timestampDia, mostrarAlumno = false) {
+    const modal = document.getElementById('modalGrupoInformes');
+    const titulo = document.getElementById('tituloModalGrupo');
+    const contenido = document.getElementById('contenidoModalGrupo');
+    const instancia = informesGrupo[0].instancia;
+    const labelInstancia = { leve: 'Leve', grave: 'Grave', muy_grave: 'Muy Grave' };
+    const colorInstancia = { leve: 'text-amber-600', grave: 'text-orange-600', muy_grave: 'text-red-600' };
+
+    const fechaHtml = timestampDia ? `<span class="text-sm text-slate-500 font-normal block">${formatearFechaCorta(new Date(timestampDia))}</span>` : '';
+    titulo.innerHTML = `${fechaHtml}${informesGrupo.length} informes ${labelInstancia[instancia] ?? instancia}`;
+
+    contenido.innerHTML = informesGrupo.map(i => {
+        const alumno = mostrarAlumno ? getAlumno(i.alumno_id) : null;
+        return `
+        <div onclick="cerrarModalGrupo(); verDetalle('${i.id}')" class="cursor-pointer bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg p-4 transition-colors">
+            <div class="flex items-center justify-between gap-2 mb-1 flex-wrap">
+                <span class="status-${i.estado} px-2 py-0.5 rounded-full text-xs font-medium capitalize">${i.estado.replace('_', ' ')}</span>
+                <span class="text-xs ${colorInstancia[i.instancia] ?? 'text-blue-600'} font-semibold capitalize">${labelInstancia[i.instancia] ?? i.instancia}</span>
+            </div>
+            <p class="font-medium text-slate-800 text-sm">${i.titulo}</p>
+            ${alumno ? `<p class="text-xs text-slate-500 mt-0.5">${alumno.apellido}, ${alumno.nombre} • ${alumno.curso} ${alumno.division}</p>` : ''}
+            <p class="text-xs text-slate-500 mt-1 line-clamp-2">${i.resumen}</p>
+        </div>
+    `}).join('');
+
+    modal.classList.remove('hidden');
+}
 
 async function cambiarEstado(id, nuevoEstado, options = {}) {
     const { silent = false, cerrarModal: debeCerrarModal = true, recargarLista = true, fecha_reunion } = options;
@@ -871,13 +1097,13 @@ function renderCalendarioReuniones() {
     // Reuniones del mes (con fecha_reunion asignada)
     const reunionesMes = informes.filter(i => {
         if (!i.fecha_reunion) return false;
-        const d = new Date(i.fecha_reunion);
-        return d.getFullYear() === year && d.getMonth() === month;
+        const d = parseFechaLocal(i.fecha_reunion);
+        return d && d.getFullYear() === year && d.getMonth() === month;
     });
 
     const reunionesPorDia = {};
     reunionesMes.forEach(i => {
-        const d = new Date(i.fecha_creacion).getDate();
+        const d = parseFechaLocal(i.fecha_reunion)?.getDate();
         if (!reunionesPorDia[d]) reunionesPorDia[d] = [];
         reunionesPorDia[d].push(i);
     });
@@ -933,10 +1159,11 @@ function renderReunionesDiaSeleccionado() {
 
     const reuniones = informes.filter(i => {
         if (!i.fecha_reunion) return false;
-        const d = new Date(i.fecha_reunion);
+        const d = parseFechaLocal(i.fecha_reunion);
+        if (!d) return false;
         if (dia !== null) return d.getFullYear() === year && d.getMonth() === month && d.getDate() === dia;
         return d.getFullYear() === year && d.getMonth() === month;
-    }).sort((a, b) => new Date(a.fecha_reunion) - new Date(b.fecha_reunion));
+    }).sort((a, b) => parseFechaLocal(a.fecha_reunion) - parseFechaLocal(b.fecha_reunion));
 
     if (reuniones.length === 0) {
         const msg = dia !== null
@@ -951,7 +1178,7 @@ function renderReunionesDiaSeleccionado() {
 
     container.innerHTML = reuniones.map(i => {
         const alumno = getAlumno(i.alumno_id);
-        const fechaReunion = new Date(i.fecha_reunion);
+        const fechaReunion = parseFechaLocal(i.fecha_reunion);
         const esPasada = fechaReunion < hoy;
         const estadoClase = esPasada ? 'bg-slate-400' : 'bg-blue-500';
         return `
@@ -977,6 +1204,7 @@ function actualizarDashboard() {
     });
     document.getElementById('dashPendientes').textContent = estados.pendiente;
     document.getElementById('dashAprobados').textContent = estados.aprobado;
+    document.getElementById('dashRechazados').textContent = estados.rechazado;
     document.getElementById('dashTotal').textContent = informes.length;
 
     // ── 1. Calendario + Reuniones ──
@@ -993,7 +1221,7 @@ function actualizarDashboard() {
         : pendientesLista.map(i => {
             const alumno = getAlumno(i.alumno_id);
             return `
-            <div id="dash-item-${i.id}" class="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100">
+            <div id="dash-item-${i.id}" class="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100 card-scroll">
                 <div class="flex items-center gap-3 flex-1 min-w-0 cursor-pointer" onclick="verDetalle('${i.id}')">
                     <div class="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-xs font-bold text-white shrink-0">${alumno ? alumno.nombre[0] + alumno.apellido[0] : '?'}</div>
                     <div class="min-w-0">
@@ -1008,6 +1236,7 @@ function actualizarDashboard() {
             </div>`;
         }).join('');
     document.getElementById('dashPendientesLista').innerHTML = pendientesHTML;
+    document.getElementById('dashPendientesLista')?.querySelectorAll('.card-scroll').forEach(card => cardObserver.observe(card));
 
     // ── 3. Historial reciente (aprobados + rechazados) ──
     const historial = informes
@@ -1019,7 +1248,7 @@ function actualizarDashboard() {
         : historial.map(i => {
             const alumno = getAlumno(i.alumno_id);
             return `
-            <div class="flex items-start gap-3 p-3 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer" onclick="verDetalle('${i.id}')">
+            <div class="flex items-start gap-3 p-3 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer card-scroll" onclick="verDetalle('${i.id}')">
                 <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${i.estado === 'aprobado' ? 'bg-green-500' : 'bg-red-500'}">${alumno ? alumno.nombre[0] + alumno.apellido[0] : '?'}</div>
                 <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium text-slate-800 truncate">${i.titulo}</p>
@@ -1029,14 +1258,17 @@ function actualizarDashboard() {
             </div>`;
         }).join('');
     document.getElementById('dashHistorial').innerHTML = historialHTML;
+    document.getElementById('dashHistorial')?.querySelectorAll('.card-scroll').forEach(card => cardObserver.observe(card));
 
     // ── 4. Gráfico de gravedad (bugfix: aspectRatio fijo + contenedor h-64) ──
     const ctx = document.getElementById('dashChart').getContext('2d');
     if (charts.dash) charts.dash.destroy();
+    const dashLabels = ['Leve', 'Grave', 'Muy Grave'];
+    const dashInstanciaPorLabel = { 'Leve': 'leve', 'Grave': 'grave', 'Muy Grave': 'muy_grave' };
     charts.dash = new Chart(ctx, {
         type: 'doughnut',
         data: {
-            labels: ['Leve', 'Grave', 'Muy Grave'],
+            labels: dashLabels,
             datasets: [{
                 data: [instancias.leve, instancias.grave, instancias.muy_grave],
                 backgroundColor: ['#fbbf24', '#f97316', '#ef4444'],
@@ -1048,6 +1280,14 @@ function actualizarDashboard() {
             responsive: true,
             maintainAspectRatio: false,
             aspectRatio: 1,
+            onClick: (e, elements) => {
+                if (!elements.length) return;
+                const label = dashLabels[elements[0].index];
+                const instancia = dashInstanciaPorLabel[label];
+                if (!instancia) return;
+                const filtrados = informes.filter(i => i.instancia === instancia);
+                if (filtrados.length) abrirModalGrupoInformes(filtrados, null, true);
+            },
             plugins: {
                 legend: { position: 'bottom', labels: { usePointStyle: true, padding: 16 } }
             }
@@ -1097,30 +1337,75 @@ function cargarEstadisticas() {
 
     const porTipo = {};
     informes.forEach(i => { porTipo[i.tipo_falta] = (porTipo[i.tipo_falta] || 0) + 1; });
+    const tiposLabels = Object.keys(porTipo);
     const ctxTipos = document.getElementById('chartTipos').getContext('2d');
     if (charts.tipos) charts.tipos.destroy();
     charts.tipos = new Chart(ctxTipos, {
         type: 'pie',
-        data: { labels: Object.keys(porTipo), datasets: [{ data: Object.values(porTipo), backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] }] },
-        options: { responsive: true, plugins: { legend: { position: 'bottom' } } }
+        data: { labels: tiposLabels, datasets: [{ data: Object.values(porTipo), backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] }] },
+        options: {
+            responsive: true,
+            onClick: (e, elements) => {
+                if (!elements.length) return;
+                const tipo = tiposLabels[elements[0].index];
+                const filtrados = informes.filter(i => i.tipo_falta === tipo);
+                if (filtrados.length) abrirModalGrupoInformes(filtrados, null, true);
+            },
+            plugins: { legend: { position: 'bottom' } }
+        }
     });
 
-    const mensual = {};
+    // Tendencia últimos 30 días (incluye días sin informes)
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+    const diasLabels = [];
+    const diasKeys = [];
+    const diasConteo = {};
+    for (let i = 29; i >= 0; i--) {
+        const d = new Date(hoy);
+        d.setDate(d.getDate() - i);
+        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const label = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+        diasLabels.push(label);
+        diasKeys.push(key);
+        diasConteo[key] = 0;
+    }
     informes.forEach(i => {
         const fecha = new Date(i.fecha_creacion);
-        const key = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}`;
-        mensual[key] = (mensual[key] || 0) + 1;
+        const key = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
+        if (diasConteo.hasOwnProperty(key)) diasConteo[key]++;
     });
-    const sortedKeys = Object.keys(mensual).sort();
     const ctxMensual = document.getElementById('chartMensual').getContext('2d');
     if (charts.mensual) charts.mensual.destroy();
     charts.mensual = new Chart(ctxMensual, {
         type: 'line',
         data: {
-            labels: sortedKeys.map(k => { const [a, m] = k.split('-'); return `${m}/${a}`; }),
-            datasets: [{ label: 'Informes por mes', data: sortedKeys.map(k => mensual[k]), borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true, tension: 0.4 }]
+            labels: diasLabels,
+            datasets: [{ label: 'Informes por día', data: diasKeys.map(k => diasConteo[k]), borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true, tension: 0.4, pointRadius: 3, pointHoverRadius: 5 }]
         },
-        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+        options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    backgroundColor: '#1e293b',
+                    titleColor: '#f8fafc',
+                    bodyColor: '#f8fafc',
+                    cornerRadius: 8,
+                    padding: 10,
+                    displayColors: false,
+                    callbacks: {
+                        title: (items) => `Fecha: ${items[0].label}`,
+                        label: (item) => `${item.raw} informe${item.raw !== 1 ? 's' : ''}`
+                    }
+                }
+            },
+            scales: {
+                y: { beginAtZero: true, ticks: { stepSize: 1 } },
+                x: { ticks: { maxTicksLimit: 10 } }
+            }
+        }
     });
 
     const porAlumno = {};
@@ -1130,7 +1415,7 @@ function cargarEstadisticas() {
         const key = `${alumno.apellido}, ${alumno.nombre}`;
         if (!porAlumno[key]) porAlumno[key] = { total: 0, leve: 0, grave: 0, muy_grave: 0, curso: `${alumno.curso} ${alumno.division}`, id: alumno.id };
         porAlumno[key].total++;
-        porAlumno[key][i.instancia]++;
+        if (['leve','grave','muy_grave'].includes(i.instancia)) porAlumno[key][i.instancia]++;
     });
     const topAlumnos = Object.entries(porAlumno).sort((a, b) => b[1].total - a[1].total).slice(0, 10);
     document.getElementById('bodyTopAlumnos').innerHTML = topAlumnos.map(([nombre, stats]) => `
@@ -1141,6 +1426,7 @@ function cargarEstadisticas() {
             <td class="px-4 py-3 text-center text-amber-600">${stats.leve}</td>
             <td class="px-4 py-3 text-center text-orange-600">${stats.grave}</td>
             <td class="px-4 py-3 text-center text-red-600">${stats.muy_grave}</td>
+
         </tr>
     `).join('');
 }
@@ -1151,7 +1437,7 @@ function verAlumno(alumnoId) {
     if (!alumno) return;
     const lista = informes.filter(i => i.alumno_id === alumnoId).sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
     const stats = { total: lista.length, leve: 0, grave: 0, muy_grave: 0 };
-    lista.forEach(i => stats[i.instancia]++);
+    lista.forEach(i => { if (stats[i.instancia] !== undefined) stats[i.instancia]++; });
 
     document.getElementById('tarjetaAlumno').innerHTML = `
         <div class="flex items-center gap-4">
@@ -1171,10 +1457,156 @@ function verAlumno(alumnoId) {
 
     const ctx = document.getElementById('chartAlumno').getContext('2d');
     if (charts.alumno) charts.alumno.destroy();
+    const chartLabels = ['Leve', 'Grave', 'Muy Grave'];
+    const chartData = [stats.leve, stats.grave, stats.muy_grave];
+    const chartColors = ['#fbbf24', '#f97316', '#ef4444'];
+    const instanciaPorLabel = { 'Leve': 'leve', 'Grave': 'grave', 'Muy Grave': 'muy_grave' };
     charts.alumno = new Chart(ctx, {
         type: 'doughnut',
-        data: { labels: ['Leve', 'Grave', 'Muy Grave'], datasets: [{ data: [stats.leve, stats.grave, stats.muy_grave], backgroundColor: ['#fbbf24', '#f97316', '#ef4444'], borderWidth: 0 }] },
-        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+        data: { labels: chartLabels, datasets: [{ data: chartData, backgroundColor: chartColors, borderWidth: 0 }] },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            onClick: (e, elements) => {
+                if (!elements.length) return;
+                const label = chartLabels[elements[0].index];
+                const instancia = instanciaPorLabel[label];
+                if (!instancia) return;
+                const filtrados = lista.filter(i => i.instancia === instancia);
+                if (filtrados.length) abrirModalGrupoInformes(filtrados);
+            },
+            plugins: { legend: { position: 'bottom' } }
+        }
+    });
+
+    // ── Timeline: instancia vs tiempo ──
+    const ctxTimeline = document.getElementById('chartAlumnoTimeline').getContext('2d');
+    if (charts.alumnoTimeline) charts.alumnoTimeline.destroy();
+    const nivelInstancia = { leve: 1, grave: 2, muy_grave: 3 };
+    const colorInstancia = { leve: '#fbbf24', grave: '#f97316', muy_grave: '#ef4444' };
+    const labelInstancia = { leve: 'Leve', grave: 'Grave', muy_grave: 'Muy Grave' };
+
+    const diaKey = (fecha) => {
+        const d = new Date(fecha);
+        return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    };
+
+    // Agrupar informes por (dia, instancia) para mostrar un solo punto por grupo
+    const grupos = new Map();
+    lista.forEach(i => {
+        const k = `${diaKey(i.fecha_creacion)}|${i.instancia}`;
+        if (!grupos.has(k)) grupos.set(k, []);
+        grupos.get(k).push(i);
+    });
+
+    const puntos = [];
+    grupos.forEach((informesGrupo, k) => {
+        const instancia = informesGrupo[0].instancia;
+        const avgX = informesGrupo.reduce((sum, i) => sum + new Date(i.fecha_creacion).getTime(), 0) / informesGrupo.length;
+        puntos.push({
+            x: avgX,
+            y: nivelInstancia[instancia] ?? 4,
+            instancia,
+            informes: informesGrupo
+        });
+    });
+
+    const crosshairPlugin = {
+        id: 'crosshair',
+        afterDraw: (chart) => {
+            if (chart.tooltip?._active?.length) {
+                const ctx = chart.ctx;
+                const pt = chart.tooltip._active[0].element;
+                const x = pt.x;
+                const y = pt.y;
+                const topY = chart.scales.y.top;
+                const bottomY = chart.scales.y.bottom;
+                const leftX = chart.scales.x.left;
+                const rightX = chart.scales.x.right;
+                ctx.save();
+                ctx.beginPath();
+                ctx.setLineDash([4, 4]);
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = 'rgba(100, 116, 139, 0.5)';
+                ctx.moveTo(x, topY);
+                ctx.lineTo(x, bottomY);
+                ctx.moveTo(leftX, y);
+                ctx.lineTo(rightX, y);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+    };
+
+    charts.alumnoTimeline = new Chart(ctxTimeline, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Informes',
+                data: puntos,
+                backgroundColor: puntos.map(p => colorInstancia[p.instancia] ?? '#3b82f6'),
+                pointRadius: puntos.map(p => p.informes.length > 1 ? 9 : 7),
+                pointHoverRadius: 11
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            onClick: (e, elements, chart) => {
+                if (!elements.length) return;
+                const punto = chart.data.datasets[elements[0].datasetIndex].data[elements[0].index];
+                if (!punto || !punto.informes) return;
+                if (punto.informes.length === 1) {
+                    verDetalle(punto.informes[0].id);
+                } else {
+                    abrirModalGrupoInformes(punto.informes, punto.x);
+                }
+            },
+            plugins: {
+                legend: { display: false },
+                crosshair: true,
+                tooltip: {
+                    backgroundColor: '#1e293b',
+                    titleColor: '#f8fafc',
+                    bodyColor: '#f8fafc',
+                    cornerRadius: 8,
+                    padding: 10,
+                    displayColors: true,
+                    callbacks: {
+                        title: (items) => formatearFechaCorta(new Date(items[0].raw.x)),
+                        label: (item) => {
+                            const g = item.raw.informes;
+                            if (g.length === 1) {
+                                return `${labelInstancia[g[0].instancia] ?? g[0].instancia} • ${g[0].titulo}`;
+                            }
+                            return `${g.length} informes ${labelInstancia[g[0].instancia] ?? g[0].instancia}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    type: 'linear',
+                    ticks: {
+                        callback: (v) => formatearFechaCorta(new Date(v)),
+                        maxTicksLimit: 6
+                    },
+                    grid: { color: '#f1f5f9' }
+                },
+                y: {
+                    min: 0.5,
+                    max: 4.5,
+                    ticks: {
+                        stepSize: 1,
+                        callback: (v) => {
+                            const labels = { 1: 'Leve', 2: 'Grave', 3: 'Muy Grave' };
+                            return labels[v] ?? '';
+                        }
+                    },
+                    grid: { color: '#f1f5f9' }
+                }
+            }
+        }
     });
 
     document.getElementById('historialAlumno').innerHTML = lista.map(i => `
@@ -1198,7 +1630,8 @@ async function cargarUsuarios() {
     if (getPerfil().rol !== 'regente') return;
     await cargarUsuariosSupa();
     const lista = usuarios.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-    document.getElementById('listaUsuarios').innerHTML = lista.map(u => {
+
+    const renderRow = (u) => {
         const sinPerfil = !u.tiene_perfil;
         const nombreCompleto = sinPerfil ? '<span class="text-slate-400 italic">Sin perfil</span>' : `${u.apellido}, ${u.nombre}`;
         const rolBadge = sinPerfil
@@ -1211,19 +1644,46 @@ async function cargarUsuarios() {
             ? `<button onclick="sincronizarPerfilUsuario('${u.id}', '${u.email}')" class="text-sm text-amber-600 hover:text-amber-700" title="Crear perfil"><i class="fas fa-user-plus"></i></button>`
             : `${u.id === getPerfil().id ? '<span class="text-xs text-slate-400">Usted</span>' : `
                 <button onclick="editarUsuarioForm('${u.id}')" class="text-sm text-blue-600 hover:text-blue-700" title="Editar"><i class="fas fa-edit"></i></button>
-                ${u.rol !== 'regente' ? `<button onclick="eliminarUsuario('${u.id}')" class="text-sm text-red-600 hover:text-red-700" title="Eliminar"><i class="fas fa-trash-alt"></i></button>` : ''}
+                ${u.rol !== 'regente' ? `<button onclick="mostrarModalEliminar('${u.id}')" class="text-sm text-red-600 hover:text-red-700" title="Eliminar"><i class="fas fa-trash-alt"></i></button>` : ''}
             `}`;
+        return { nombreCompleto, rolBadge, activoBadge, acciones, sinPerfil };
+    };
+
+    // Desktop
+    document.getElementById('listaUsuariosDesktop').innerHTML = lista.map(u => {
+        const r = renderRow(u);
         return `
-        <tr id="user-row-${u.id}" class="hover:bg-slate-50 transition-colors ${sinPerfil ? 'bg-amber-50/50' : ''}">
-            <td class="px-4 py-3 font-medium">${nombreCompleto}</td>
+        <tr id="user-row-${u.id}" class="hover:bg-slate-50 transition-colors ${r.sinPerfil ? 'bg-amber-50/50' : ''}">
+            <td class="px-4 py-3 font-medium">${r.nombreCompleto}</td>
             <td class="px-4 py-3 text-slate-500">${u.email}</td>
-            <td class="px-4 py-3">${rolBadge}</td>
-            <td class="px-4 py-3">${activoBadge}</td>
+            <td class="px-4 py-3">${r.rolBadge}</td>
+            <td class="px-4 py-3">${r.activoBadge}</td>
             <td class="px-4 py-3">
-                <div class="flex items-center gap-2">${acciones}</div>
+                <div class="flex items-center gap-2">${r.acciones}</div>
             </td>
-        </tr>
-    `}).join('');
+        </tr>`;
+    }).join('');
+
+    // Mobile cards
+    document.getElementById('listaUsuariosMobile').innerHTML = lista.map(u => {
+        const r = renderRow(u);
+        return `
+        <div id="user-card-${u.id}" class="p-4 ${r.sinPerfil ? 'bg-amber-50/50' : ''}">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                    <p class="font-medium text-slate-800 text-sm">${r.nombreCompleto}</p>
+                    <p class="text-xs text-slate-500 mt-0.5 truncate">${u.email}</p>
+                    <div class="flex items-center gap-2 mt-2">
+                        ${r.rolBadge}
+                        ${r.activoBadge}
+                    </div>
+                </div>
+                <div class="flex items-center gap-3 shrink-0">
+                    ${r.acciones}
+                </div>
+            </div>
+        </div>`;
+    }).join('');
 }
 
 async function crearUsuario(e) {
@@ -1381,33 +1841,60 @@ window.guardarEdicionUsuario = async function() {
     await cargarUsuarios();
 };
 
-window.eliminarUsuario = async function(id) {
+let _eliminarUserId = null;
+
+window.mostrarModalEliminar = function(id) {
     const u = usuarios.find(x => x.id === id);
     if (!u) return;
     if (u.rol === 'regente' && id !== getPerfil().id) {
         return mostrarToast('No se puede eliminar a un usuario con rol regente', 'error');
     }
-    if (!confirm(`¿Estás seguro de que querés eliminar a ${u.nombre || u.email} (${u.email})?\n\nEsta acción no se puede deshacer.`)) return;
+    _eliminarUserId = id;
+    document.getElementById('eliminarUserNombre').textContent = `${u.nombre || u.email} (${u.email})`;
+    document.getElementById('eliminarUserPassword').value = '';
+    document.getElementById('modalConfirmarEliminar').classList.remove('hidden');
+};
 
-    const row = document.getElementById(`user-row-${id}`);
-    if (row) {
-        row.classList.add('animate-slide-out');
+window.cerrarModalEliminar = function() {
+    _eliminarUserId = null;
+    document.getElementById('modalConfirmarEliminar').classList.add('hidden');
+};
+
+window.confirmarEliminarUsuario = async function() {
+    if (!_eliminarUserId) return;
+    const password = document.getElementById('eliminarUserPassword').value;
+    if (!password) return mostrarToast('Debes ingresar tu contraseña para confirmar', 'error');
+
+    const perfil = getPerfil();
+    if (!perfil?.email) return mostrarToast('No se pudo obtener tu sesión', 'error');
+
+    const { error: authError } = await supabaseClient.auth.signInWithPassword({
+        email: perfil.email,
+        password
+    });
+    if (authError) {
+        return mostrarToast('Contraseña incorrecta', 'error');
     }
+
+    const id = _eliminarUserId;
+    const u = usuarios.find(x => x.id === id);
+    const row = document.getElementById(`user-row-${id}`);
+    const card = document.getElementById(`user-card-${id}`);
+    if (row) row.classList.add('animate-slide-out');
+    if (card) card.classList.add('animate-slide-out');
 
     const { error } = await supabaseClient.rpc('eliminar_usuario_completo', { user_id: id });
     if (error) {
-        // Error eliminando usuario
         if (row) row.classList.remove('animate-slide-out');
+        if (card) card.classList.remove('animate-slide-out');
         return mostrarToast('Error eliminando usuario: ' + error.message, 'error');
     }
 
-    // Usuario eliminado
     mostrarToast(`Usuario ${u.nombre || u.email} eliminado`);
-
-    // Remover del DOM después de la animación
+    cerrarModalEliminar();
     setTimeout(() => {
         if (row) row.remove();
-        // Actualizar array local sin recargar toda la lista
+        if (card) card.remove();
         usuarios = usuarios.filter(x => x.id !== id);
     }, 400);
 };
@@ -1572,15 +2059,14 @@ function exportarPDF(id) {
             <span style="display:inline-block; padding:4px 12px; border-radius:999px; font-size:12px; font-weight:600; text-transform:capitalize; ${
                 informe.estado === 'aprobado' ? 'background:#d1fae5; color:#065f46;' :
                 informe.estado === 'rechazado' ? 'background:#fee2e2; color:#991b1b;' :
-                informe.estado === 'pendiente' ? 'background:#fef3c7; color:#92400e;' :
                 'background:#fef3c7; color:#92400e;'
-            }">${informe.estado.replace('_', ' ')}</span>
+            }">${informe.estado}</span>
             <span style="font-size:13px; color:#64748b; margin-left:10px;">${formatearFecha(informe.fecha_creacion)}</span>
         </div>
         <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
             <tr><td style="padding:8px 0; font-weight:600; width:140px;">Alumno:</td><td style="padding:8px 0;">${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'}</td></tr>
             <tr><td style="padding:8px 0; font-weight:600;">Curso:</td><td style="padding:8px 0;">${alumno ? `${alumno.curso} ${alumno.division}` : ''}</td></tr>
-            <tr><td style="padding:8px 0; font-weight:600;">Instancia:</td><td style="padding:8px 0; text-transform:capitalize; font-weight:600; ${informe.instancia==='muy_grave'?'color:#dc2626;':informe.instancia==='grave'?'color:#ea580c;':'color:#d97706;'}">${informe.instancia.replace('_', ' ')}</td></tr>
+            <tr><td style="padding:8px 0; font-weight:600;">Instancia:</td><td style="padding:8px 0; text-transform:capitalize; font-weight:600; ${informe.instancia==='muy_grave'?'color:#dc2626;':informe.instancia==='grave'?'color:#ea580c;':informe.instancia==='leve'?'color:#d97706;':'color:#2563eb;'}">${informe.instancia.replace('_', ' ')}</td></tr>
             <tr><td style="padding:8px 0; font-weight:600;">Creado por:</td><td style="padding:8px 0;">${getNombreUsuario(informe.creado_por)}</td></tr>
             ${informe.fecha_revision ? `<tr><td style="padding:8px 0; font-weight:600;">Revisado por:</td><td style="padding:8px 0;">${getNombreUsuario(informe.revisado_por)} el ${formatearFecha(informe.fecha_revision)}</td></tr>` : ''}
         </table>
@@ -1647,6 +2133,8 @@ window.editarInforme = editarInforme;
 window.cambiarEstado = cambiarEstado;
 window.mostrarRechazo = mostrarRechazo;
 window.cerrarModal = cerrarModal;
+window.cerrarModalGrupo = cerrarModalGrupo;
+window.abrirModalGrupoInformes = abrirModalGrupoInformes;
 window.cerrarModalRechazo = cerrarModalRechazo;
 window.confirmarRechazo = confirmarRechazo;
 window.exportarPDF = exportarPDF;
@@ -1658,6 +2146,9 @@ window.abrirModalPlantillas = abrirModalPlantillas;
 window.cerrarModalPlantillas = cerrarModalPlantillas;
 window.crearPlantilla = crearPlantilla;
 window.eliminarPlantilla = eliminarPlantilla;
+window.mostrarModalEliminar = mostrarModalEliminar;
+window.cerrarModalEliminar = cerrarModalEliminar;
+window.confirmarEliminarUsuario = confirmarEliminarUsuario;
 
 // ==================== CREAR ALUMNO INLINE ====================
 window.mostrarModalCrearAlumno = function() {

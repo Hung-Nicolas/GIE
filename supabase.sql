@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS public.informes (
     alumno_id UUID REFERENCES public.alumnos(id) NOT NULL,
     tipo_falta TEXT NOT NULL,
     titulo TEXT NOT NULL,
-    instancia TEXT NOT NULL CHECK (instancia IN ('leve', 'grave', 'muy_grave')),
+    instancia TEXT NOT NULL,
     resumen TEXT NOT NULL,
     descargo TEXT,
     estado TEXT NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'aprobado', 'rechazado')),
@@ -196,9 +196,9 @@ $$;
 -- MIGRACIONES (actualizaciones de schema)
 -- ============================================================
 
--- Ampliar instancia para incluir 'otro'
+-- Restringir instancia a valores válidos (leve, grave, muy_grave)
 ALTER TABLE public.informes DROP CONSTRAINT IF EXISTS informes_instancia_check;
-ALTER TABLE public.informes ADD CONSTRAINT informes_instancia_check CHECK (instancia IN ('leve', 'grave', 'muy_grave', 'otro'));
+ALTER TABLE public.informes ADD CONSTRAINT informes_instancia_check CHECK (instancia IN ('leve', 'grave', 'muy_grave'));
 
 -- Agregar columna observaciones
 ALTER TABLE public.informes ADD COLUMN IF NOT EXISTS observaciones TEXT;

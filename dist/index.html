@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GIE - Panel de Control</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  <script type="module" crossorigin src="/GIE/assets/index-DWGVXaHP.js"></script>
-  <link rel="stylesheet" crossorigin href="/GIE/assets/index-DheGY1h5.css">
+  <script type="module" crossorigin src="/GIE/assets/index-R9EICKlj.js"></script>
+  <link rel="stylesheet" crossorigin href="/GIE/assets/index-NLgBwaG8.css">
 </head>
 <body class="bg-slate-50 text-slate-800">
 
@@ -34,7 +34,10 @@
                         <label class="block text-sm font-medium text-slate-700 mb-2">Contraseña</label>
                         <div class="relative">
                             <i class="fas fa-lock absolute left-3 top-3 text-slate-400"></i>
-                            <input type="password" id="password" required class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" placeholder="••••••••">
+                            <input type="password" id="password" required class="w-full pl-10 pr-10 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" placeholder="••••••••">
+                            <button type="button" onclick="togglePassword('password', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                                <i class="fas fa-eye"></i>
+                            </button>
                         </div>
                     </div>
                     <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2">
@@ -128,25 +131,32 @@
     <main class="lg:ml-64 min-h-screen">
         <!-- DASHBOARD -->
         <section id="dashboard" class="section p-6 max-w-7xl mx-auto animate-fade-in">
-            <h1 class="text-2xl font-bold text-slate-800 mb-6">Panel de Regente</h1>
+            <h1 class="text-2xl font-bold text-slate-800 mb-6 animate-enter">Panel de Regente</h1>
 
             <!-- Stats cards -->
-            <div class="grid grid-cols-3 gap-4 mb-6">
-                <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 animate-enter animate-delay-100">
                     <div class="flex items-center justify-between mb-2">
                         <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center"><i class="fas fa-clock text-amber-600"></i></div>
                         <span class="text-xl font-bold text-slate-800" id="dashPendientes">0</span>
                     </div>
                     <p class="text-xs text-slate-500">Pendientes</p>
                 </div>
-                <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+                <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 animate-enter animate-delay-150">
                     <div class="flex items-center justify-between mb-2">
                         <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center"><i class="fas fa-check-circle text-green-600"></i></div>
                         <span class="text-xl font-bold text-slate-800" id="dashAprobados">0</span>
                     </div>
                     <p class="text-xs text-slate-500">Aprobados</p>
                 </div>
-                <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200">
+                <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 animate-enter animate-delay-200">
+                    <div class="flex items-center justify-between mb-2">
+                        <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center"><i class="fas fa-times-circle text-red-600"></i></div>
+                        <span class="text-xl font-bold text-slate-800" id="dashRechazados">0</span>
+                    </div>
+                    <p class="text-xs text-slate-500">Rechazados</p>
+                </div>
+                <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 animate-enter animate-delay-250">
                     <div class="flex items-center justify-between mb-2">
                         <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center"><i class="fas fa-file-alt text-purple-600"></i></div>
                         <span class="text-xl font-bold text-slate-800" id="dashTotal">0</span>
@@ -157,7 +167,7 @@
 
             <!-- Fila 1: Calendario + Pendientes -->
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-[480px] flex flex-col">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-[480px] flex flex-col animate-enter animate-delay-300">
                     <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2 shrink-0">
                         <i class="fas fa-calendar-check text-blue-500"></i> Reuniones programadas
                     </h3>
@@ -178,7 +188,7 @@
                     </div>
                     <div id="dashReuniones" class="space-y-2 flex-1 overflow-y-auto border-t border-slate-100 pt-3 min-h-0"></div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-[480px] flex flex-col">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-[480px] flex flex-col animate-enter animate-delay-400">
                     <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2 shrink-0">
                         <i class="fas fa-gavel text-amber-500"></i> Pendientes de revisión
                     </h3>
@@ -188,13 +198,13 @@
 
             <!-- Fila 2: Historial + Gráfico de gravedad -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6 animate-enter animate-delay-500">
                     <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
                         <i class="fas fa-history text-slate-500"></i> Historial reciente
                     </h3>
                     <div id="dashHistorial" class="space-y-3 max-h-80 overflow-y-auto"></div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 animate-enter animate-delay-600">
                     <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
                         <i class="fas fa-chart-pie text-red-500"></i> Distribución por Gravedad
                     </h3>
@@ -207,13 +217,13 @@
 
         <!-- INFORMES -->
         <section id="informes" class="section hidden p-6 max-w-7xl mx-auto animate-fade-in">
-            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 animate-enter">
                 <h1 class="text-2xl font-bold text-slate-800">Informes</h1>
                 <button id="btn-nuevo-informe" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm">
                     <i class="fas fa-plus"></i><span>Nuevo Informe</span>
                 </button>
             </div>
-            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6 animate-enter animate-delay-100">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                     <div class="relative">
                         <i class="fas fa-search absolute left-3 top-3 text-slate-400"></i>
@@ -226,6 +236,7 @@
                     <select id="filtroEstado" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
                         <option value="">Todos los estados</option>
                         <option value="pendiente">Pendiente</option>
+
                         <option value="aprobado">Aprobado</option>
                         <option value="rechazado">Rechazado</option>
                     </select>
@@ -236,6 +247,17 @@
                         <option value="muy_grave">Muy Grave</option>
                     </select>
                 </div>
+            </div>
+            <div class="flex gap-2 mb-4 overflow-x-auto animate-enter animate-delay-200">
+                <button id="tabTodos" onclick="setTabInformes('todos')" class="tab-informes px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white">
+                    Todos <span id="badgeTodos" class="ml-1 text-xs bg-white/20 px-1.5 py-0.5 rounded-full">0</span>
+                </button>
+                <button id="tabPendientes" onclick="setTabInformes('pendientes')" class="tab-informes px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200">
+                    Pendientes <span id="badgePendientes" class="ml-1 text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">0</span>
+                </button>
+                <button id="tabResueltos" onclick="setTabInformes('resueltos')" class="tab-informes px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200">
+                    Resueltos <span id="badgeResueltos" class="ml-1 text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full">0</span>
+                </button>
             </div>
             <div id="listaInformes" class="space-y-3"></div>
             <div id="sinResultados" class="hidden text-center py-12 text-slate-400">
@@ -294,12 +316,6 @@
                         placeholder="Describa los hechos detalladamente..."></textarea>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-2">Solicitud de sanción (datos del docente) *</label>
-                    <textarea id="descargo" required rows="3" maxlength="1000"
-                        class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
-                        placeholder="Indique la sanción que solicita..."></textarea>
-                </div>
-                <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Observaciones</label>
                     <textarea id="observaciones" rows="3" maxlength="1000"
                         class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none"
@@ -312,7 +328,6 @@
                         <option value="leve">Leve</option>
                         <option value="grave">Grave</option>
                         <option value="muy_grave">Muy Grave</option>
-                        <option value="otro">Otro</option>
                     </select>
                 </div>
                 <div class="flex gap-3 pt-4">
@@ -352,9 +367,21 @@
                             <option value="5">5</option>
                         </select>
                     </div>
-                    <div class="md:col-span-2">
+                    <div>
                         <label class="block text-xs font-medium text-slate-500 mb-1">Nombre o Apellido</label>
                         <input type="text" id="filtroAlumnoNombre" placeholder="Ej: Barreto Cristian" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Ordenar por</label>
+                        <select id="ordenAlumnos" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
+                            <option value="informes_desc">Más informes</option>
+                            <option value="informes_asc">Menos informes</option>
+                            <option value="apellido_asc">Apellido A-Z</option>
+                            <option value="apellido_desc">Apellido Z-A</option>
+                            <option value="nombre_asc">Nombre A-Z</option>
+                            <option value="curso_asc">Grado ↑</option>
+                            <option value="curso_desc">Grado ↓</option>
+                        </select>
                     </div>
                 </div>
             </div>
@@ -387,7 +414,7 @@
                 </div>
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
-                <h3 class="font-semibold text-slate-700 mb-4">Tendencia Mensual</h3>
+                <h3 class="font-semibold text-slate-700 mb-4">Tendencia Últimos 30 Días</h3>
                 <canvas id="chartMensual"></canvas>
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
@@ -402,6 +429,7 @@
                                 <th class="px-4 py-3 text-center">Leves</th>
                                 <th class="px-4 py-3 text-center">Graves</th>
                                 <th class="px-4 py-3 text-center">Muy Graves</th>
+
                             </tr>
                         </thead>
                         <tbody id="bodyTopAlumnos" class="divide-y divide-slate-100"></tbody>
@@ -424,25 +452,35 @@
                         <option value="preceptor">Preceptor</option>
                         <option value="regente">Regente</option>
                     </select>
-                    <input type="password" id="newPassword" placeholder="Contraseña" required class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <div class="relative">
+                        <input type="password" id="newPassword" placeholder="Contraseña" required class="w-full px-4 pr-10 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                        <button type="button" onclick="togglePassword('newPassword', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition-colors">
                         <i class="fas fa-user-plus mr-2"></i>Crear Usuario
                     </button>
                 </form>
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                <table class="w-full text-sm text-left">
-                    <thead class="bg-slate-50 text-slate-600 font-medium">
-                        <tr>
-                            <th class="px-4 py-3">Nombre</th>
-                            <th class="px-4 py-3">Email</th>
-                            <th class="px-4 py-3">Rol</th>
-                            <th class="px-4 py-3">Estado</th>
-                            <th class="px-4 py-3">Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="listaUsuarios" class="divide-y divide-slate-100"></tbody>
-                </table>
+                <!-- Desktop: tabla -->
+                <div class="hidden md:block overflow-x-auto">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-50 text-slate-600 font-medium">
+                            <tr>
+                                <th class="px-4 py-3">Nombre</th>
+                                <th class="px-4 py-3">Email</th>
+                                <th class="px-4 py-3">Rol</th>
+                                <th class="px-4 py-3">Estado</th>
+                                <th class="px-4 py-3">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="listaUsuariosDesktop" class="divide-y divide-slate-100"></tbody>
+                    </table>
+                </div>
+                <!-- Mobile: cards -->
+                <div id="listaUsuariosMobile" class="md:hidden divide-y divide-slate-100"></div>
             </div>
         </section>
 
@@ -462,7 +500,7 @@
                         <li>Marquez Cristhian</li>
                         <li>Enrique Santino</li>
                     </ul>
-                    <p class="pt-2 text-slate-500">Versión <span class="font-mono font-medium text-slate-700">v1.0</span></p>
+                    <p class="pt-2 text-slate-500">Versión <span class="font-mono font-medium text-slate-700">v1.1</span></p>
                 </div>
             </div>
         </section>
@@ -476,28 +514,43 @@
             <div id="tarjetaAlumno" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
                 <!-- Se llena dinámicamente -->
             </div>
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                     <h3 class="font-semibold text-slate-700 mb-4">Distribución por Gravedad</h3>
                     <div class="h-64"><canvas id="chartAlumno"></canvas></div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col">
-                    <h3 class="font-semibold text-slate-700 mb-4">Historial de Informes</h3>
-                    <div id="historialAlumno" class="space-y-3 overflow-y-auto max-h-80 flex-1"></div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
+                    <h3 class="font-semibold text-slate-700 mb-4">Línea de Tiempo</h3>
+                    <div class="h-64"><canvas id="chartAlumnoTimeline"></canvas></div>
                 </div>
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col">
+                <h3 class="font-semibold text-slate-700 mb-4">Historial de Informes</h3>
+                <div id="historialAlumno" class="space-y-3 overflow-y-auto max-h-80 flex-1"></div>
             </div>
         </section>
     </main>
 
     <!-- Modal Detalle -->
     <div id="modalDetalle" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto animate-fade-in">
-            <div class="p-6 border-b border-slate-200 flex justify-between items-center">
+        <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-fade-in">
+            <div class="p-6 border-b border-slate-200 flex justify-between items-center shrink-0">
                 <h3 class="text-lg font-bold text-slate-800">Detalle del Informe</h3>
                 <button id="btn-cerrar-modal" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
             </div>
-            <div id="contenidoModal" class="p-6 space-y-4"></div>
-            <div id="accionesModal" class="p-6 border-t border-slate-200 bg-slate-50 flex flex-wrap gap-3"></div>
+            <div id="contenidoModal" class="p-6 space-y-4 overflow-y-auto"></div>
+            <div id="accionesModal" class="p-6 border-t border-slate-200 bg-slate-50 flex flex-wrap gap-3 shrink-0"></div>
+        </div>
+    </div>
+
+    <!-- Modal Grupo Informes (timeline) -->
+    <div id="modalGrupoInformes" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col animate-fade-in">
+            <div class="p-6 border-b border-slate-200 flex justify-between items-center shrink-0">
+                <h3 id="tituloModalGrupo" class="text-lg font-bold text-slate-800">Informes</h3>
+                <button onclick="cerrarModalGrupo()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div id="contenidoModalGrupo" class="p-6 space-y-3 overflow-y-auto"></div>
         </div>
     </div>
 
@@ -550,7 +603,12 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Nueva contraseña <span class="text-xs text-slate-400">(dejar vacío para no cambiar)</span></label>
-                    <input type="password" id="editUserPassword" maxlength="100" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                    <div class="relative">
+                        <input type="password" id="editUserPassword" maxlength="100" class="w-full px-4 pr-10 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                        <button type="button" onclick="togglePassword('editUserPassword', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
                     <div>
@@ -566,6 +624,34 @@
             <div class="p-6 border-t border-slate-200 bg-slate-50 flex gap-3">
                 <button onclick="guardarEdicionUsuario()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors">Guardar cambios</button>
                 <button onclick="cerrarModalEditarUsuario()" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Confirmar Eliminar Usuario -->
+    <div id="modalConfirmarEliminar" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full animate-fade-in">
+            <div class="p-6 border-b border-slate-200 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-800">Eliminar Usuario</h3>
+                <button onclick="cerrarModalEliminar()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <p class="text-slate-600">¿Estás seguro de que querés eliminar a <strong id="eliminarUserNombre" class="text-slate-800"></strong>?</p>
+                <p class="text-sm text-slate-500">Esta acción no se puede deshacer.</p>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Tu contraseña *</label>
+                    <p class="text-xs text-slate-500 mb-2">Ingresá tu contraseña para confirmar esta acción.</p>
+                    <div class="relative">
+                        <input type="password" id="eliminarUserPassword" placeholder="Contraseña" class="w-full px-4 pr-10 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
+                        <button type="button" onclick="togglePassword('eliminarUserPassword', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="p-6 border-t border-slate-200 bg-slate-50 flex gap-3">
+                <button onclick="confirmarEliminarUsuario()" class="flex-1 bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition-colors">Eliminar</button>
+                <button onclick="cerrarModalEliminar()" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors">Cancelar</button>
             </div>
         </div>
     </div>
@@ -586,7 +672,6 @@
                         <option value="leve">Leve</option>
                         <option value="grave">Grave</option>
                         <option value="muy_grave">Muy Grave</option>
-                        <option value="otro">Otro</option>
                     </select>
                     <textarea id="newPlantillaResumen" rows="3" maxlength="2000" placeholder="Resumen / descripción..." class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none text-sm"></textarea>
                     <button onclick="crearPlantilla()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors"><i class="fas fa-plus mr-1"></i> Agregar plantilla</button>
