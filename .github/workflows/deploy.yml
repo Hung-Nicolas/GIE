@@ -6,19 +6,10 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
-
-concurrency:
-  group: "pages"
-  cancel-in-progress: false
-
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+  contents: write
 
 jobs:
-  build:
+  build-and-deploy:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -39,37 +30,8 @@ jobs:
           VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
           VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
 
-      - name: Clean dist for deployment
-        run: |
-          # Remove sourcemaps
-          rm -f ./dist/assets/*.map
-          # Remove any symlinks
-          find ./dist -type l -delete
-          # Remove hidden files
-          find ./dist -name ".*" -type f -delete
-          # Fix permissions
-          find ./dist -type f -exec chmod 644 {} +
-          find ./dist -type d -exec chmod 755 {} +
-          # Debug
-          echo "=== dist contents ==="
-          ls -laR ./dist
-          echo "=== total size ==="
-          du -sh ./dist
-          echo "=== check for hard links ==="
-          find ./dist -type f -links +1 || true
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
+      - name: Deploy to gh-pages
+        uses: peaceiris/actions-gh-pages@v4
         with:
-          path: ./dist
-
-  deploy:
-    needs: build
-    runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v3
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
