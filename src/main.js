@@ -301,7 +301,58 @@ function toggleSidebar() {
     document.getElementById('overlay').classList.toggle('hidden');
 }
 
+let _logoutCountdownInterval = null;
+
 async function logout() {
+    mostrarModalLogout();
+}
+
+function mostrarModalLogout() {
+    const modal = document.getElementById('modalLogout');
+    const btn = document.getElementById('btn-confirmar-logout');
+    const countdownEl = document.getElementById('logoutCountdown');
+    if (!modal || !btn || !countdownEl) return;
+
+    modal.classList.remove('hidden');
+    btn.disabled = true;
+    btn.classList.add('opacity-50', 'cursor-not-allowed');
+    btn.classList.remove('hover:bg-red-700');
+
+    let segundos = 5;
+    countdownEl.textContent = segundos;
+
+    if (_logoutCountdownInterval) clearInterval(_logoutCountdownInterval);
+    _logoutCountdownInterval = setInterval(() => {
+        segundos--;
+        countdownEl.textContent = segundos;
+        if (segundos <= 0) {
+            clearInterval(_logoutCountdownInterval);
+            btn.disabled = false;
+            btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            btn.classList.add('hover:bg-red-700');
+            btn.innerHTML = 'Cerrar sesión';
+        }
+    }, 1000);
+}
+
+window.cerrarModalLogout = function() {
+    const modal = document.getElementById('modalLogout');
+    if (modal) modal.classList.add('hidden');
+    if (_logoutCountdownInterval) {
+        clearInterval(_logoutCountdownInterval);
+        _logoutCountdownInterval = null;
+    }
+    // Restaurar texto del botón para la próxima vez
+    const btn = document.getElementById('btn-confirmar-logout');
+    if (btn) {
+        btn.disabled = true;
+        btn.classList.add('opacity-50', 'cursor-not-allowed');
+        btn.innerHTML = 'Cerrar (<span id="logoutCountdown">5</span>)';
+    }
+};
+
+window.confirmarLogout = async function() {
+    cerrarModalLogout();
     await doLogout();
     alumnos = [];
     informes = [];
@@ -309,7 +360,7 @@ async function logout() {
     document.getElementById('sidebar').classList.add('sidebar-hidden');
     document.getElementById('overlay').classList.add('hidden');
     document.getElementById('loginForm').reset();
-}
+};
 
 // ==================== UTILIDADES ====================
 function formatearFecha(fecha) {

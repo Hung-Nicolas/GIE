@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GIE - Panel de Control</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-  <script type="module" crossorigin src="/GIE/assets/index-TIXSgAgZ.js"></script>
-  <link rel="stylesheet" crossorigin href="/GIE/assets/index-dI5THT3i.css">
+  <script type="module" crossorigin src="/GIE/assets/index-DWGVXaHP.js"></script>
+  <link rel="stylesheet" crossorigin href="/GIE/assets/index-DheGY1h5.css">
 </head>
 <body class="bg-slate-50 text-slate-800">
 
@@ -339,7 +339,6 @@
                             <option value="4°">4°</option>
                             <option value="5°">5°</option>
                             <option value="6°">6°</option>
-                            <option value="7°">7°</option>
                         </select>
                     </div>
                     <div>
@@ -629,7 +628,6 @@
                             <option value="4°">4°</option>
                             <option value="5°">5°</option>
                             <option value="6°">6°</option>
-                            <option value="7°">7°</option>
                         </select>
                     </div>
                     <div>
@@ -672,7 +670,8 @@
             </div>
             <div class="p-6 border-t border-slate-200 bg-slate-50 flex gap-3">
                 <button onclick="confirmarFechaReunion()" class="flex-1 bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors">Guardar y aprobar</button>
-                <button onclick="confirmarFechaReunion(true)" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors text-sm">Omitir fecha</button>
+                <button onclick="confirmarFechaReunion(true)" class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors text-sm">Omitir fecha</button>
+                <button onclick="cerrarModalFechaReunion()" class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors text-sm">Cancelar</button>
             </div>
         </div>
     </div>
@@ -695,6 +694,25 @@
                 <button onclick="guardarCambioReunion()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors">Guardar cambio</button>
                 <button onclick="posponerReunion(7)" class="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg transition-colors text-sm"><i class="fas fa-calendar-plus mr-1"></i>+7 días</button>
                 <button onclick="eliminarReunion()" class="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg transition-colors text-sm"><i class="fas fa-trash mr-1"></i>Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Confirmar Logout -->
+    <div id="modalLogout" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full animate-fade-in">
+            <div class="p-6 text-center">
+                <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i class="fas fa-sign-out-alt text-red-600 text-xl"></i>
+                </div>
+                <h3 class="text-lg font-bold text-slate-800 mb-2">¿Cerrar sesión?</h3>
+                <p class="text-sm text-slate-500 mb-6">Vas a salir de tu cuenta. Los cambios no guardados se perderán.</p>
+                <div class="flex gap-3">
+                    <button onclick="cerrarModalLogout()" class="flex-1 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">Cancelar</button>
+                    <button id="btn-confirmar-logout" onclick="confirmarLogout()" disabled class="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg transition-colors opacity-50 cursor-not-allowed">
+                        Cerrar (<span id="logoutCountdown">5</span>)
+                    </button>
+                </div>
             </div>
         </div>
     </div>
