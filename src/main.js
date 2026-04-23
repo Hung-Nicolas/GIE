@@ -266,7 +266,6 @@ function setupEventListeners() {
 
     const btnNuevoInforme = document.getElementById('btn-nuevo-informe');
     if (btnNuevoInforme) btnNuevoInforme.addEventListener('click', () => {
-        cancelarForm();
         showSection('nuevo');
     });
 
