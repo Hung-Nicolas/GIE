@@ -1411,6 +1411,7 @@ function cargarEstadisticas() {
         data: { labels: tiposLabels, datasets: [{ data: Object.values(porTipo), backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] }] },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             onClick: (e, elements) => {
                 if (!elements.length) return;
                 const tipo = tiposLabels[elements[0].index];
