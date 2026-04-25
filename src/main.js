@@ -1399,6 +1399,7 @@ function cargarEstadisticas() {
         data: { labels: cursos, datasets: [{ label: 'Informes', data: cursos.map(c => porCurso[c]), backgroundColor: '#3b82f6', borderRadius: 6 }] },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
             onClick: (e, elements) => {
@@ -1421,6 +1422,7 @@ function cargarEstadisticas() {
         data: { labels: tiposLabels, datasets: [{ data: Object.values(porTipo), backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] }] },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             animation: {
                 animateRotate: true,
                 animateScale: true,

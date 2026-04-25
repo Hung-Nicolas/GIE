@@ -574,7 +574,7 @@
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                     <h3 class="font-semibold text-slate-700 mb-4">Informes por Año/Grado</h3>
                     <p class="text-xs text-slate-400 mb-2">Tocá una barra para ver desglose por división</p>
-                    <canvas id="chartCursos"></canvas>
+                    <div class="h-64"><canvas id="chartCursos"></canvas></div>
                     <div id="drillDownAnio" class="hidden mt-4 pt-4 border-t border-slate-100">
                         <div class="flex items-center justify-between mb-3">
                             <h4 id="drillDownTitulo" class="font-semibold text-slate-700 text-sm"></h4>
@@ -585,7 +585,7 @@
                 </div>
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                     <h3 class="font-semibold text-slate-700 mb-4">Informes por Tipo de Falta</h3>
-                    <canvas id="chartTipos"></canvas>
+                    <div class="h-64"><canvas id="chartTipos"></canvas></div>
                 </div>
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
@@ -599,7 +599,7 @@
                         <button onclick="cambiarPeriodoTendencia(365)" class="periodo-btn px-3 py-1 text-xs font-medium rounded-md transition-colors text-slate-600 hover:bg-white hover:shadow-sm" data-dias="365">365d</button>
                     </div>
                 </div>
-                <canvas id="chartMensual"></canvas>
+                <div class="h-64"><canvas id="chartMensual"></canvas></div>
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                 <h3 class="font-semibold text-slate-700 mb-4">Alumnos con más Informes</h3>
