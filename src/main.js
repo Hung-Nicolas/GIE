@@ -383,7 +383,15 @@ function showSection(sectionId) {
         if (b.dataset.section === sectionId) b.classList.add('bg-slate-800', 'text-blue-400');
         else b.classList.remove('bg-slate-800', 'text-blue-400');
     });
-    if (sectionId === 'estadisticas') { mostrarSkeleton('estadisticas'); cargarEstadisticas(); ocultarSkeleton('estadisticas'); }
+    if (sectionId === 'estadisticas') {
+        mostrarSkeleton('estadisticas');
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                cargarEstadisticas();
+                ocultarSkeleton('estadisticas');
+            }, 50);
+        });
+    }
     if (sectionId === 'usuarios') { mostrarSkeleton('usuarios'); cargarUsuarios().then(() => ocultarSkeleton('usuarios')); }
     if (sectionId === 'dashboard') { mostrarSkeleton('dashboard'); actualizarDashboard(); ocultarSkeleton('dashboard'); }
     if (sectionId === 'ajustes') { mostrarSkeleton('ajustes'); cargarEspacioBD().then(() => ocultarSkeleton('ajustes')); }
