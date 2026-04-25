@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS public.alumnos (
     apellido TEXT NOT NULL,
     curso TEXT NOT NULL,
     division TEXT NOT NULL,
+    turno TEXT NOT NULL DEFAULT 'Mañana' CHECK (turno IN ('Mañana', 'Tarde', 'Noche')),
     activo BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now())
 );
@@ -198,6 +199,7 @@ $$;
 
 -- Restringir instancia a valores válidos (leve, grave, muy_grave)
 ALTER TABLE public.informes DROP CONSTRAINT IF EXISTS informes_instancia_check;
+UPDATE public.informes SET instancia = 'leve' WHERE instancia NOT IN ('leve', 'grave', 'muy_grave');
 ALTER TABLE public.informes ADD CONSTRAINT informes_instancia_check CHECK (instancia IN ('leve', 'grave', 'muy_grave'));
 
 -- Agregar columna observaciones

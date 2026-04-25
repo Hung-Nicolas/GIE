@@ -14,6 +14,7 @@ let calCurrentDate = new Date();
 let calSelectedDate = null;
 let plantillas = [];
 let tabInformesActivo = 'todos'; // 'todos' | 'pendientes' | 'resueltos'
+let periodoTendenciaDias = 30;
 
 // IntersectionObserver para animar cards al hacer scroll (repite al subir/bajar)
 const cardObserver = new IntersectionObserver((entries) => {
@@ -105,6 +106,25 @@ async function cargarAlumnos() {
     // Restaurar filtro persistido
     const savedCurso = sessionStorage.getItem('gie_filtro_filtroCurso');
     if (savedCurso) { select.value = savedCurso; }
+    // Poblar filtro de divisiones (informes)
+    const divisiones = [...new Set(alumnos.map(a => a.division).filter(Boolean))].sort();
+    const selectDiv = document.getElementById('filtroDivisionInformes');
+    if (selectDiv) {
+        selectDiv.innerHTML = '<option value="">Todas las divisiones</option>';
+        divisiones.forEach(d => selectDiv.innerHTML += `<option value="${d}">${d}</option>`);
+    }
+    // Poblar filtro de turnos (informes + alumnos)
+    const turnos = [...new Set(alumnos.map(a => a.turno).filter(Boolean))].sort();
+    const selectTurno = document.getElementById('filtroAlumnoTurno');
+    if (selectTurno) {
+        selectTurno.innerHTML = '<option value="">Todos</option>';
+        turnos.forEach(t => selectTurno.innerHTML += `<option value="${t}">${t}</option>`);
+    }
+    const selectTurnoInf = document.getElementById('filtroTurnoInformes');
+    if (selectTurnoInf) {
+        selectTurnoInf.innerHTML = '<option value="">Todos los turnos</option>';
+        turnos.forEach(t => selectTurnoInf.innerHTML += `<option value="${t}">${t}</option>`);
+    }
 }
 
 async function cargarInformes() {
@@ -172,9 +192,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function iniciarApp() {
     updateAuthUI();
+    showApp();
     const esRegente = getPerfil()?.rol === 'regente';
-    await Promise.all([cargarAlumnos(), cargarInformes(), cargarPlantillas()]);
-    initFiltros();
 
     // Navegación según rol
     document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -184,6 +203,9 @@ async function iniciarApp() {
         }
     });
 
+    await Promise.all([cargarAlumnos(), cargarInformes(), cargarPlantillas()]);
+    initFiltros();
+
     if (esRegente) {
         actualizarDashboard();
         ocultarSkeleton('dashboard');
@@ -191,7 +213,6 @@ async function iniciarApp() {
         filtrarInformes();
         ocultarSkeleton('informes');
     }
-    showApp();
 }
 
 function setupEventListeners() {
@@ -215,7 +236,7 @@ function setupEventListeners() {
         });
     }
 
-    ['filtroBusqueda', 'filtroCurso', 'filtroEstado', 'filtroInstancia'].forEach(id => {
+    ['filtroBusqueda', 'filtroCurso', 'filtroDivisionInformes', 'filtroTurnoInformes', 'filtroEstado', 'filtroInstancia'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         const handler = () => {
@@ -283,7 +304,7 @@ function setupEventListeners() {
     const btnLogout = document.getElementById('btn-logout');
     if (btnLogout) btnLogout.addEventListener('click', logout);
 
-    ['filtroAlumnoCurso', 'filtroAlumnoDivision'].forEach(id => {
+    ['filtroAlumnoCurso', 'filtroAlumnoDivision', 'filtroAlumnoTurno'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         el.addEventListener('change', () => {
@@ -370,7 +391,7 @@ function showSection(sectionId) {
         mostrarSkeleton('informes');
         requestAnimationFrame(() => {
             setTimeout(() => {
-                ['filtroBusqueda', 'filtroCurso', 'filtroEstado', 'filtroInstancia'].forEach(id => {
+                ['filtroBusqueda', 'filtroCurso', 'filtroDivisionInformes', 'filtroTurnoInformes', 'filtroEstado', 'filtroInstancia'].forEach(id => {
                     const el = document.getElementById(id);
                     if (!el) return;
                     const saved = sessionStorage.getItem('gie_filtro_' + id);
@@ -390,7 +411,7 @@ function showSection(sectionId) {
         mostrarSkeleton('alumnos');
         requestAnimationFrame(() => {
             setTimeout(() => {
-                ['filtroAlumnoCurso', 'filtroAlumnoDivision', 'filtroAlumnoNombre'].forEach(id => {
+                ['filtroAlumnoCurso', 'filtroAlumnoDivision', 'filtroAlumnoTurno', 'filtroAlumnoNombre'].forEach(id => {
                     const el = document.getElementById(id);
                     if (!el) return;
                     const saved = sessionStorage.getItem('gie_filtro_' + id);
@@ -517,20 +538,20 @@ function buscarAlumno(query) {
         if (btnCrear) btnCrear.classList.remove('hidden');
     } else {
         resultados.innerHTML = filtrados.map(a => `
-            <div onclick="seleccionarAlumno('${a.id}', '${a.nombre}', '${a.apellido}', '${a.curso}', '${a.division}')"
+            <div onclick="seleccionarAlumno('${a.id}', '${a.nombre}', '${a.apellido}', '${a.curso}', '${a.division}', '${a.turno || ''}')"
                 class="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0">
                 <p class="font-medium text-sm">${a.apellido}, ${a.nombre}</p>
-                <p class="text-xs text-slate-500">${a.curso} ${a.division}</p>
+                <p class="text-xs text-slate-500">${a.curso} ${a.division}${a.turno ? ' · ' + a.turno : ''}</p>
             </div>`).join('');
         if (btnCrear) btnCrear.classList.add('hidden');
     }
     resultados.classList.remove('hidden');
 }
 
-function seleccionarAlumno(id, nombre, apellido, curso, division) {
+function seleccionarAlumno(id, nombre, apellido, curso, division, turno = '') {
     document.getElementById('alumnoId').value = id;
     document.getElementById('alumnoNombre').textContent = `${apellido}, ${nombre}`;
-    document.getElementById('alumnoCurso').textContent = `${curso} ${division}`;
+    document.getElementById('alumnoCurso').textContent = `${curso} ${division}${turno ? ' · ' + turno : ''}`;
     document.getElementById('alumnoSeleccionado').classList.remove('hidden');
     document.getElementById('resultadosAlumno').classList.add('hidden');
     document.getElementById('searchAlumno').value = '';
@@ -547,6 +568,7 @@ function limpiarAlumno() {
 function filtrarAlumnos() {
     const curso = document.getElementById('filtroAlumnoCurso')?.value || '';
     const division = document.getElementById('filtroAlumnoDivision')?.value || '';
+    const turno = document.getElementById('filtroAlumnoTurno')?.value || '';
     const nombre = document.getElementById('filtroAlumnoNombre')?.value.toLowerCase().trim() || '';
     const orden = document.getElementById('ordenAlumnos')?.value || 'informes_desc';
 
@@ -556,10 +578,11 @@ function filtrarAlumnos() {
     const filtrados = unicos.filter(a => {
         const matchCurso = !curso || a.curso === curso;
         const matchDivision = !division || a.division === division;
+        const matchTurno = !turno || a.turno === turno;
         const matchNombre = !nombre ||
             `${a.nombre} ${a.apellido}`.toLowerCase().includes(nombre) ||
             `${a.apellido} ${a.nombre}`.toLowerCase().includes(nombre);
-        return matchCurso && matchDivision && matchNombre;
+        return matchCurso && matchDivision && matchTurno && matchNombre;
     });
 
     // Calcular cantidad de informes por alumno para ordenamiento
@@ -627,15 +650,19 @@ function renderizarAlumnos(lista, informesPorAlumno) {
 
     container.innerHTML = lista.map(a => {
         const cant = informesPorAlumno[a.id] || 0;
+        const turnoColor = a.turno === 'Mañana' ? 'bg-amber-100 text-amber-700' : a.turno === 'Tarde' ? 'bg-orange-100 text-orange-700' : 'bg-indigo-100 text-indigo-700';
         return `
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hover:shadow-md transition-shadow cursor-pointer card-scroll" onclick="verAlumno('${a.id}')">
             <div class="flex items-center gap-3 mb-3">
                 <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
                     ${a.nombre[0]}${a.apellido[0]}
                 </div>
-                <div>
+                <div class="flex-1 min-w-0">
                     <h3 class="font-semibold text-slate-800 text-sm">${a.apellido}, ${a.nombre}</h3>
-                    <p class="text-xs text-slate-500">${a.curso} ${a.division}</p>
+                    <div class="flex items-center gap-2 mt-0.5">
+                        <p class="text-xs text-slate-500">${a.curso} ${a.division}</p>
+                        ${a.turno ? `<span class="text-[10px] px-1.5 py-0.5 rounded font-medium ${turnoColor}">${a.turno}</span>` : ''}
+                    </div>
                 </div>
             </div>
             <div class="flex items-center justify-between pt-3 border-t border-slate-100">
@@ -672,6 +699,8 @@ window.setTabInformes = function(tab) {
 function filtrarInformes() {
     const busqueda = document.getElementById('filtroBusqueda').value.toLowerCase();
     const curso = document.getElementById('filtroCurso').value;
+    const division = document.getElementById('filtroDivisionInformes')?.value || '';
+    const turno = document.getElementById('filtroTurnoInformes')?.value || '';
     const estado = document.getElementById('filtroEstado').value;
     const instancia = document.getElementById('filtroInstancia').value;
     const filtrados = informes.filter(i => {
@@ -681,13 +710,15 @@ function filtrarInformes() {
             i.titulo.toLowerCase().includes(busqueda) ||
             i.resumen.toLowerCase().includes(busqueda);
         const matchCurso = !curso || (alumno && alumno.curso === curso);
+        const matchDivision = !division || (alumno && alumno.division === division);
+        const matchTurno = !turno || (alumno && alumno.turno === turno);
         const matchEstado = !estado || i.estado === estado;
         const matchInstancia = !instancia || i.instancia === instancia;
         // Filtro rápido por tab
         const matchTab = tabInformesActivo === 'todos' ? true :
             tabInformesActivo === 'pendientes' ? i.estado === 'pendiente' :
             i.estado !== 'pendiente';
-        return matchBusqueda && matchCurso && matchEstado && matchInstancia && matchTab;
+        return matchBusqueda && matchCurso && matchDivision && matchTurno && matchEstado && matchInstancia && matchTab;
     });
 
     // Actualizar badges (usando los datos ya filtrados por búsqueda/curso/instancia pero SIN el filtro de tab/estado)
@@ -698,9 +729,11 @@ function filtrarInformes() {
             i.titulo.toLowerCase().includes(busqueda) ||
             i.resumen.toLowerCase().includes(busqueda);
         const matchCurso = !curso || (alumno && alumno.curso === curso);
+        const matchDivision = !division || (alumno && alumno.division === division);
+        const matchTurno = !turno || (alumno && alumno.turno === turno);
         const matchEstado = !estado || i.estado === estado;
         const matchInstancia = !instancia || i.instancia === instancia;
-        return matchBusqueda && matchCurso && matchEstado && matchInstancia;
+        return matchBusqueda && matchCurso && matchDivision && matchTurno && matchEstado && matchInstancia;
     });
     const badgeTodos = document.getElementById('badgeTodos');
     const badgePendientes = document.getElementById('badgePendientes');
@@ -734,7 +767,7 @@ function renderCardInforme(i) {
                     <span class="text-xs text-slate-500">${formatearFechaCorta(i.fecha_creacion)}</span>
                 </div>
                 <h3 class="font-semibold text-slate-800 mb-1">${i.titulo}</h3>
-                <p class="text-sm text-slate-600 mb-2"><i class="fas fa-user mr-1"></i>${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'} • ${alumno ? `${alumno.curso} ${alumno.division}` : ''}</p>
+                <p class="text-sm text-slate-600 mb-2"><i class="fas fa-user mr-1"></i>${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'} • ${alumno ? `${alumno.curso} ${alumno.division}${alumno.turno ? ' · ' + alumno.turno : ''}` : ''}</p>
                 <p class="text-sm text-slate-500 line-clamp-2">${i.resumen}</p>
             </div>
             <div class="flex items-center gap-2">
@@ -933,7 +966,7 @@ function verDetalle(id) {
             <div class="p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors" onclick="verAlumno('${alumno?.id}')">
                 <p class="text-xs text-slate-500 mb-1">Alumno</p>
                 <p class="font-medium">${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'}</p>
-                <p class="text-sm text-slate-600">${alumno ? `${alumno.curso} ${alumno.division}` : ''}</p>
+                <p class="text-sm text-slate-600">${alumno ? `${alumno.curso} ${alumno.division}${alumno.turno ? ' · ' + alumno.turno : ''}` : ''}</p>
                 <p class="text-xs text-blue-600 mt-1"><i class="fas fa-eye mr-1"></i>Ver resumen</p>
             </div>
             <div class="p-3 bg-slate-50 rounded-lg">
@@ -999,7 +1032,7 @@ function abrirModalGrupoInformes(informesGrupo, timestampDia, mostrarAlumno = fa
                 <span class="text-xs ${colorInstancia[i.instancia] ?? 'text-blue-600'} font-semibold capitalize">${labelInstancia[i.instancia] ?? i.instancia}</span>
             </div>
             <p class="font-medium text-slate-800 text-sm">${i.titulo}</p>
-            ${alumno ? `<p class="text-xs text-slate-500 mt-0.5">${alumno.apellido}, ${alumno.nombre} • ${alumno.curso} ${alumno.division}</p>` : ''}
+            ${alumno ? `<p class="text-xs text-slate-500 mt-0.5">${alumno.apellido}, ${alumno.nombre} • ${alumno.curso} ${alumno.division}${alumno.turno ? ' · ' + alumno.turno : ''}</p>` : ''}
             <p class="text-xs text-slate-500 mt-1 line-clamp-2">${i.resumen}</p>
         </div>
     `}).join('');
@@ -1099,7 +1132,7 @@ function editarInforme(id) {
     document.getElementById('editId').value = informe.id;
     document.getElementById('alumnoId').value = informe.alumno_id;
     document.getElementById('alumnoNombre').textContent = alumno ? `${alumno.apellido}, ${alumno.nombre}` : '';
-    document.getElementById('alumnoCurso').textContent = alumno ? `${alumno.curso} ${alumno.division}` : '';
+    document.getElementById('alumnoCurso').textContent = alumno ? `${alumno.curso} ${alumno.division}${alumno.turno ? ' · ' + alumno.turno : ''}` : '';
     document.getElementById('alumnoSeleccionado').classList.remove('hidden');
     document.getElementById('instancia').value = informe.instancia;
     document.getElementById('titulo').value = informe.titulo;
@@ -1308,7 +1341,6 @@ function actualizarDashboard() {
             }]
         },
         options: {
-            animation: false,
             responsive: true,
             maintainAspectRatio: false,
             aspectRatio: 1,
@@ -1354,8 +1386,8 @@ function cargarEstadisticas() {
         type: 'bar',
         data: { labels: cursos, datasets: [{ label: 'Informes', data: cursos.map(c => porCurso[c]), backgroundColor: '#3b82f6', borderRadius: 6 }] },
         options: {
-            animation: false,
             responsive: true,
+            animation: false,
             plugins: { legend: { display: false } },
             scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
             onClick: (e, elements) => {
@@ -1377,8 +1409,8 @@ function cargarEstadisticas() {
         type: 'pie',
         data: { labels: tiposLabels, datasets: [{ data: Object.values(porTipo), backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] }] },
         options: {
-            animation: false,
             responsive: true,
+            animation: false,
             onClick: (e, elements) => {
                 if (!elements.length) return;
                 const tipo = tiposLabels[elements[0].index];
@@ -1389,37 +1421,65 @@ function cargarEstadisticas() {
         }
     });
 
-    // Tendencia últimos 30 días (incluye días sin informes)
+    // Tendencia según período seleccionado (agrupado inteligentemente)
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
-    const diasLabels = [];
-    const diasKeys = [];
-    const diasConteo = {};
-    for (let i = 29; i >= 0; i--) {
-        const d = new Date(hoy);
-        d.setDate(d.getDate() - i);
-        const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        const label = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
-        diasLabels.push(label);
-        diasKeys.push(key);
-        diasConteo[key] = 0;
+    let grupos = [];
+    let unidadLabel = '';
+
+    if (periodoTendenciaDias <= 30) {
+        // Por día
+        unidadLabel = 'día';
+        for (let i = periodoTendenciaDias - 1; i >= 0; i--) {
+            const d = new Date(hoy);
+            d.setDate(d.getDate() - i);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            const label = `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}`;
+            grupos.push({ label, key, ini: new Date(d), fin: new Date(d), conteo: 0 });
+        }
+    } else if (periodoTendenciaDias <= 90) {
+        // Por semana
+        unidadLabel = 'semana';
+        const totalSemanas = Math.ceil(periodoTendenciaDias / 7);
+        for (let i = totalSemanas - 1; i >= 0; i--) {
+            const fin = new Date(hoy);
+            fin.setDate(fin.getDate() - i * 7);
+            const ini = new Date(fin);
+            ini.setDate(ini.getDate() - 6);
+            const key = `${ini.toISOString().split('T')[0]}_${fin.toISOString().split('T')[0]}`;
+            const label = `${String(ini.getDate()).padStart(2, '0')}/${String(ini.getMonth() + 1).padStart(2, '0')} - ${String(fin.getDate()).padStart(2, '0')}/${String(fin.getMonth() + 1).padStart(2, '0')}`;
+            grupos.push({ label, key, ini, fin, conteo: 0 });
+        }
+    } else {
+        // Por mes
+        unidadLabel = 'mes';
+        const mesesAtras = Math.ceil(periodoTendenciaDias / 30);
+        for (let i = mesesAtras - 1; i >= 0; i--) {
+            const d = new Date(hoy);
+            d.setMonth(d.getMonth() - i);
+            const ini = new Date(d.getFullYear(), d.getMonth(), 1);
+            const fin = new Date(d.getFullYear(), d.getMonth() + 1, 0);
+            const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+            const label = `${d.toLocaleString('es-AR', { month: 'short' })} ${d.getFullYear()}`;
+            grupos.push({ label, key, ini, fin, conteo: 0 });
+        }
     }
+
+    // Contar informes en cada grupo
     informes.forEach(i => {
         const fecha = new Date(i.fecha_creacion);
-        const key = `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
-        if (diasConteo.hasOwnProperty(key)) diasConteo[key]++;
+        fecha.setHours(0, 0, 0, 0);
+        const grupo = grupos.find(g => fecha >= g.ini && fecha <= g.fin);
+        if (grupo) grupo.conteo++;
     });
+
     const ctxMensual = document.getElementById('chartMensual').getContext('2d');
     if (charts.mensual) charts.mensual.destroy();
     charts.mensual = new Chart(ctxMensual, {
         type: 'line',
-        data: {
-            labels: diasLabels,
-            datasets: [{ label: 'Informes por día', data: diasKeys.map(k => diasConteo[k]), borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true, tension: 0.4, pointRadius: 3, pointHoverRadius: 5 }]
-        },
         options: {
-            animation: false,
             responsive: true,
+            animation: false,
             interaction: { mode: 'index', intersect: false },
             plugins: {
                 legend: { display: false },
@@ -1431,15 +1491,19 @@ function cargarEstadisticas() {
                     padding: 10,
                     displayColors: false,
                     callbacks: {
-                        title: (items) => `Fecha: ${items[0].label}`,
+                        title: (items) => `${items[0].label}`,
                         label: (item) => `${item.raw} informe${item.raw !== 1 ? 's' : ''}`
                     }
                 }
             },
             scales: {
-                y: { beginAtZero: true, ticks: { stepSize: 1 } },
-                x: { ticks: { maxTicksLimit: 10 } }
+                x: { grid: { display: false } },
+                y: { beginAtZero: true, ticks: { stepSize: 1 } }
             }
+        },
+        data: {
+            labels: grupos.map(g => g.label),
+            datasets: [{ label: `Informes por ${unidadLabel}`, data: grupos.map(g => g.conteo), borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true, tension: 0.4, pointRadius: 3, pointHoverRadius: 5 }]
         }
     });
 
@@ -1472,6 +1536,20 @@ function cargarEstadisticas() {
     `).join('');
 }
 
+function cambiarPeriodoTendencia(dias) {
+    periodoTendenciaDias = dias;
+    document.querySelectorAll('.periodo-btn').forEach(btn => {
+        const esActivo = parseInt(btn.dataset.dias) === dias;
+        btn.classList.toggle('bg-white', esActivo);
+        btn.classList.toggle('shadow-sm', esActivo);
+        btn.classList.toggle('text-slate-800', esActivo);
+        btn.classList.toggle('text-slate-600', !esActivo);
+    });
+    const titulo = document.getElementById('tituloTendencia');
+    if (titulo) titulo.textContent = `Tendencia Últimos ${dias} Días`;
+    cargarEstadisticas();
+}
+
 // ==================== VISTA ALUMNO ====================
 function verAlumno(alumnoId) {
     mostrarSkeleton('vistaAlumno');
@@ -1481,12 +1559,16 @@ function verAlumno(alumnoId) {
     const stats = { total: lista.length, leve: 0, grave: 0, muy_grave: 0 };
     lista.forEach(i => { if (stats[i.instancia] !== undefined) stats[i.instancia]++; });
 
+    const turnoColorDetalle = alumno.turno === 'Mañana' ? 'bg-amber-100 text-amber-700' : alumno.turno === 'Tarde' ? 'bg-orange-100 text-orange-700' : 'bg-indigo-100 text-indigo-700';
     document.getElementById('tarjetaAlumno').innerHTML = `
         <div class="flex items-center gap-4">
             <div class="w-16 h-16 bg-blue-500 rounded-full flex items-center justify-center text-white text-2xl font-bold">${alumno.nombre[0]}${alumno.apellido[0]}</div>
             <div>
                 <h2 class="text-xl font-bold text-slate-800">${alumno.apellido}, ${alumno.nombre}</h2>
-                <p class="text-slate-500">${alumno.curso} ${alumno.division}</p>
+                <div class="flex items-center gap-2 mt-1">
+                    <p class="text-slate-500">${alumno.curso} ${alumno.division}</p>
+                    ${alumno.turno ? `<span class="text-xs px-2 py-0.5 rounded-md font-medium ${turnoColorDetalle}">${alumno.turno}</span>` : ''}
+                </div>
                 <p class="text-sm text-slate-400 mt-1">${stats.total} informe${stats.total !== 1 ? 's' : ''} registrado${stats.total !== 1 ? 's' : ''}</p>
             </div>
         </div>
@@ -1507,7 +1589,6 @@ function verAlumno(alumnoId) {
         type: 'doughnut',
         data: { labels: chartLabels, datasets: [{ data: chartData, backgroundColor: chartColors, borderWidth: 0 }] },
         options: {
-            animation: false,
             responsive: true,
             maintainAspectRatio: false,
             onClick: (e, elements) => {
@@ -1593,7 +1674,6 @@ function verAlumno(alumnoId) {
             }]
         },
         options: {
-            animation: false,
             responsive: true,
             maintainAspectRatio: false,
             onClick: (e, elements, chart) => {
@@ -2164,6 +2244,7 @@ window.cerrarDrillDownAnio = function() {
     const container = document.getElementById('drillDownAnio');
     if (container) container.classList.add('hidden');
 };
+window.cambiarPeriodoTendencia = cambiarPeriodoTendencia;
 
 // ==================== ESPACIO BASE DE DATOS ====================
 const DB_LIMITE_MB_DEFAULT = 500; // Límite por defecto (plan Free Supabase)
@@ -2265,6 +2346,7 @@ window.mostrarModalCrearAlumno = function() {
     document.getElementById('newAlumnoApellido').value = '';
     document.getElementById('newAlumnoCurso').value = '';
     document.getElementById('newAlumnoDivision').value = '';
+    document.getElementById('newAlumnoTurno').value = '';
 };
 window.cerrarModalCrearAlumno = function() {
     document.getElementById('modalCrearAlumno').classList.add('hidden');
@@ -2274,15 +2356,16 @@ window.guardarNuevoAlumno = async function() {
     const apellido = document.getElementById('newAlumnoApellido').value.trim();
     const curso = document.getElementById('newAlumnoCurso').value;
     const division = document.getElementById('newAlumnoDivision').value;
-    if (!nombre || !apellido || !curso || !division) {
+    const turno = document.getElementById('newAlumnoTurno').value;
+    if (!nombre || !apellido || !curso || !division || !turno) {
         return mostrarToast('Todos los campos son obligatorios', 'error');
     }
-    const { data, error } = await supabaseClient.from('alumnos').insert({ nombre, apellido, curso, division }).select().single();
+    const { data, error } = await supabaseClient.from('alumnos').insert({ nombre, apellido, curso, division, turno }).select().single();
     if (error) {
         return mostrarToast('Error creando alumno: ' + error.message, 'error');
     }
     await cargarAlumnos();
-    seleccionarAlumno(data.id, data.nombre, data.apellido, data.curso, data.division);
+    seleccionarAlumno(data.id, data.nombre, data.apellido, data.curso, data.division, data.turno);
     cerrarModalCrearAlumno();
     mostrarToast('Alumno creado correctamente');
 };
