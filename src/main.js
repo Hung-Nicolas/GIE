@@ -1387,7 +1387,6 @@ function cargarEstadisticas() {
         data: { labels: cursos, datasets: [{ label: 'Informes', data: cursos.map(c => porCurso[c]), backgroundColor: '#3b82f6', borderRadius: 6 }] },
         options: {
             responsive: true,
-            animation: false,
             plugins: { legend: { display: false } },
             scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
             onClick: (e, elements) => {
@@ -1410,7 +1409,6 @@ function cargarEstadisticas() {
         data: { labels: tiposLabels, datasets: [{ data: Object.values(porTipo), backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] }] },
         options: {
             responsive: true,
-            animation: false,
             onClick: (e, elements) => {
                 if (!elements.length) return;
                 const tipo = tiposLabels[elements[0].index];
@@ -1479,8 +1477,22 @@ function cargarEstadisticas() {
         type: 'line',
         options: {
             responsive: true,
-            animation: false,
             interaction: { mode: 'index', intersect: false },
+            animation: {
+                x: {
+                    type: 'number',
+                    easing: 'linear',
+                    duration: 800,
+                    from: NaN,
+                    delay(ctx) {
+                        if (ctx.type !== 'data' || ctx.xStarted) {
+                            return 0;
+                        }
+                        ctx.xStarted = true;
+                        return ctx.index * (800 / ctx.chart.data.labels.length);
+                    }
+                }
+            },
             plugins: {
                 legend: { display: false },
                 tooltip: {
