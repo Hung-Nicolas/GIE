@@ -172,11 +172,11 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 async function iniciarApp() {
     updateAuthUI();
+    const esRegente = getPerfil()?.rol === 'regente';
     await Promise.all([cargarAlumnos(), cargarInformes(), cargarPlantillas()]);
     initFiltros();
 
     // Navegación según rol
-    const esRegente = getPerfil()?.rol === 'regente';
     document.querySelectorAll('.nav-btn').forEach(btn => {
         const section = btn.dataset.section;
         if (section === 'dashboard' || section === 'estadisticas') {
@@ -185,9 +185,11 @@ async function iniciarApp() {
     });
 
     if (esRegente) {
-        showSection('dashboard');
+        actualizarDashboard();
+        ocultarSkeleton('dashboard');
     } else {
-        showSection('informes');
+        filtrarInformes();
+        ocultarSkeleton('informes');
     }
     showApp();
 }
@@ -337,43 +339,72 @@ function setupEventListeners() {
 }
 
 // ==================== NAVEGACIÓN ====================
+function mostrarSkeleton(sectionId) {
+    const skeleton = document.getElementById('skeleton-' + sectionId);
+    const content = document.getElementById('content-' + sectionId);
+    if (skeleton) skeleton.classList.remove('hidden');
+    if (content) content.classList.add('hidden');
+}
+
+function ocultarSkeleton(sectionId) {
+    const skeleton = document.getElementById('skeleton-' + sectionId);
+    const content = document.getElementById('content-' + sectionId);
+    if (skeleton) skeleton.classList.add('hidden');
+    if (content) content.classList.remove('hidden');
+}
+
 function showSection(sectionId) {
+    const target = document.getElementById(sectionId);
+    if (!target || !target.classList.contains('hidden')) return;
     document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
-    document.getElementById(sectionId).classList.remove('hidden');
+    target.classList.remove('hidden');
     document.querySelectorAll('.nav-btn').forEach(b => {
         if (b.dataset.section === sectionId) b.classList.add('bg-slate-800', 'text-blue-400');
         else b.classList.remove('bg-slate-800', 'text-blue-400');
     });
-    if (sectionId === 'estadisticas') cargarEstadisticas();
-    if (sectionId === 'usuarios') cargarUsuarios();
-    if (sectionId === 'dashboard') actualizarDashboard();
+    if (sectionId === 'estadisticas') { mostrarSkeleton('estadisticas'); cargarEstadisticas(); ocultarSkeleton('estadisticas'); }
+    if (sectionId === 'usuarios') { mostrarSkeleton('usuarios'); cargarUsuarios().then(() => ocultarSkeleton('usuarios')); }
+    if (sectionId === 'dashboard') { mostrarSkeleton('dashboard'); actualizarDashboard(); ocultarSkeleton('dashboard'); }
+    if (sectionId === 'ajustes') { mostrarSkeleton('ajustes'); cargarEspacioBD().then(() => ocultarSkeleton('ajustes')); }
     if (sectionId === 'informes') {
-        ['filtroBusqueda', 'filtroCurso', 'filtroEstado', 'filtroInstancia'].forEach(id => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            const saved = sessionStorage.getItem('gie_filtro_' + id);
-            if (saved !== null && el.value !== saved) el.value = saved;
+        mostrarSkeleton('informes');
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                ['filtroBusqueda', 'filtroCurso', 'filtroEstado', 'filtroInstancia'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    const saved = sessionStorage.getItem('gie_filtro_' + id);
+                    if (saved !== null && el.value !== saved) el.value = saved;
+                });
+                const savedTab = sessionStorage.getItem('gie_tab_informes');
+                if (savedTab && savedTab !== tabInformesActivo) {
+                    tabInformesActivo = savedTab;
+                }
+                actualizarTabsInformes();
+                filtrarInformes();
+                ocultarSkeleton('informes');
+            }, 50);
         });
-        const savedTab = sessionStorage.getItem('gie_tab_informes');
-        if (savedTab && savedTab !== tabInformesActivo) {
-            tabInformesActivo = savedTab;
-        }
-        actualizarTabsInformes();
-        filtrarInformes();
     }
     if (sectionId === 'alumnos') {
-        ['filtroAlumnoCurso', 'filtroAlumnoDivision', 'filtroAlumnoNombre'].forEach(id => {
-            const el = document.getElementById(id);
-            if (!el) return;
-            const saved = sessionStorage.getItem('gie_filtro_' + id);
-            if (saved !== null && el.value !== saved) el.value = saved;
+        mostrarSkeleton('alumnos');
+        requestAnimationFrame(() => {
+            setTimeout(() => {
+                ['filtroAlumnoCurso', 'filtroAlumnoDivision', 'filtroAlumnoNombre'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (!el) return;
+                    const saved = sessionStorage.getItem('gie_filtro_' + id);
+                    if (saved !== null && el.value !== saved) el.value = saved;
+                });
+                const ordenEl = document.getElementById('ordenAlumnos');
+                if (ordenEl) {
+                    const savedOrden = sessionStorage.getItem('gie_orden_alumnos');
+                    if (savedOrden !== null && ordenEl.value !== savedOrden) ordenEl.value = savedOrden;
+                }
+                filtrarAlumnos();
+                ocultarSkeleton('alumnos');
+            }, 50);
         });
-        const ordenEl = document.getElementById('ordenAlumnos');
-        if (ordenEl) {
-            const savedOrden = sessionStorage.getItem('gie_orden_alumnos');
-            if (savedOrden !== null && ordenEl.value !== savedOrden) ordenEl.value = savedOrden;
-        }
-        filtrarAlumnos();
     }
     if (window.innerWidth < 1024) {
         document.getElementById('sidebar').classList.add('sidebar-hidden');
@@ -1277,6 +1308,7 @@ function actualizarDashboard() {
             }]
         },
         options: {
+            animation: false,
             responsive: true,
             maintainAspectRatio: false,
             aspectRatio: 1,
@@ -1322,6 +1354,7 @@ function cargarEstadisticas() {
         type: 'bar',
         data: { labels: cursos, datasets: [{ label: 'Informes', data: cursos.map(c => porCurso[c]), backgroundColor: '#3b82f6', borderRadius: 6 }] },
         options: {
+            animation: false,
             responsive: true,
             plugins: { legend: { display: false } },
             scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
@@ -1344,6 +1377,7 @@ function cargarEstadisticas() {
         type: 'pie',
         data: { labels: tiposLabels, datasets: [{ data: Object.values(porTipo), backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] }] },
         options: {
+            animation: false,
             responsive: true,
             onClick: (e, elements) => {
                 if (!elements.length) return;
@@ -1384,6 +1418,7 @@ function cargarEstadisticas() {
             datasets: [{ label: 'Informes por día', data: diasKeys.map(k => diasConteo[k]), borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', fill: true, tension: 0.4, pointRadius: 3, pointHoverRadius: 5 }]
         },
         options: {
+            animation: false,
             responsive: true,
             interaction: { mode: 'index', intersect: false },
             plugins: {
@@ -1417,24 +1452,31 @@ function cargarEstadisticas() {
         porAlumno[key].total++;
         if (['leve','grave','muy_grave'].includes(i.instancia)) porAlumno[key][i.instancia]++;
     });
-    const topAlumnos = Object.entries(porAlumno).sort((a, b) => b[1].total - a[1].total).slice(0, 10);
-    document.getElementById('bodyTopAlumnos').innerHTML = topAlumnos.map(([nombre, stats]) => `
+    const topAlumnos = Object.entries(porAlumno).sort((a, b) => {
+        const sa = a[1], sb = b[1];
+        if (sb.total !== sa.total) return sb.total - sa.total;
+        if (sb.muy_grave !== sa.muy_grave) return sb.muy_grave - sa.muy_grave;
+        if (sb.grave !== sa.grave) return sb.grave - sa.grave;
+        return sb.leve - sa.leve;
+    }).slice(0, 10);
+    document.getElementById('bodyTopAlumnos').innerHTML = topAlumnos.map(([nombre, stats], index) => `
         <tr class="hover:bg-slate-50 cursor-pointer" onclick="verAlumno('${stats.id}')">
+            <td class="px-4 py-3 text-center text-slate-400 font-medium">${index + 1}</td>
             <td class="px-4 py-3 font-medium">${nombre}</td>
             <td class="px-4 py-3 text-slate-500">${stats.curso}</td>
             <td class="px-4 py-3 text-center font-bold">${stats.total}</td>
             <td class="px-4 py-3 text-center text-amber-600">${stats.leve}</td>
             <td class="px-4 py-3 text-center text-orange-600">${stats.grave}</td>
             <td class="px-4 py-3 text-center text-red-600">${stats.muy_grave}</td>
-
         </tr>
     `).join('');
 }
 
 // ==================== VISTA ALUMNO ====================
 function verAlumno(alumnoId) {
+    mostrarSkeleton('vistaAlumno');
     const alumno = getAlumno(alumnoId);
-    if (!alumno) return;
+    if (!alumno) { ocultarSkeleton('vistaAlumno'); return; }
     const lista = informes.filter(i => i.alumno_id === alumnoId).sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
     const stats = { total: lista.length, leve: 0, grave: 0, muy_grave: 0 };
     lista.forEach(i => { if (stats[i.instancia] !== undefined) stats[i.instancia]++; });
@@ -1465,6 +1507,7 @@ function verAlumno(alumnoId) {
         type: 'doughnut',
         data: { labels: chartLabels, datasets: [{ data: chartData, backgroundColor: chartColors, borderWidth: 0 }] },
         options: {
+            animation: false,
             responsive: true,
             maintainAspectRatio: false,
             onClick: (e, elements) => {
@@ -1550,6 +1593,7 @@ function verAlumno(alumnoId) {
             }]
         },
         options: {
+            animation: false,
             responsive: true,
             maintainAspectRatio: false,
             onClick: (e, elements, chart) => {
@@ -1623,6 +1667,7 @@ function verAlumno(alumnoId) {
 
     cerrarModal();
     showSection('vistaAlumno');
+    ocultarSkeleton('vistaAlumno');
 }
 
 // ==================== USUARIOS ====================
@@ -1928,31 +1973,31 @@ function calcularTendenciaPlantillas() {
 function renderizarSelectPlantillas() {
     const select = document.getElementById('plantillaInforme');
     if (!select) return;
-    const frecuencia = calcularTendenciaPlantillas();
 
-    // Combinar predefinidas + personalizadas en un array uniforme
-    const todas = [];
-    Object.entries(PLANTILLAS_INFORME).forEach(([key, p]) => {
-        todas.push({ key, titulo: p.titulo, instancia: p.instancia, resumen: p.resumen, predefinida: true, usos: frecuencia[p.titulo] || 0 });
-    });
-    plantillas.forEach(p => {
-        todas.push({ key: p.id, titulo: p.titulo, instancia: p.instancia, resumen: p.resumen, predefinida: false, usos: (frecuencia[p.titulo] || 0) + (p.usos || 0) });
-    });
+    const predefinidas = Object.entries(PLANTILLAS_INFORME).map(([key, p]) => ({
+        key, titulo: p.titulo, instancia: p.instancia, resumen: p.resumen
+    })).sort((a, b) => a.titulo.localeCompare(b.titulo));
 
-    // Ordenar por usos (tendencia) descendente
-    todas.sort((a, b) => b.usos - a.usos);
+    const personalizadas = plantillas.slice().sort((a, b) => a.titulo.localeCompare(b.titulo));
 
-    // Renderizar
     let html = '<option value="">Seleccionar plantilla...</option>';
-    if (todas.length > 0) {
-        html += '<optgroup label="Más usadas últimamente">';
-        todas.forEach(p => {
-            const icon = p.predefinida ? '' : '✏️ ';
-            const trend = p.usos > 0 ? ` 🔥` : '';
-            html += `<option value="${p.key}" data-predefinida="${p.predefinida}">${icon}${p.titulo}${trend}</option>`;
+
+    if (predefinidas.length > 0) {
+        html += '<optgroup label="Predefinidas">';
+        predefinidas.forEach(p => {
+            html += `<option value="${p.key}" data-predefinida="true">${p.titulo}</option>`;
         });
         html += '</optgroup>';
     }
+
+    if (personalizadas.length > 0) {
+        html += '<optgroup label="Personalizadas">';
+        personalizadas.forEach(p => {
+            html += `<option value="${p.id}" data-predefinida="false">${p.titulo}</option>`;
+        });
+        html += '</optgroup>';
+    }
+
     select.innerHTML = html;
 }
 
@@ -1986,12 +2031,14 @@ function renderizarListaPlantillas() {
         html += '<div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mt-3 mb-1">Personalizadas</div>';
         plantillas.filter(p => p.activo !== false).forEach(p => {
             html += `
-            <div class="flex items-center justify-between p-2 bg-white rounded border border-slate-100">
+            <div class="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
                 <div class="min-w-0">
                     <p class="text-sm font-medium text-slate-700 truncate">${p.titulo}</p>
                     <p class="text-xs text-slate-500 capitalize">${p.instancia}</p>
                 </div>
-                <button onclick="eliminarPlantilla('${p.id}')" class="text-red-500 hover:text-red-700 text-xs px-2" title="Eliminar"><i class="fas fa-trash"></i></button>
+                <button onclick="eliminarPlantilla('${p.id}')" class="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 text-xs font-medium rounded-md transition-colors border border-red-200" title="Eliminar plantilla">
+                    <i class="fas fa-trash"></i> Eliminar
+                </button>
             </div>`;
         });
     } else {
@@ -2117,6 +2164,67 @@ window.cerrarDrillDownAnio = function() {
     const container = document.getElementById('drillDownAnio');
     if (container) container.classList.add('hidden');
 };
+
+// ==================== ESPACIO BASE DE DATOS ====================
+const DB_LIMITE_MB_DEFAULT = 500; // Límite por defecto (plan Free Supabase)
+
+async function cargarEspacioBD() {
+    if (!USE_SUPABASE) return;
+    const esRegente = getPerfil()?.rol === 'regente';
+    const card = document.getElementById('cardDbSpace');
+    if (!esRegente) {
+        if (card) card.classList.add('hidden');
+        return;
+    }
+    if (card) card.classList.remove('hidden');
+
+    const { data, error } = await supabaseClient.rpc('obtener_espacio_bd');
+    if (error || !data || !data.length) {
+        document.getElementById('dbSpaceUsedLabel').textContent = 'Error';
+        console.error('[GIE] Error obteniendo espacio BD:', error);
+        return;
+    }
+    const row = data[0];
+    renderizarEspacioBD(row.usado_bytes, row.usado_texto);
+}
+
+function renderizarEspacioBD(usadoBytes, usadoTexto) {
+    const usedLabel = document.getElementById('dbSpaceUsedLabel');
+    const totalLabel = document.getElementById('dbSpaceTotalLabel');
+    const percentLabel = document.getElementById('dbSpacePercentLabel');
+    const bar = document.getElementById('dbSpaceBar');
+    const alertEl = document.getElementById('dbSpaceAlert');
+
+    const limiteMB = parseInt(localStorage.getItem('gie_db_limite_mb') || DB_LIMITE_MB_DEFAULT, 10);
+    const limiteBytes = limiteMB * 1024 * 1024;
+    let porcentaje = usadoBytes ? Math.round((usadoBytes / limiteBytes) * 100) : 0;
+    if (porcentaje > 100) porcentaje = 100;
+
+    usedLabel.textContent = usadoTexto || '—';
+    totalLabel.textContent = formatearBytes(limiteBytes);
+    percentLabel.textContent = porcentaje + '%';
+    bar.style.width = porcentaje + '%';
+
+    bar.classList.remove('bg-blue-500', 'bg-amber-500', 'bg-red-500');
+    alertEl.classList.add('hidden');
+    if (porcentaje >= 90) {
+        bar.classList.add('bg-red-500');
+        alertEl.classList.remove('hidden');
+    } else if (porcentaje >= 70) {
+        bar.classList.add('bg-amber-500');
+    } else {
+        bar.classList.add('bg-blue-500');
+    }
+}
+
+function formatearBytes(bytes) {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    const val = parseFloat((bytes / Math.pow(k, i)).toFixed(1));
+    return Number.isInteger(val) ? val + ' ' + sizes[i] : val + ' ' + sizes[i];
+}
 
 // Exponer funciones usadas en onclick al scope global
 window.showSection = showSection;

@@ -380,6 +380,25 @@ $$;
 GRANT EXECUTE ON FUNCTION public.eliminar_usuario_completo(UUID) TO authenticated;
 
 -- ============================================================
+-- FUNCIONES RPC AUXILIARES
+-- ============================================================
+
+-- Obtener espacio usado por la base de datos actual
+CREATE OR REPLACE FUNCTION public.obtener_espacio_bd()
+RETURNS TABLE(usado_bytes BIGINT, usado_texto TEXT)
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT
+    pg_database_size(current_database())::BIGINT as usado_bytes,
+    pg_size_pretty(pg_database_size(current_database()))::TEXT as usado_texto;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.obtener_espacio_bd() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.obtener_espacio_bd() TO anon;
+
+-- ============================================================
 -- CONFIGURACIÓN RECOMENDADA EN SUPABASE DASHBOARD
 -- ============================================================
 --
