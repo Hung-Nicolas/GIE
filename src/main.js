@@ -1343,6 +1343,7 @@ function actualizarDashboard() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            maintainAspectRatio: false,
             aspectRatio: 1,
             onClick: (e, elements) => {
                 if (!elements.length) return;
@@ -1387,6 +1388,7 @@ function cargarEstadisticas() {
         data: { labels: cursos, datasets: [{ label: 'Informes', data: cursos.map(c => porCurso[c]), backgroundColor: '#3b82f6', borderRadius: 6 }] },
         options: {
             responsive: true,
+            maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
             onClick: (e, elements) => {
