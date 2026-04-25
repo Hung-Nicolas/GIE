@@ -383,19 +383,7 @@ function showSection(sectionId) {
         if (b.dataset.section === sectionId) b.classList.add('bg-slate-800', 'text-blue-400');
         else b.classList.remove('bg-slate-800', 'text-blue-400');
     });
-    if (sectionId === 'estadisticas') {
-        mostrarSkeleton('estadisticas');
-        requestAnimationFrame(() => {
-            setTimeout(() => {
-                ocultarSkeleton('estadisticas');
-                requestAnimationFrame(() => {
-                    setTimeout(() => {
-                        cargarEstadisticas();
-                    }, 100);
-                });
-            }, 50);
-        });
-    }
+    if (sectionId === 'estadisticas') { mostrarSkeleton('estadisticas'); cargarEstadisticas(); ocultarSkeleton('estadisticas'); }
     if (sectionId === 'usuarios') { mostrarSkeleton('usuarios'); cargarUsuarios().then(() => ocultarSkeleton('usuarios')); }
     if (sectionId === 'dashboard') { mostrarSkeleton('dashboard'); actualizarDashboard(); ocultarSkeleton('dashboard'); }
     if (sectionId === 'ajustes') { mostrarSkeleton('ajustes'); cargarEspacioBD().then(() => ocultarSkeleton('ajustes')); }
@@ -1399,7 +1387,6 @@ function cargarEstadisticas() {
         data: { labels: cursos, datasets: [{ label: 'Informes', data: cursos.map(c => porCurso[c]), backgroundColor: '#3b82f6', borderRadius: 6 }] },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
             plugins: { legend: { display: false } },
             scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } },
             onClick: (e, elements) => {
@@ -1422,13 +1409,6 @@ function cargarEstadisticas() {
         data: { labels: tiposLabels, datasets: [{ data: Object.values(porTipo), backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] }] },
         options: {
             responsive: true,
-            maintainAspectRatio: false,
-            animation: {
-                animateRotate: true,
-                animateScale: true,
-                duration: 1200,
-                easing: 'easeOutQuart'
-            },
             onClick: (e, elements) => {
                 if (!elements.length) return;
                 const tipo = tiposLabels[elements[0].index];
