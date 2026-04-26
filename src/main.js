@@ -1806,7 +1806,7 @@ async function cargarUsuarios() {
             ? `<button onclick="sincronizarPerfilUsuario('${u.id}', '${u.email}')" class="text-sm text-amber-600 hover:text-amber-700" title="Crear perfil"><i class="fas fa-user-plus"></i></button>`
             : `${u.id === getPerfil().id ? '<span class="text-xs text-slate-400">Usted</span>' : `
                 <button onclick="editarUsuarioForm('${u.id}')" class="text-sm text-blue-600 hover:text-blue-700" title="Editar"><i class="fas fa-edit"></i></button>
-                ${u.id !== getPerfil().id ? `<button onclick="mostrarModalEliminar('${u.id}')" class="text-sm text-red-600 hover:text-red-700" title="Eliminar"><i class="fas fa-trash-alt"></i></button>` : ''}
+                ${u.id !== getPerfil().id && u.email !== 'admin@gie.com' ? `<button onclick="mostrarModalEliminar('${u.id}')" class="text-sm text-red-600 hover:text-red-700" title="Eliminar"><i class="fas fa-trash-alt"></i></button>` : ''}
             `}`;
         return { nombreCompleto, rolBadge, activoBadge, acciones, sinPerfil };
     };
