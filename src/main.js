@@ -754,9 +754,9 @@ function filtrarInformes() {
     const badgePendientes = document.getElementById('badgePendientes');
     const badgeResueltos = document.getElementById('badgeResueltos');
     // Solo regentes ven los contadores; docentes no deben saber los totales
-    if (badgeTodos) badgeTodos.textContent = esRegente ? baseFiltrados.length : '';
-    if (badgePendientes) badgePendientes.textContent = esRegente ? baseFiltrados.filter(i => i.estado === 'pendiente').length : '';
-    if (badgeResueltos) badgeResueltos.textContent = esRegente ? baseFiltrados.filter(i => i.estado !== 'pendiente').length : '';
+    if (badgeTodos) { badgeTodos.textContent = esRegente ? baseFiltrados.length : ''; badgeTodos.classList.toggle('hidden', !esRegente); }
+    if (badgePendientes) { badgePendientes.textContent = esRegente ? baseFiltrados.filter(i => i.estado === 'pendiente').length : ''; badgePendientes.classList.toggle('hidden', !esRegente); }
+    if (badgeResueltos) { badgeResueltos.textContent = esRegente ? baseFiltrados.filter(i => i.estado !== 'pendiente').length : ''; badgeResueltos.classList.toggle('hidden', !esRegente); }
 
     renderizarInformes(filtrados);
 }
