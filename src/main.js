@@ -2235,10 +2235,10 @@ async function exportarPDF(id) {
         <div style="margin-bottom:6px;">
             <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">1. Datos del Alumno/a</div>
             <table style="width:100%; border-collapse:collapse;">
-                <tr><td style="padding:4px 0; width:80px;">Alumno/a:</td><td style="padding:4px 0; border-bottom:1px solid #000;">${alumno ? `${alumno.apellido}, ${alumno.nombre}` : ''}</td></tr>
-                <tr><td style="padding:4px 0;">Año:</td><td style="padding:4px 0; border-bottom:1px solid #000;">${alumno ? alumno.curso : ''}</td></tr>
-                <tr><td style="padding:4px 0;">División:</td><td style="padding:4px 0; border-bottom:1px solid #000;">${alumno ? alumno.division : ''}</td></tr>
-                ${alumno?.turno ? `<tr><td style="padding:4px 0;">Turno:</td><td style="padding:4px 0; border-bottom:1px solid #000;">${alumno.turno}</td></tr>` : ''}
+                <tr><td style="padding:2px 0 10px 0; width:80px;">Alumno/a:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;">${alumno ? `${alumno.apellido}, ${alumno.nombre}` : ''}</td></tr>
+                <tr><td style="padding:2px 0 10px 0;">Año:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;">${alumno ? alumno.curso : ''}</td></tr>
+                <tr><td style="padding:2px 0 10px 0;">División:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;">${alumno ? alumno.division : ''}</td></tr>
+                ${alumno?.turno ? `<tr><td style="padding:2px 0 10px 0;">Turno:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;">${alumno.turno}</td></tr>` : ''}
             </table>
         </div>
 
@@ -2255,10 +2255,10 @@ async function exportarPDF(id) {
         <div style="margin-bottom:6px;">
             <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">3. Solicitud de Sanción</div>
             <table style="width:100%; border-collapse:collapse;">
-                <tr><td style="padding:4px 0; width:100px;">Docente:</td><td style="padding:4px 0; border-bottom:1px solid #000;">${creador}</td></tr>
-                <tr><td style="padding:4px 0;">Cargo / Función:</td><td style="padding:4px 0; border-bottom:1px solid #000;">Docente</td></tr>
-                <tr><td style="padding:4px 0;">Fecha:</td><td style="padding:4px 0; border-bottom:1px solid #000;">${formatearFecha(informe.fecha_creacion)}</td></tr>
-                <tr><td style="padding:4px 0;">Firma:</td><td style="padding:4px 0; border-bottom:1px solid #000;"></td></tr>
+                <tr><td style="padding:2px 0 10px 0; width:100px;">Docente:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;">${creador}</td></tr>
+                <tr><td style="padding:2px 0 10px 0;">Cargo / Función:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;">Docente</td></tr>
+                <tr><td style="padding:2px 0 10px 0;">Fecha:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;">${formatearFecha(informe.fecha_creacion)}</td></tr>
+                <tr><td style="padding:2px 0 10px 0;">Firma:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;"></td></tr>
             </table>
         </div>
 
@@ -2281,13 +2281,13 @@ async function exportarPDF(id) {
                 <span>${chk('muy_grave')}&nbsp;&nbsp;3° Instancia — MUY GRAVE</span>
             </div>
             <div style="margin-top:4px;">
-                <div style="margin-bottom:4px;">Otra consideración:</div>
-                <div style="border-bottom:1px solid #000; height:20px;"></div>
+                <div style="margin-bottom:6px;">Otra consideración:</div>
+                <div style="border-bottom:1px solid #000; height:24px;"></div>
             </div>
             <div style="margin-top:8px;">
                 <table style="width:100%; border-collapse:collapse;">
-                    <tr><td style="padding:2px 0; width:50%;">Firma del Directivo:</td><td style="padding:2px 0;">Fecha:</td></tr>
-                    <tr><td style="padding:2px 0; border-bottom:1px solid #000;"></td><td style="padding:2px 0; border-bottom:1px solid #000;"></td></tr>
+                    <tr><td style="padding:2px 0 10px 0; width:50%;">Firma del Directivo:</td><td style="padding:2px 0 10px 0;">Fecha:</td></tr>
+                    <tr><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;"></td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;"></td></tr>
                 </table>
             </div>
         </div>
