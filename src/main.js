@@ -2224,7 +2224,7 @@ async function exportarPDF(id) {
     const container = document.createElement('div');
     container.style.cssText = 'padding:12px 24px; font-family:Arial,Helvetica,sans-serif; color:#000; max-width:800px; margin:0 auto; background:#fff; font-size:11px; line-height:1.4;';
     container.innerHTML = `
-        <div style="text-align:center; margin-bottom:6px;">
+        <div style="text-align:center; margin-bottom:10px;">
             ${logoSrc ? `<img src="${logoSrc}" style="height:50px; margin:0 auto 4px; display:block;" />` : ''}
             <div style="font-size:10px; font-weight:bold;">GOBIERNO DE LA CIUDAD AUTÓNOMA DE BUENOS AIRES</div>
             <div style="font-size:10px; font-weight:bold;">MINISTERIO DE EDUCACIÓN</div>
@@ -2245,7 +2245,7 @@ async function exportarPDF(id) {
         <div style="margin-bottom:6px;">
             <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">2. Descripción de la Acción</div>
             <p style="margin:0 0 4px;">Ha realizado la acción que se describe a continuación:</p>
-            <div style="border:1px solid #000; padding:6px; min-height:50px; margin-bottom:4px;">
+            <div style="border:1px solid #000; padding:6px; min-height:70px; margin-bottom:4px;">
                 <div style="font-weight:bold; margin-bottom:2px;">${informe.titulo}</div>
                 <div style="white-space:pre-wrap;">${informe.resumen}</div>
             </div>
@@ -2264,12 +2264,12 @@ async function exportarPDF(id) {
 
         <div style="margin-bottom:6px;">
             <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">4. Descargo del Alumno/a</div>
-            <div style="border:1px solid #000; padding:6px; min-height:60px;">${informe.descargo ? `<div style="white-space:pre-wrap;">${informe.descargo}</div>` : ''}</div>
+            <div style="border:1px solid #000; padding:6px; min-height:80px;">${informe.descargo ? `<div style="white-space:pre-wrap;">${informe.descargo}</div>` : ''}</div>
         </div>
 
         <div style="margin-bottom:6px;">
             <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">5. Observaciones</div>
-            <div style="border:1px solid #000; padding:6px; min-height:60px;">${informe.observaciones ? `<div style="white-space:pre-wrap;">${informe.observaciones}</div>` : ''}</div>
+            <div style="border:1px solid #000; padding:6px; min-height:80px;">${informe.observaciones ? `<div style="white-space:pre-wrap;">${informe.observaciones}</div>` : ''}</div>
         </div>
 
         <div>
