@@ -2202,101 +2202,97 @@ window.eliminarPlantilla = async function(id) {
 };
 
 // ==================== EXPORTAR PDF ====================
-function exportarPDF(id) {
+async function exportarPDF(id) {
     const informe = getInforme(id);
     if (!informe) return;
     const alumno = getAlumno(informe.alumno_id);
     const creador = getNombreUsuario(informe.creado_por);
     const chk = (val) => informe.instancia === val ? '☑' : '☐';
+
+    // Cargar logo como base64
+    let logoSrc = '';
+    try {
+        const res = await fetch('./logo-informe.png');
+        const blob = await res.blob();
+        logoSrc = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+        });
+    } catch (e) { /* sin logo */ }
+
     const container = document.createElement('div');
-    container.style.cssText = 'padding:30px 40px; font-family:Arial,Helvetica,sans-serif; color:#000; max-width:800px; margin:0 auto; background:#fff; font-size:13px; line-height:1.5;';
+    container.style.cssText = 'padding:12px 24px; font-family:Arial,Helvetica,sans-serif; color:#000; max-width:800px; margin:0 auto; background:#fff; font-size:11px; line-height:1.4;';
     container.innerHTML = `
-        <div style="text-align:center; margin-bottom:20px;">
-            <div style="font-size:11px; font-weight:bold;">GOBIERNO DE LA CIUDAD AUTÓNOMA DE BUENOS AIRES</div>
-            <div style="font-size:11px; font-weight:bold;">MINISTERIO DE EDUCACIÓN</div>
-            <div style="font-size:12px; font-weight:bold; margin-top:4px;">E.T. N°35 D.E. 18, "Ing. Eduardo Latzina"</div>
-            <div style="font-size:14px; font-weight:bold; margin-top:8px; text-decoration:underline;">INFORME DE CONDUCTA ESCOLAR</div>
+        <div style="text-align:center; margin-bottom:6px;">
+            ${logoSrc ? `<img src="${logoSrc}" style="height:50px; margin-bottom:4px;" />` : ''}
+            <div style="font-size:10px; font-weight:bold;">GOBIERNO DE LA CIUDAD AUTÓNOMA DE BUENOS AIRES</div>
+            <div style="font-size:10px; font-weight:bold;">MINISTERIO DE EDUCACIÓN</div>
+            <div style="font-size:10px; font-weight:bold; margin-top:2px;">E.T. N°35 D.E. 18, "Ing. Eduardo Latzina"</div>
+            <div style="font-size:12px; font-weight:bold; margin-top:4px; text-decoration:underline;">INFORME DE CONDUCTA ESCOLAR</div>
         </div>
 
-        <div style="margin-bottom:16px;">
-            <div style="font-weight:bold; font-size:12px; margin-bottom:6px;">1. Datos del Alumno/a</div>
+        <div style="margin-bottom:6px;">
+            <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">1. Datos del Alumno/a</div>
             <table style="width:100%; border-collapse:collapse;">
-                <tr>
-                    <td style="padding:4px 0; width:100px;">Alumno/a:</td>
-                    <td style="padding:4px 0; border-bottom:1px solid #000;">${alumno ? `${alumno.apellido}, ${alumno.nombre}` : ''}</td>
-                </tr>
-                <tr>
-                    <td style="padding:4px 0;">Año:</td>
-                    <td style="padding:4px 0; border-bottom:1px solid #000;">${alumno ? alumno.curso : ''}</td>
-                </tr>
-                <tr>
-                    <td style="padding:4px 0;">División:</td>
-                    <td style="padding:4px 0; border-bottom:1px solid #000;">${alumno ? alumno.division : ''}</td>
-                </tr>
-                ${alumno?.turno ? `<tr><td style="padding:4px 0;">Turno:</td><td style="padding:4px 0; border-bottom:1px solid #000;">${alumno.turno}</td></tr>` : ''}
+                <tr><td style="padding:2px 0; width:80px;">Alumno/a:</td><td style="padding:2px 0; border-bottom:1px solid #000;">${alumno ? `${alumno.apellido}, ${alumno.nombre}` : ''}</td></tr>
+                <tr><td style="padding:2px 0;">Año:</td><td style="padding:2px 0; border-bottom:1px solid #000;">${alumno ? alumno.curso : ''}</td></tr>
+                <tr><td style="padding:2px 0;">División:</td><td style="padding:2px 0; border-bottom:1px solid #000;">${alumno ? alumno.division : ''}</td></tr>
+                ${alumno?.turno ? `<tr><td style="padding:2px 0;">Turno:</td><td style="padding:2px 0; border-bottom:1px solid #000;">${alumno.turno}</td></tr>` : ''}
             </table>
         </div>
 
-        <div style="margin-bottom:16px;">
-            <div style="font-weight:bold; font-size:12px; margin-bottom:6px;">2. Descripción de la Acción</div>
-            <p style="margin:0 0 8px;">Ha realizado la acción que se describe a continuación:</p>
-            <div style="border:1px solid #000; padding:10px; min-height:80px; margin-bottom:8px;">
-                <div style="font-weight:bold; margin-bottom:4px;">${informe.titulo}</div>
+        <div style="margin-bottom:6px;">
+            <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">2. Descripción de la Acción</div>
+            <p style="margin:0 0 4px;">Ha realizado la acción que se describe a continuación:</p>
+            <div style="border:1px solid #000; padding:6px; min-height:50px; margin-bottom:4px;">
+                <div style="font-weight:bold; margin-bottom:2px;">${informe.titulo}</div>
                 <div style="white-space:pre-wrap;">${informe.resumen}</div>
             </div>
             <p style="margin:0;">transgrediendo normas del reglamento y convivencia de la escuela.</p>
         </div>
 
-        <div style="margin-bottom:16px;">
-            <div style="font-weight:bold; font-size:12px; margin-bottom:6px;">3. Solicitud de Sanción</div>
+        <div style="margin-bottom:6px;">
+            <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">3. Solicitud de Sanción</div>
             <table style="width:100%; border-collapse:collapse;">
-                <tr><td style="padding:4px 0; width:120px;">Docente:</td><td style="padding:4px 0; border-bottom:1px solid #000;">${creador}</td></tr>
-                <tr><td style="padding:4px 0;">Cargo / Función:</td><td style="padding:4px 0; border-bottom:1px solid #000;">Docente</td></tr>
-                <tr><td style="padding:4px 0;">Fecha:</td><td style="padding:4px 0; border-bottom:1px solid #000;">${formatearFecha(informe.fecha_creacion)}</td></tr>
-                <tr><td style="padding:4px 0;">Firma:</td><td style="padding:4px 0; border-bottom:1px solid #000;"></td></tr>
+                <tr><td style="padding:2px 0; width:100px;">Docente:</td><td style="padding:2px 0; border-bottom:1px solid #000;">${creador}</td></tr>
+                <tr><td style="padding:2px 0;">Cargo / Función:</td><td style="padding:2px 0; border-bottom:1px solid #000;">Docente</td></tr>
+                <tr><td style="padding:2px 0;">Fecha:</td><td style="padding:2px 0; border-bottom:1px solid #000;">${formatearFecha(informe.fecha_creacion)}</td></tr>
+                <tr><td style="padding:2px 0;">Firma:</td><td style="padding:2px 0; border-bottom:1px solid #000;"></td></tr>
             </table>
         </div>
 
-        <div style="margin-bottom:16px;">
-            <div style="font-weight:bold; font-size:12px; margin-bottom:6px;">4. Descargo del Alumno/a</div>
-            <div style="border:1px solid #000; padding:10px; min-height:60px;">
-                ${informe.descargo ? `<div style="white-space:pre-wrap;">${informe.descargo}</div>` : ''}
-            </div>
+        <div style="margin-bottom:6px;">
+            <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">4. Descargo del Alumno/a</div>
+            <div style="border:1px solid #000; padding:6px; min-height:36px;">${informe.descargo ? `<div style="white-space:pre-wrap;">${informe.descargo}</div>` : ''}</div>
         </div>
 
-        <div style="margin-bottom:16px;">
-            <div style="font-weight:bold; font-size:12px; margin-bottom:6px;">5. Observaciones</div>
-            <div style="border:1px solid #000; padding:10px; min-height:60px;">
-                ${informe.observaciones ? `<div style="white-space:pre-wrap;">${informe.observaciones}</div>` : ''}
-            </div>
+        <div style="margin-bottom:6px;">
+            <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">5. Observaciones</div>
+            <div style="border:1px solid #000; padding:6px; min-height:36px;">${informe.observaciones ? `<div style="white-space:pre-wrap;">${informe.observaciones}</div>` : ''}</div>
         </div>
 
-        <div style="margin-bottom:16px;">
-            <div style="font-weight:bold; font-size:12px; margin-bottom:6px;">6. Determinación de la Sanción</div>
-            <p style="margin:0 0 8px;">Se considera que corresponde:</p>
-            <div style="margin-bottom:6px;">${chk('leve')}&nbsp;&nbsp;1° Instancia — LEVE</div>
-            <div style="margin-bottom:6px;">${chk('grave')}&nbsp;&nbsp;2° Instancia — GRAVE</div>
-            <div style="margin-bottom:6px;">${chk('muy_grave')}&nbsp;&nbsp;3° Instancia — MUY GRAVE</div>
-            <div style="margin-top:10px;">
-                <div style="margin-bottom:4px;">Otra consideración:</div>
-                <div style="border-bottom:1px solid #000; height:20px;"></div>
+        <div>
+            <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">6. Determinación de la Sanción</div>
+            <p style="margin:0 0 4px;">Se considera que corresponde:</p>
+            <div style="margin-bottom:2px;">${chk('leve')}&nbsp;&nbsp;1° Instancia — LEVE</div>
+            <div style="margin-bottom:2px;">${chk('grave')}&nbsp;&nbsp;2° Instancia — GRAVE</div>
+            <div style="margin-bottom:2px;">${chk('muy_grave')}&nbsp;&nbsp;3° Instancia — MUY GRAVE</div>
+            <div style="margin-top:4px;">
+                <div style="margin-bottom:2px;">Otra consideración:</div>
+                <div style="border-bottom:1px solid #000; height:16px;"></div>
             </div>
-            <div style="margin-top:16px;">
+            <div style="margin-top:8px;">
                 <table style="width:100%; border-collapse:collapse;">
-                    <tr>
-                        <td style="padding:4px 0; width:50%;">Firma del Directivo:</td>
-                        <td style="padding:4px 0;">Fecha:</td>
-                    </tr>
-                    <tr>
-                        <td style="padding:4px 0; border-bottom:1px solid #000;"></td>
-                        <td style="padding:4px 0; border-bottom:1px solid #000;"></td>
-                    </tr>
+                    <tr><td style="padding:2px 0; width:50%;">Firma del Directivo:</td><td style="padding:2px 0;">Fecha:</td></tr>
+                    <tr><td style="padding:2px 0; border-bottom:1px solid #000;"></td><td style="padding:2px 0; border-bottom:1px solid #000;"></td></tr>
                 </table>
             </div>
         </div>
     `;
     document.body.appendChild(container);
-    html2pdf().set({ margin: [10,10,10,10], filename: `informe_${alumno ? alumno.apellido : 'doc'}_${informe.fecha_creacion.split('T')[0]}.pdf`, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(container).save().then(() => { document.body.removeChild(container); });
+    await html2pdf().set({ margin: [8,8,8,8], filename: `informe_${alumno ? alumno.apellido : 'doc'}_${informe.fecha_creacion.split('T')[0]}.pdf`, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(container).save();
+    document.body.removeChild(container);
 }
 
 function mostrarDrillDownAnio(anio, data) {
