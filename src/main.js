@@ -2245,7 +2245,7 @@ async function exportarPDF(id) {
         <div style="margin-bottom:6px;">
             <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">2. Descripción de la Acción</div>
             <p style="margin:0 0 4px;">Ha realizado la acción que se describe a continuación:</p>
-            <div style="border:1px solid #000; padding:6px; min-height:70px; margin-bottom:4px;">
+            <div style="border:1px solid #000; padding:6px; min-height:100px; margin-bottom:4px;">
                 <div style="font-weight:bold; margin-bottom:2px;">${informe.titulo}</div>
                 <div style="white-space:pre-wrap;">${informe.resumen}</div>
             </div>
