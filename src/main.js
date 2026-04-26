@@ -132,7 +132,6 @@ async function cargarInformes() {
     let query = supabaseClient.from('informes')
         .select('*, alumno:alumnos(nombre, apellido, curso, division), creador:perfiles!informes_creado_por_fkey(nombre, apellido), revisor:perfiles!informes_revisado_por_fkey(nombre, apellido), fecha_reunion')
         .order('fecha_creacion', { ascending: false });
-    if (getPerfil().rol !== 'regente') query = query.eq('creado_por', getPerfil().id);
     const { data, error } = await query;
     if (error) { mostrarToast('Error cargando informes', 'error'); return; }
     informes = data || [];
@@ -726,11 +725,14 @@ function filtrarInformes() {
         const matchTurno = !turno || (alumno && alumno.turno === turno);
         const matchEstado = !estado || i.estado === estado;
         const matchInstancia = !instancia || i.instancia === instancia;
+        // Docentes solo ven sus propios informes en la lista general
+        const esRegente = getPerfil()?.rol === 'regente';
+        const matchCreador = esRegente || i.creado_por === getPerfil()?.id;
         // Filtro rápido por tab
         const matchTab = tabInformesActivo === 'todos' ? true :
             tabInformesActivo === 'pendientes' ? i.estado === 'pendiente' :
             i.estado !== 'pendiente';
-        return matchBusqueda && matchCurso && matchDivision && matchTurno && matchEstado && matchInstancia && matchTab;
+        return matchBusqueda && matchCurso && matchDivision && matchTurno && matchEstado && matchInstancia && matchCreador && matchTab;
     });
 
     // Actualizar badges (usando los datos ya filtrados por búsqueda/curso/instancia pero SIN el filtro de tab/estado)
@@ -745,7 +747,8 @@ function filtrarInformes() {
         const matchTurno = !turno || (alumno && alumno.turno === turno);
         const matchEstado = !estado || i.estado === estado;
         const matchInstancia = !instancia || i.instancia === instancia;
-        return matchBusqueda && matchCurso && matchDivision && matchTurno && matchEstado && matchInstancia;
+        const matchCreador = esRegente || i.creado_por === getPerfil()?.id;
+        return matchBusqueda && matchCurso && matchDivision && matchTurno && matchEstado && matchInstancia && matchCreador;
     });
     const badgeTodos = document.getElementById('badgeTodos');
     const badgePendientes = document.getElementById('badgePendientes');
