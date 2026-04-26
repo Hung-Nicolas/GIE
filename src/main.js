@@ -2015,7 +2015,6 @@ window.mostrarModalEliminar = function(id) {
     }
     _eliminarUserId = id;
     document.getElementById('eliminarUserNombre').textContent = `${u.nombre || u.email} (${u.email})`;
-    document.getElementById('eliminarUserPassword').value = '';
     document.getElementById('modalConfirmarEliminar').classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
 };
