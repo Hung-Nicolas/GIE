@@ -365,6 +365,13 @@ BEGIN
         RAISE EXCEPTION 'No podés eliminar tu propio usuario';
     END IF;
 
+    -- No permitir eliminar al administrador principal
+    DECLARE target_email TEXT;
+    SELECT email INTO target_email FROM public.perfiles WHERE id = user_id;
+    IF target_email = 'admin@gie.com' THEN
+        RAISE EXCEPTION 'No se puede eliminar al usuario administrador';
+    END IF;
+
     -- Limpiar referencias en informes
     UPDATE public.informes SET creado_por = NULL WHERE creado_por = user_id;
     UPDATE public.informes SET revisado_por = NULL WHERE revisado_por = user_id;
