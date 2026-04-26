@@ -753,9 +753,10 @@ function filtrarInformes() {
     const badgeTodos = document.getElementById('badgeTodos');
     const badgePendientes = document.getElementById('badgePendientes');
     const badgeResueltos = document.getElementById('badgeResueltos');
-    if (badgeTodos) badgeTodos.textContent = baseFiltrados.length;
-    if (badgePendientes) badgePendientes.textContent = baseFiltrados.filter(i => i.estado === 'pendiente').length;
-    if (badgeResueltos) badgeResueltos.textContent = baseFiltrados.filter(i => i.estado !== 'pendiente').length;
+    // Solo regentes ven los contadores; docentes no deben saber los totales
+    if (badgeTodos) badgeTodos.textContent = esRegente ? baseFiltrados.length : '';
+    if (badgePendientes) badgePendientes.textContent = esRegente ? baseFiltrados.filter(i => i.estado === 'pendiente').length : '';
+    if (badgeResueltos) badgeResueltos.textContent = esRegente ? baseFiltrados.filter(i => i.estado !== 'pendiente').length : '';
 
     renderizarInformes(filtrados);
 }
