@@ -2010,8 +2010,8 @@ let _eliminarUserId = null;
 window.mostrarModalEliminar = function(id) {
     const u = usuarios.find(x => x.id === id);
     if (!u) return;
-    if (u.rol === 'regente' && id !== getPerfil().id) {
-        return mostrarToast('No se puede eliminar a un usuario con rol regente', 'error');
+    if (id === getPerfil().id) {
+        return mostrarToast('No podés eliminar tu propio usuario', 'error');
     }
     _eliminarUserId = id;
     document.getElementById('eliminarUserNombre').textContent = `${u.nombre || u.email} (${u.email})`;

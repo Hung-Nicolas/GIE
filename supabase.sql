@@ -360,10 +360,9 @@ BEGIN
         RAISE EXCEPTION 'Solo el regente puede eliminar usuarios';
     END IF;
 
-    -- No permitir eliminar a otro regente
-    SELECT rol INTO target_rol FROM public.perfiles WHERE id = user_id;
-    IF target_rol = 'regente' AND user_id != auth.uid() THEN
-        RAISE EXCEPTION 'No se puede eliminar a un usuario con rol regente';
+    -- No permitir eliminar el propio usuario
+    IF user_id = auth.uid() THEN
+        RAISE EXCEPTION 'No podés eliminar tu propio usuario';
     END IF;
 
     -- Limpiar referencias en informes
