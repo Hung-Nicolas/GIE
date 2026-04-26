@@ -51,12 +51,21 @@ INSERT INTO public.alumnos (id, nombre, apellido, curso, division, turno) VALUES
 ('a3737373-7373-7373-7373-737373737373', 'Matías',      'Molina',      '6°', '1', 'Mañana'),
 ('a3838383-8383-8383-8383-838383838383', 'Rocío',       'Nuñez',       '6°', '2', 'Tarde'),
 ('a3939393-9393-9393-9393-939393939393', 'Nicolás',     'Ortega',      '5°', '1', 'Noche'),
-('a4040404-0404-0404-0404-040404040404', 'Paula',       'Peralta',     '4°', '1', 'Mañana');
+('a4040404-0404-0404-0404-040404040404', 'c5555555-5555-5555-5555-555555555555', 'Paula',       'Peralta',     '4°', '1', 'Mañana');
+
+
+-- 1b. CATEGORÍAS
+INSERT INTO public.categorias (id, nombre, color, activo) VALUES
+('c1111111-1111-1111-1111-111111111111', 'Conducta', '#ef4444', TRUE),
+('c2222222-2222-2222-2222-222222222222', 'Disciplina', '#f97316', TRUE),
+('c3333333-3333-3333-3333-333333333333', 'Asistencia', '#3b82f6', TRUE),
+('c4444444-4444-4444-4444-444444444444', 'Académica', '#10b981', TRUE),
+('c5555555-5555-5555-5555-555555555555', 'c5555555-5555-5555-5555-555555555555', 'Otros', '#94a3b8', TRUE);
 
 -- 2. INFORMES (~60 informes variados entre múltiples alumnos)
 -- Usamos NULL en creado_por/revisado_por porque los UUIDs de usuarios no existen aún.
 
-INSERT INTO public.informes (alumno_id, tipo_falta, titulo, instancia, resumen, estado, creado_por, revisado_por, fecha_creacion, fecha_revision, motivo_rechazo, observaciones, fecha_reunion) VALUES
+INSERT INTO public.informes (alumno_id, categoria_id, tipo_falta, titulo, instancia, resumen, estado, creado_por, revisado_por, fecha_creacion, fecha_revision, motivo_rechazo, observaciones, fecha_reunion) VALUES
 
 -- === BRUNO ORTIZ (3°) - historial extenso ===
 ('a1515151-5151-5151-5151-515151515151', 'Otra',       'Interrupción reiterada de clase',           'leve',      'El alumno interrumpió la clase en múltiples ocasiones pese a las advertencias del docente.', 'aprobado', NULL, NULL, '2026-04-12 09:00:00+00', '2026-04-13 11:00:00+00', NULL, 'Se contactó a los padres por teléfono.', '2026-04-30'),
@@ -223,4 +232,4 @@ INSERT INTO public.informes (alumno_id, tipo_falta, titulo, instancia, resumen, 
 
 -- === MORENA WAINSTEIN (4°) ===
 ('a2222223-2223-2223-2223-222322232223', 'Académica',  'Copia en trabajo de ciencias',              'grave',     'El trabajo grupal fue copiado de otro curso.', 'rechazado', NULL, NULL, '2026-04-13 13:00:00+00', '2026-04-15 16:00:00+00', 'Falta evidencia del proceso de trabajo.', NULL, NULL),
-('a2222223-2223-2223-2223-222322232223', 'Disciplina', 'Uso de celular durante evaluación',         'muy_grave', 'Fue sorprendida utilizando el celular durante un examen.', 'pendiente', NULL, NULL, '2026-04-22 10:00:00+00', NULL, NULL, NULL, NULL);
+('a2222223-2223-2223-2223-222322232223', 'c5555555-5555-5555-5555-555555555555', 'Disciplina', 'Uso de celular durante evaluación',         'muy_grave', 'Fue sorprendida utilizando el celular durante un examen.', 'pendiente', NULL, NULL, '2026-04-22 10:00:00+00', NULL, NULL, NULL, NULL);

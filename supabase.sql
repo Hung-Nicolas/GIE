@@ -28,10 +28,20 @@ CREATE TABLE IF NOT EXISTS public.perfiles (
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now())
 );
 
--- 3. TABLA INFORMES
+-- 3. TABLA CATEGORÍAS
+CREATE TABLE IF NOT EXISTS public.categorias (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    nombre TEXT NOT NULL UNIQUE,
+    color TEXT NOT NULL DEFAULT '#3b82f6',
+    activo BOOLEAN DEFAULT TRUE,
+    created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now())
+);
+
+-- 4. TABLA INFORMES
 CREATE TABLE IF NOT EXISTS public.informes (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     alumno_id UUID REFERENCES public.alumnos(id) NOT NULL,
+    categoria_id UUID REFERENCES public.categorias(id) ON DELETE SET NULL,
     tipo_falta TEXT NOT NULL,
     titulo TEXT NOT NULL,
     instancia TEXT NOT NULL,
@@ -53,6 +63,7 @@ CREATE TABLE IF NOT EXISTS public.informes (
 ALTER TABLE public.alumnos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.perfiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.informes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.categorias ENABLE ROW LEVEL SECURITY;
 
 -- Función helper para obtener el rol del usuario logueado
 CREATE OR REPLACE FUNCTION public.perfil_rol()
@@ -96,6 +107,28 @@ CREATE POLICY "perfiles_update_regente"
     TO authenticated
     USING (public.perfil_rol() = 'regente' OR id = auth.uid())
     WITH CHECK (public.perfil_rol() = 'regente' OR id = auth.uid());
+
+-- -----------------------------------------------------------
+-- CATEGORÍAS: todos pueden leer, solo regentes pueden modificar
+-- -----------------------------------------------------------
+DROP POLICY IF EXISTS "categorias_select_all" ON public.categorias;
+CREATE POLICY "categorias_select_all"
+    ON public.categorias FOR SELECT
+    TO anon, authenticated
+    USING (activo = TRUE);
+
+DROP POLICY IF EXISTS "categorias_insert_regente" ON public.categorias;
+CREATE POLICY "categorias_insert_regente"
+    ON public.categorias FOR INSERT
+    TO authenticated
+    WITH CHECK (public.perfil_rol() = 'regente');
+
+DROP POLICY IF EXISTS "categorias_update_regente" ON public.categorias;
+CREATE POLICY "categorias_update_regente"
+    ON public.categorias FOR UPDATE
+    TO authenticated
+    USING (public.perfil_rol() = 'regente')
+    WITH CHECK (public.perfil_rol() = 'regente');
 
 -- -----------------------------------------------------------
 -- INFORMES:

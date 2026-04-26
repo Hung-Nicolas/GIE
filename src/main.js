@@ -8,6 +8,7 @@ import './styles.css';
 let alumnos = [];
 let informes = [];
 let usuarios = [];
+let categorias = [];
 let charts = {};
 let rechazoId = null;
 let calCurrentDate = new Date();
@@ -92,6 +93,14 @@ const PLANTILLAS_INFORME = {
 };
 
 // --- Carga inicial de datos ---
+async function cargarCategorias() {
+    if (!USE_SUPABASE) return;
+    const { data, error } = await supabaseClient.from('categorias').select('*').eq('activo', true).order('nombre');
+    if (error) { console.error('[GIE] Error cargando categorías:', error); return; }
+    categorias = data || [];
+    renderizarSelectCategorias();
+}
+
 async function cargarAlumnos() {
     if (!USE_SUPABASE) return;
     const { data, error } = await supabaseClient.from('alumnos').select('*').eq('activo', true).order('apellido');
@@ -203,7 +212,7 @@ async function iniciarApp() {
     });
 
 
-    await Promise.all([cargarAlumnos(), cargarInformes(), cargarPlantillas()]);
+    await Promise.all([cargarAlumnos(), cargarInformes(), cargarPlantillas(), cargarCategorias()]);
     initFiltros();
 
     if (esRegente) {
@@ -918,15 +927,18 @@ async function guardarInforme(e) {
     const resumen = document.getElementById('resumen').value.trim();
     const observaciones = document.getElementById('observaciones').value.trim();
     const instancia = document.getElementById('instancia').value;
+    const categoriaId = document.getElementById('categoriaInforme').value;
 
     // Validación de límites
     if (titulo.length > 200) return mostrarToast('El título no puede exceder 200 caracteres', 'error');
     if (resumen.length > 2000) return mostrarToast('La descripción no puede exceder 2000 caracteres', 'error');
     if (observaciones.length > 1000) return mostrarToast('Las observaciones no pueden exceder 1000 caracteres', 'error');
     if (!instancia) return mostrarToast('Debe seleccionar una instancia', 'error');
+    if (!categoriaId) return mostrarToast('Debe seleccionar una categoría', 'error');
 
     const datos = {
         alumno_id: alumnoId,
+        categoria_id: categoriaId,
         tipo_falta: 'Otra',
         instancia,
         titulo,
@@ -972,6 +984,7 @@ function cancelarForm() {
     document.getElementById('searchAlumno').value = '';
     document.getElementById('resultadosAlumno').classList.add('hidden');
     document.getElementById('plantillaInforme').value = '';
+    document.getElementById('categoriaInforme').value = '';
 
     document.getElementById('editId').value = '';
     document.getElementById('tituloForm').textContent = 'Nuevo Informe';
@@ -1168,6 +1181,7 @@ function editarInforme(id) {
     document.getElementById('alumnoNombre').textContent = alumno ? `${alumno.apellido}, ${alumno.nombre}` : '';
     document.getElementById('alumnoCurso').textContent = alumno ? `${alumno.curso} ${alumno.division}${alumno.turno ? ' · ' + alumno.turno : ''}` : '';
     document.getElementById('alumnoSeleccionado').classList.remove('hidden');
+    document.getElementById('categoriaInforme').value = informe.categoria_id || '';
     document.getElementById('instancia').value = informe.instancia;
     document.getElementById('titulo').value = informe.titulo;
     document.getElementById('resumen').value = informe.resumen;
@@ -1435,29 +1449,32 @@ function cargarEstadisticas() {
         }
     });
 
-    const porTitulo = {};
-    informes.forEach(i => { porTitulo[i.titulo] = (porTitulo[i.titulo] || 0) + 1; });
-    const titulosOrdenados = Object.entries(porTitulo).sort((a, b) => b[1] - a[1]);
-    const topN = 6;
-    const tiposLabels = titulosOrdenados.slice(0, topN).map(e => e[0]);
-    const tiposData = titulosOrdenados.slice(0, topN).map(e => e[1]);
-    const otrosCount = titulosOrdenados.slice(topN).reduce((sum, e) => sum + e[1], 0);
-    if (otrosCount > 0) { tiposLabels.push('Otros'); tiposData.push(otrosCount); }
+    const porCategoria = {};
+    informes.forEach(i => {
+        const cat = categorias.find(c => c.id === i.categoria_id);
+        const nombre = cat ? cat.nombre : 'Sin categoría';
+        porCategoria[nombre] = (porCategoria[nombre] || 0) + 1;
+    });
+    const catOrdenadas = Object.entries(porCategoria).sort((a, b) => b[1] - a[1]);
+    const tiposLabels = catOrdenadas.map(e => e[0]);
+    const tiposData = catOrdenadas.map(e => e[1]);
+    const catColors = catOrdenadas.map(e => {
+        const cat = categorias.find(c => c.nombre === e[0]);
+        return cat ? cat.color : '#94a3b8';
+    });
     const ctxTipos = document.getElementById('chartTipos').getContext('2d');
     if (charts.tipos) charts.tipos.destroy();
-    const bgColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#94a3b8'];
     charts.tipos = new Chart(ctxTipos, {
         type: 'pie',
-        data: { labels: tiposLabels, datasets: [{ data: tiposData, backgroundColor: bgColors }] },
+        data: { labels: tiposLabels, datasets: [{ data: tiposData, backgroundColor: catColors }] },
         options: {
             responsive: false,
             animation: { duration: 1200, easing: 'easeOutQuart' },
             onClick: (e, elements) => {
                 if (!elements.length) return;
                 const label = tiposLabels[elements[0].index];
-                const filtrados = label === 'Otros'
-                    ? informes.filter(i => !tiposLabels.slice(0, -1).includes(i.titulo))
-                    : informes.filter(i => i.titulo === label);
+                const cat = categorias.find(c => c.nombre === label);
+                const filtrados = cat ? informes.filter(i => i.categoria_id === cat.id) : informes.filter(i => !i.categoria_id);
                 if (filtrados.length) abrirModalGrupoInformes(filtrados, null, true);
             },
             plugins: { legend: { position: 'bottom' } }
@@ -2358,6 +2375,18 @@ function renderizarSelectPlantillas() {
     }
 
     select.innerHTML = html;
+}
+
+function renderizarSelectCategorias() {
+    const select = document.getElementById('categoriaInforme');
+    if (!select) return;
+    const actual = select.value;
+    let html = '<option value="">Seleccione...</option>';
+    categorias.forEach(c => {
+        html += `<option value="${c.id}">${c.nombre}</option>`;
+    });
+    select.innerHTML = html;
+    if (actual) select.value = actual;
 }
 
 window.abrirModalPlantillas = function() {
