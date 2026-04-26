@@ -471,13 +471,21 @@ function showSection(sectionId) {
     if (window.innerWidth < 1024) {
         document.getElementById('sidebar').classList.add('sidebar-hidden');
         document.getElementById('overlay').classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
     }
     window.scrollTo(0,0);
 }
 
 function toggleSidebar() {
-    document.getElementById('sidebar').classList.toggle('sidebar-hidden');
+    const sidebar = document.getElementById('sidebar');
+    const isOpening = sidebar.classList.contains('sidebar-hidden');
+    sidebar.classList.toggle('sidebar-hidden');
     document.getElementById('overlay').classList.toggle('hidden');
+    if (isOpening) {
+        document.body.classList.add('overflow-hidden');
+    } else {
+        document.body.classList.remove('overflow-hidden');
+    }
 }
 
 let _logoutCountdownInterval = null;
