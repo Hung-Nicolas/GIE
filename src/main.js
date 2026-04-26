@@ -2297,6 +2297,95 @@ async function exportarPDF(id) {
     document.body.removeChild(container);
 }
 
+async function exportarPDFEnBlanco() {
+    // Cargar logo como base64
+    let logoSrc = '';
+    try {
+        const res = await fetch('./logo-informe.png');
+        const blob = await res.blob();
+        logoSrc = await new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result);
+            reader.readAsDataURL(blob);
+        });
+    } catch (e) { /* sin logo */ }
+
+    const container = document.createElement('div');
+    container.style.cssText = 'padding:12px 24px; font-family:Arial,Helvetica,sans-serif; color:#000; max-width:800px; margin:0 auto; background:#fff; font-size:11px; line-height:1.4;';
+    container.innerHTML = `
+        <div style="text-align:center; margin-bottom:10px;">
+            ${logoSrc ? `<img src="${logoSrc}" style="height:50px; margin:0 auto 4px; display:block;" />` : ''}
+            <div style="font-size:10px; font-weight:bold;">GOBIERNO DE LA CIUDAD AUTÓNOMA DE BUENOS AIRES</div>
+            <div style="font-size:10px; font-weight:bold;">MINISTERIO DE EDUCACIÓN</div>
+            <div style="font-size:10px; font-weight:bold; margin-top:2px;">E.T. N°35 D.E. 18, "Ing. Eduardo Latzina"</div>
+            <div style="font-size:12px; font-weight:bold; margin-top:4px; text-decoration:underline;">INFORME DE CONDUCTA ESCOLAR</div>
+        </div>
+
+        <div style="margin-bottom:6px;">
+            <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">1. Datos del Alumno/a</div>
+            <table style="width:100%; border-collapse:collapse;">
+                <tr><td style="padding:2px 0 10px 0; width:80px;">Alumno/a:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;"></td></tr>
+                <tr><td style="padding:2px 0 10px 0;">Año:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;"></td></tr>
+                <tr><td style="padding:2px 0 10px 0;">División:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;"></td></tr>
+                <tr><td style="padding:2px 0 10px 0;">Turno:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;"></td></tr>
+            </table>
+        </div>
+
+        <div style="margin-bottom:6px;">
+            <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">2. Descripción de la Acción</div>
+            <p style="margin:0 0 4px;">Ha realizado la acción que se describe a continuación:</p>
+            <div style="border:1px solid #000; padding:6px; min-height:100px; margin-bottom:4px;">
+                <div style="font-weight:bold; margin-bottom:2px;"></div>
+                <div></div>
+            </div>
+            <p style="margin:0;">transgrediendo normas del reglamento y convivencia de la escuela.</p>
+        </div>
+
+        <div style="margin-bottom:6px;">
+            <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">3. Solicitud de Sanción</div>
+            <table style="width:100%; border-collapse:collapse;">
+                <tr><td style="padding:2px 0 10px 0; width:100px;">Docente:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;"></td></tr>
+                <tr><td style="padding:2px 0 10px 0;">Cargo / Función:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;"></td></tr>
+                <tr><td style="padding:2px 0 10px 0;">Fecha:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;"></td></tr>
+                <tr><td style="padding:2px 0 10px 0;">Firma:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;"></td></tr>
+            </table>
+        </div>
+
+        <div style="margin-bottom:6px;">
+            <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">4. Descargo del Alumno/a</div>
+            <div style="border:1px solid #000; padding:6px; min-height:80px;"></div>
+        </div>
+
+        <div style="margin-bottom:6px;">
+            <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">5. Observaciones</div>
+            <div style="border:1px solid #000; padding:6px; min-height:80px;"></div>
+        </div>
+
+        <div>
+            <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">6. Determinación de la Sanción</div>
+            <p style="margin:0 0 4px;">Se considera que corresponde:</p>
+            <div style="display:flex; gap:16px; flex-wrap:wrap;">
+                <span>☐&nbsp;&nbsp;1° Instancia — LEVE</span>
+                <span>☐&nbsp;&nbsp;2° Instancia — GRAVE</span>
+                <span>☐&nbsp;&nbsp;3° Instancia — MUY GRAVE</span>
+            </div>
+            <div style="margin-top:4px;">
+                <div style="margin-bottom:6px;">Otra consideración:</div>
+                <div style="border-bottom:1px solid #000; height:24px;"></div>
+            </div>
+            <div style="margin-top:8px;">
+                <table style="width:100%; border-collapse:collapse;">
+                    <tr><td style="padding:2px 0 10px 0; width:50%;">Firma del Directivo:</td><td style="padding:2px 0 10px 0;">Fecha:</td></tr>
+                    <tr><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;"></td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;"></td></tr>
+                </table>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(container);
+    await html2pdf().set({ margin: [8,8,8,8], filename: `informe_en_blanco_${new Date().toISOString().split('T')[0]}.pdf`, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(container).save();
+    document.body.removeChild(container);
+}
+
 function mostrarDrillDownAnio(anio, data) {
     const container = document.getElementById('drillDownAnio');
     const titulo = document.getElementById('drillDownTitulo');
@@ -2401,6 +2490,7 @@ window.abrirModalGrupoInformes = abrirModalGrupoInformes;
 window.cerrarModalRechazo = cerrarModalRechazo;
 window.confirmarRechazo = confirmarRechazo;
 window.exportarPDF = exportarPDF;
+window.exportarPDFEnBlanco = exportarPDFEnBlanco;
 window.limpiarAlumno = limpiarAlumno;
 window.cancelarForm = cancelarForm;
 window.filtrarInformes = filtrarInformes;

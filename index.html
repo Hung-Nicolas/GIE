@@ -327,9 +327,14 @@
             <div id="content-informes" class="section-content hidden">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 animate-enter">
                 <h1 class="text-2xl font-bold text-slate-800">Informes</h1>
+                <div class="flex gap-2">
+                <button onclick="exportarPDFEnBlanco()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm" title="Imprimir informe en blanco">
+                    <i class="fas fa-print"></i><span class="hidden sm:inline">Imprimir en blanco</span>
+                </button>
                 <button id="btn-nuevo-informe" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm">
                     <i class="fas fa-plus"></i><span>Nuevo Informe</span>
                 </button>
+                </div>
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6 animate-enter animate-delay-100">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
