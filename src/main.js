@@ -1435,21 +1435,29 @@ function cargarEstadisticas() {
         }
     });
 
-    const porTipo = {};
-    informes.forEach(i => { porTipo[i.tipo_falta] = (porTipo[i.tipo_falta] || 0) + 1; });
-    const tiposLabels = Object.keys(porTipo);
+    const porTitulo = {};
+    informes.forEach(i => { porTitulo[i.titulo] = (porTitulo[i.titulo] || 0) + 1; });
+    const titulosOrdenados = Object.entries(porTitulo).sort((a, b) => b[1] - a[1]);
+    const topN = 6;
+    const tiposLabels = titulosOrdenados.slice(0, topN).map(e => e[0]);
+    const tiposData = titulosOrdenados.slice(0, topN).map(e => e[1]);
+    const otrosCount = titulosOrdenados.slice(topN).reduce((sum, e) => sum + e[1], 0);
+    if (otrosCount > 0) { tiposLabels.push('Otros'); tiposData.push(otrosCount); }
     const ctxTipos = document.getElementById('chartTipos').getContext('2d');
     if (charts.tipos) charts.tipos.destroy();
+    const bgColors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#94a3b8'];
     charts.tipos = new Chart(ctxTipos, {
         type: 'pie',
-        data: { labels: tiposLabels, datasets: [{ data: Object.values(porTipo), backgroundColor: ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'] }] },
+        data: { labels: tiposLabels, datasets: [{ data: tiposData, backgroundColor: bgColors }] },
         options: {
             responsive: false,
             animation: { duration: 1200, easing: 'easeOutQuart' },
             onClick: (e, elements) => {
                 if (!elements.length) return;
-                const tipo = tiposLabels[elements[0].index];
-                const filtrados = informes.filter(i => i.tipo_falta === tipo);
+                const label = tiposLabels[elements[0].index];
+                const filtrados = label === 'Otros'
+                    ? informes.filter(i => !tiposLabels.slice(0, -1).includes(i.titulo))
+                    : informes.filter(i => i.titulo === label);
                 if (filtrados.length) abrirModalGrupoInformes(filtrados, null, true);
             },
             plugins: { legend: { position: 'bottom' } }
