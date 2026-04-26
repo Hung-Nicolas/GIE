@@ -56,6 +56,8 @@ export async function restoreSession() {
 export function clearSession() {
     if (USE_SUPABASE) supabaseClient.auth.signOut();
     _perfil = null;
+    sessionStorage.clear();
+    localStorage.clear();
 }
 
 // ==================== LOGIN ====================

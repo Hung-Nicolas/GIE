@@ -16,10 +16,9 @@ if (USE_SUPABASE) {
     try {
         supabaseClient = createClient(SUPABASE_URL, SUPABASE_KEY, {
             auth: {
-                persistSession: true,
-                autoRefreshToken: true,
-                detectSessionInUrl: false,
-                storage: window.sessionStorage
+                persistSession: false,
+                autoRefreshToken: false,
+                detectSessionInUrl: false
             }
         });
         window.supabaseClient = supabaseClient;
