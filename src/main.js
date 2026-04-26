@@ -464,6 +464,7 @@ function mostrarModalLogout() {
     if (!modal || !btn || !countdownEl) return;
 
     modal.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
     btn.disabled = true;
     btn.classList.add('opacity-50', 'cursor-not-allowed');
     btn.classList.remove('hover:bg-red-700');
@@ -488,6 +489,7 @@ function mostrarModalLogout() {
 window.cerrarModalLogout = function() {
     const modal = document.getElementById('modalLogout');
     if (modal) modal.classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
     if (_logoutCountdownInterval) {
         clearInterval(_logoutCountdownInterval);
         _logoutCountdownInterval = null;
@@ -1022,11 +1024,12 @@ function verDetalle(id) {
     }
     acciones.innerHTML += `<button onclick="exportarPDF('${informe.id}')" class="min-w-[120px] bg-slate-600 hover:bg-slate-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-file-pdf mr-2"></i>PDF</button>`;
     modal.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
 }
 
-function cerrarModal() { document.getElementById('modalDetalle').classList.add('hidden'); }
+function cerrarModal() { document.getElementById('modalDetalle').classList.add('hidden'); document.body.classList.remove('overflow-hidden'); }
 
-function cerrarModalGrupo() { document.getElementById('modalGrupoInformes').classList.add('hidden'); }
+function cerrarModalGrupo() { document.getElementById('modalGrupoInformes').classList.add('hidden'); document.body.classList.remove('overflow-hidden'); }
 
 function abrirModalGrupoInformes(informesGrupo, timestampDia, mostrarAlumno = false) {
     const modal = document.getElementById('modalGrupoInformes');
@@ -1054,6 +1057,7 @@ function abrirModalGrupoInformes(informesGrupo, timestampDia, mostrarAlumno = fa
     `}).join('');
 
     modal.classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
 }
 
 async function cambiarEstado(id, nuevoEstado, options = {}) {
@@ -1079,6 +1083,7 @@ async function cambiarEstado(id, nuevoEstado, options = {}) {
 function mostrarRechazo(id) {
     rechazoId = id;
     document.getElementById('modalRechazo').classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
     document.getElementById('motivoRechazo').value = '';
     const modalContent = document.getElementById('modalRechazo').querySelector('.bg-white');
     if (modalContent) {
@@ -1089,6 +1094,7 @@ function mostrarRechazo(id) {
 }
 function cerrarModalRechazo() {
     document.getElementById('modalRechazo').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
     rechazoId = null;
     window._rechazoItemId = null;
     window._rechazoItemEl = null;
@@ -1942,10 +1948,12 @@ window.editarUsuarioForm = function(id) {
     document.getElementById('editUserPassword').disabled = false;
     document.getElementById('editUserPassword').classList.remove('bg-slate-100');
     document.getElementById('modalEditarUsuario').classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
 };
 
 window.cerrarModalEditarUsuario = function() {
     document.getElementById('modalEditarUsuario').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
 };
 
 window.guardarEdicionUsuario = async function() {
@@ -2009,11 +2017,13 @@ window.mostrarModalEliminar = function(id) {
     document.getElementById('eliminarUserNombre').textContent = `${u.nombre || u.email} (${u.email})`;
     document.getElementById('eliminarUserPassword').value = '';
     document.getElementById('modalConfirmarEliminar').classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
 };
 
 window.cerrarModalEliminar = function() {
     _eliminarUserId = null;
     document.getElementById('modalConfirmarEliminar').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
 };
 
 window.confirmarEliminarUsuario = async function() {
@@ -2114,10 +2124,12 @@ function renderizarSelectPlantillas() {
 
 window.abrirModalPlantillas = function() {
     document.getElementById('modalPlantillas').classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
     renderizarListaPlantillas();
 };
 window.cerrarModalPlantillas = function() {
     document.getElementById('modalPlantillas').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
 };
 
 function renderizarListaPlantillas() {
@@ -2506,6 +2518,7 @@ window.confirmarEliminarUsuario = confirmarEliminarUsuario;
 // ==================== CREAR ALUMNO INLINE ====================
 window.mostrarModalCrearAlumno = function() {
     document.getElementById('modalCrearAlumno').classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
     document.getElementById('newAlumnoNombre').value = '';
     document.getElementById('newAlumnoApellido').value = '';
     document.getElementById('newAlumnoCurso').value = '';
@@ -2514,6 +2527,7 @@ window.mostrarModalCrearAlumno = function() {
 };
 window.cerrarModalCrearAlumno = function() {
     document.getElementById('modalCrearAlumno').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
 };
 window.guardarNuevoAlumno = async function() {
     const nombre = document.getElementById('newAlumnoNombre').value.trim();
@@ -2542,9 +2556,11 @@ window.mostrarModalFechaReunion = function(informeId, callback) {
     document.getElementById('fechaReunionInput').value = '';
     document.getElementById('reunionObservacion').value = '';
     document.getElementById('modalFechaReunion').classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
 };
 window.cerrarModalFechaReunion = function() {
     document.getElementById('modalFechaReunion').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
     _reunionCallback = null;
 };
 window.confirmarFechaReunion = async function(omitir) {
@@ -2554,6 +2570,7 @@ window.confirmarFechaReunion = async function(omitir) {
         fechaReunion = document.getElementById('fechaReunionInput').value || null;
     }
     document.getElementById('modalFechaReunion').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
     if (_reunionCallback) {
         await _reunionCallback(informeId, fechaReunion);
         _reunionCallback = null;
@@ -2565,9 +2582,11 @@ window.mostrarModalGestionReunion = function(informeId, fechaActual) {
     document.getElementById('gestionReunionInformeId').value = informeId;
     document.getElementById('gestionReunionFecha').value = fechaActual || '';
     document.getElementById('modalGestionReunion').classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
 };
 window.cerrarModalGestionReunion = function() {
     document.getElementById('modalGestionReunion').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
 };
 window.guardarCambioReunion = async function() {
     const id = document.getElementById('gestionReunionInformeId').value;
