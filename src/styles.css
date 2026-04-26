@@ -10,6 +10,8 @@ body {
 
 .sidebar {
     transition: transform 0.3s ease;
+    touch-action: none;
+    overscroll-behavior: none;
 }
 
 .sidebar-hidden {
