@@ -230,6 +230,14 @@ function setupEventListeners() {
     document.getElementById('menuBtn').addEventListener('click', toggleSidebar);
     document.getElementById('overlay').addEventListener('click', toggleSidebar);
 
+    // Evitar scroll/deslizamiento en el sidebar en dispositivos táctiles
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar) {
+        sidebar.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+        }, { passive: false });
+    }
+
     // Navegación lateral
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.addEventListener('click', () => {
