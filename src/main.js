@@ -2028,21 +2028,6 @@ window.cerrarModalEliminar = function() {
 
 window.confirmarEliminarUsuario = async function() {
     if (!_eliminarUserId) return;
-    const password = document.getElementById('eliminarUserPassword').value;
-    if (!password) return mostrarToast('Debes ingresar tu contraseña para confirmar', 'error');
-
-    const perfil = getPerfil();
-    if (!perfil?.email) return mostrarToast('No se pudo obtener tu sesión', 'error');
-
-    const { error: authError } = await supabaseClient.auth.signInWithPassword({
-        email: perfil.email,
-        password
-    });
-    if (authError) {
-        console.error('[GIE] Error auth signInWithPassword:', authError);
-        return mostrarToast('Error de autenticación: ' + (authError.message || 'Contraseña incorrecta'), 'error');
-    }
-
     const id = _eliminarUserId;
     const u = usuarios.find(x => x.id === id);
     const row = document.getElementById(`user-row-${id}`);
