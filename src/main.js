@@ -2264,20 +2264,22 @@ async function exportarPDF(id) {
 
         <div style="margin-bottom:6px;">
             <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">4. Descargo del Alumno/a</div>
-            <div style="border:1px solid #000; padding:6px; min-height:36px;">${informe.descargo ? `<div style="white-space:pre-wrap;">${informe.descargo}</div>` : ''}</div>
+            <div style="border:1px solid #000; padding:6px; min-height:60px;">${informe.descargo ? `<div style="white-space:pre-wrap;">${informe.descargo}</div>` : ''}</div>
         </div>
 
         <div style="margin-bottom:6px;">
             <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">5. Observaciones</div>
-            <div style="border:1px solid #000; padding:6px; min-height:36px;">${informe.observaciones ? `<div style="white-space:pre-wrap;">${informe.observaciones}</div>` : ''}</div>
+            <div style="border:1px solid #000; padding:6px; min-height:60px;">${informe.observaciones ? `<div style="white-space:pre-wrap;">${informe.observaciones}</div>` : ''}</div>
         </div>
 
         <div>
             <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">6. Determinación de la Sanción</div>
             <p style="margin:0 0 4px;">Se considera que corresponde:</p>
-            <div style="margin-bottom:2px;">${chk('leve')}&nbsp;&nbsp;1° Instancia — LEVE</div>
-            <div style="margin-bottom:2px;">${chk('grave')}&nbsp;&nbsp;2° Instancia — GRAVE</div>
-            <div style="margin-bottom:2px;">${chk('muy_grave')}&nbsp;&nbsp;3° Instancia — MUY GRAVE</div>
+            <div style="display:flex; gap:16px; flex-wrap:wrap;">
+                <span>${chk('leve')}&nbsp;&nbsp;1° Instancia — LEVE</span>
+                <span>${chk('grave')}&nbsp;&nbsp;2° Instancia — GRAVE</span>
+                <span>${chk('muy_grave')}&nbsp;&nbsp;3° Instancia — MUY GRAVE</span>
+            </div>
             <div style="margin-top:4px;">
                 <div style="margin-bottom:2px;">Otra consideración:</div>
                 <div style="border-bottom:1px solid #000; height:16px;"></div>
