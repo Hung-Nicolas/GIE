@@ -2206,52 +2206,97 @@ function exportarPDF(id) {
     const informe = getInforme(id);
     if (!informe) return;
     const alumno = getAlumno(informe.alumno_id);
+    const creador = getNombreUsuario(informe.creado_por);
+    const chk = (val) => informe.instancia === val ? '☑' : '☐';
     const container = document.createElement('div');
-    container.style.cssText = 'padding:40px; font-family:Inter,sans-serif; color:#334155; max-width:800px; margin:0 auto; background:#fff;';
+    container.style.cssText = 'padding:30px 40px; font-family:Arial,Helvetica,sans-serif; color:#000; max-width:800px; margin:0 auto; background:#fff; font-size:13px; line-height:1.5;';
     container.innerHTML = `
-        <div style="text-align:center; margin-bottom:30px; border-bottom:3px solid #3b82f6; padding-bottom:20px;">
-            <h1 style="font-size:24px; color:#1e293b; margin:0;">GIE - Gestor de Informes Escolares</h1>
-            <p style="font-size:14px; color:#64748b; margin:5px 0 0;">Informe Oficial</p>
+        <div style="text-align:center; margin-bottom:20px;">
+            <div style="font-size:11px; font-weight:bold;">GOBIERNO DE LA CIUDAD AUTÓNOMA DE BUENOS AIRES</div>
+            <div style="font-size:11px; font-weight:bold;">MINISTERIO DE EDUCACIÓN</div>
+            <div style="font-size:12px; font-weight:bold; margin-top:4px;">E.T. N°35 D.E. 18, "Ing. Eduardo Latzina"</div>
+            <div style="font-size:14px; font-weight:bold; margin-top:8px; text-decoration:underline;">INFORME DE CONDUCTA ESCOLAR</div>
         </div>
-        <div style="margin-bottom:20px;">
-            <span style="display:inline-block; padding:4px 12px; border-radius:999px; font-size:12px; font-weight:600; text-transform:capitalize; ${
-                informe.estado === 'aprobado' ? 'background:#d1fae5; color:#065f46;' :
-                informe.estado === 'rechazado' ? 'background:#fee2e2; color:#991b1b;' :
-                'background:#fef3c7; color:#92400e;'
-            }">${informe.estado}</span>
-            <span style="font-size:13px; color:#64748b; margin-left:10px;">${formatearFecha(informe.fecha_creacion)}</span>
+
+        <div style="margin-bottom:16px;">
+            <div style="font-weight:bold; font-size:12px; margin-bottom:6px;">1. Datos del Alumno/a</div>
+            <table style="width:100%; border-collapse:collapse;">
+                <tr>
+                    <td style="padding:4px 0; width:100px;">Alumno/a:</td>
+                    <td style="padding:4px 0; border-bottom:1px solid #000;">${alumno ? `${alumno.apellido}, ${alumno.nombre}` : ''}</td>
+                </tr>
+                <tr>
+                    <td style="padding:4px 0;">Año:</td>
+                    <td style="padding:4px 0; border-bottom:1px solid #000;">${alumno ? alumno.curso : ''}</td>
+                </tr>
+                <tr>
+                    <td style="padding:4px 0;">División:</td>
+                    <td style="padding:4px 0; border-bottom:1px solid #000;">${alumno ? alumno.division : ''}</td>
+                </tr>
+                ${alumno?.turno ? `<tr><td style="padding:4px 0;">Turno:</td><td style="padding:4px 0; border-bottom:1px solid #000;">${alumno.turno}</td></tr>` : ''}
+            </table>
         </div>
-        <table style="width:100%; border-collapse:collapse; margin-bottom:20px;">
-            <tr><td style="padding:8px 0; font-weight:600; width:140px;">Alumno:</td><td style="padding:8px 0;">${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'}</td></tr>
-            <tr><td style="padding:8px 0; font-weight:600;">Curso:</td><td style="padding:8px 0;">${alumno ? `${alumno.curso} ${alumno.division}` : ''}</td></tr>
-            <tr><td style="padding:8px 0; font-weight:600;">Instancia:</td><td style="padding:8px 0; text-transform:capitalize; font-weight:600; ${informe.instancia==='muy_grave'?'color:#dc2626;':informe.instancia==='grave'?'color:#ea580c;':informe.instancia==='leve'?'color:#d97706;':'color:#2563eb;'}">${informe.instancia.replace('_', ' ')}</td></tr>
-            <tr><td style="padding:8px 0; font-weight:600;">Creado por:</td><td style="padding:8px 0;">${getNombreUsuario(informe.creado_por)}</td></tr>
-            ${informe.fecha_revision ? `<tr><td style="padding:8px 0; font-weight:600;">Revisado por:</td><td style="padding:8px 0;">${getNombreUsuario(informe.revisado_por)} el ${formatearFecha(informe.fecha_revision)}</td></tr>` : ''}
-        </table>
-        <div style="margin-bottom:20px;">
-            <h3 style="font-size:14px; font-weight:700; color:#1e293b; margin-bottom:8px;">Título</h3>
-            <p style="margin:0; line-height:1.6;">${informe.titulo}</p>
+
+        <div style="margin-bottom:16px;">
+            <div style="font-weight:bold; font-size:12px; margin-bottom:6px;">2. Descripción de la Acción</div>
+            <p style="margin:0 0 8px;">Ha realizado la acción que se describe a continuación:</p>
+            <div style="border:1px solid #000; padding:10px; min-height:80px; margin-bottom:8px;">
+                <div style="font-weight:bold; margin-bottom:4px;">${informe.titulo}</div>
+                <div style="white-space:pre-wrap;">${informe.resumen}</div>
+            </div>
+            <p style="margin:0;">transgrediendo normas del reglamento y convivencia de la escuela.</p>
         </div>
-        <div style="margin-bottom:20px;">
-            <h3 style="font-size:14px; font-weight:700; color:#1e293b; margin-bottom:8px;">Descripción de la problemática</h3>
-            <p style="margin:0; line-height:1.6; white-space:pre-wrap;">${informe.resumen}</p>
+
+        <div style="margin-bottom:16px;">
+            <div style="font-weight:bold; font-size:12px; margin-bottom:6px;">3. Solicitud de Sanción</div>
+            <table style="width:100%; border-collapse:collapse;">
+                <tr><td style="padding:4px 0; width:120px;">Docente:</td><td style="padding:4px 0; border-bottom:1px solid #000;">${creador}</td></tr>
+                <tr><td style="padding:4px 0;">Cargo / Función:</td><td style="padding:4px 0; border-bottom:1px solid #000;">Docente</td></tr>
+                <tr><td style="padding:4px 0;">Fecha:</td><td style="padding:4px 0; border-bottom:1px solid #000;">${formatearFecha(informe.fecha_creacion)}</td></tr>
+                <tr><td style="padding:4px 0;">Firma:</td><td style="padding:4px 0; border-bottom:1px solid #000;"></td></tr>
+            </table>
         </div>
-        ${informe.observaciones ? `
-        <div style="margin-bottom:20px; background:#eff6ff; border:1px solid #bfdbfe; padding:16px; border-radius:8px;">
-            <h3 style="font-size:14px; font-weight:700; color:#1e40af; margin-bottom:8px;">Observaciones</h3>
-            <p style="margin:0; line-height:1.6; white-space:pre-wrap; color:#1e3a8a;">${informe.observaciones}</p>
-        </div>` : ''}
-        ${informe.motivo_rechazo ? `
-        <div style="margin-bottom:20px; background:#fef2f2; border:1px solid #fecaca; padding:16px; border-radius:8px;">
-            <h3 style="font-size:14px; font-weight:700; color:#991b1b; margin-bottom:8px;">Motivo del rechazo</h3>
-            <p style="margin:0; line-height:1.6; color:#7f1d1d;">${informe.motivo_rechazo}</p>
-        </div>` : ''}
-        <div style="margin-top:40px; padding-top:20px; border-top:1px solid #e2e8f0; text-align:center; font-size:12px; color:#94a3b8;">
-            Documento generado automáticamente por GIE • ${new Date().toLocaleDateString('es-AR')}
+
+        <div style="margin-bottom:16px;">
+            <div style="font-weight:bold; font-size:12px; margin-bottom:6px;">4. Descargo del Alumno/a</div>
+            <div style="border:1px solid #000; padding:10px; min-height:60px;">
+                ${informe.descargo ? `<div style="white-space:pre-wrap;">${informe.descargo}</div>` : ''}
+            </div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <div style="font-weight:bold; font-size:12px; margin-bottom:6px;">5. Observaciones</div>
+            <div style="border:1px solid #000; padding:10px; min-height:60px;">
+                ${informe.observaciones ? `<div style="white-space:pre-wrap;">${informe.observaciones}</div>` : ''}
+            </div>
+        </div>
+
+        <div style="margin-bottom:16px;">
+            <div style="font-weight:bold; font-size:12px; margin-bottom:6px;">6. Determinación de la Sanción</div>
+            <p style="margin:0 0 8px;">Se considera que corresponde:</p>
+            <div style="margin-bottom:6px;">${chk('leve')}&nbsp;&nbsp;1° Instancia — LEVE</div>
+            <div style="margin-bottom:6px;">${chk('grave')}&nbsp;&nbsp;2° Instancia — GRAVE</div>
+            <div style="margin-bottom:6px;">${chk('muy_grave')}&nbsp;&nbsp;3° Instancia — MUY GRAVE</div>
+            <div style="margin-top:10px;">
+                <div style="margin-bottom:4px;">Otra consideración:</div>
+                <div style="border-bottom:1px solid #000; height:20px;"></div>
+            </div>
+            <div style="margin-top:16px;">
+                <table style="width:100%; border-collapse:collapse;">
+                    <tr>
+                        <td style="padding:4px 0; width:50%;">Firma del Directivo:</td>
+                        <td style="padding:4px 0;">Fecha:</td>
+                    </tr>
+                    <tr>
+                        <td style="padding:4px 0; border-bottom:1px solid #000;"></td>
+                        <td style="padding:4px 0; border-bottom:1px solid #000;"></td>
+                    </tr>
+                </table>
+            </div>
         </div>
     `;
     document.body.appendChild(container);
-    html2pdf().set({ margin: 0, filename: `informe_${alumno ? alumno.apellido : 'doc'}_${informe.fecha_creacion.split('T')[0]}.pdf`, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(container).save().then(() => { document.body.removeChild(container); });
+    html2pdf().set({ margin: [10,10,10,10], filename: `informe_${alumno ? alumno.apellido : 'doc'}_${informe.fecha_creacion.split('T')[0]}.pdf`, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(container).save().then(() => { document.body.removeChild(container); });
 }
 
 function mostrarDrillDownAnio(anio, data) {
