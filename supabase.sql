@@ -108,11 +108,7 @@ DROP POLICY IF EXISTS "informes_select" ON public.informes;
 CREATE POLICY "informes_select"
     ON public.informes FOR SELECT
     TO anon, authenticated
-    USING (
-        public.perfil_rol() = 'regente'
-        OR creado_por = auth.uid()
-        OR auth.uid() IS NULL  -- Permitir lectura anónima para demo
-    );
+    USING (true);
 
 DROP POLICY IF EXISTS "informes_insert" ON public.informes;
 CREATE POLICY "informes_insert"
