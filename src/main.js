@@ -2039,7 +2039,8 @@ window.confirmarEliminarUsuario = async function() {
         password
     });
     if (authError) {
-        return mostrarToast('Contraseña incorrecta', 'error');
+        console.error('[GIE] Error auth signInWithPassword:', authError);
+        return mostrarToast('Error de autenticación: ' + (authError.message || 'Contraseña incorrecta'), 'error');
     }
 
     const id = _eliminarUserId;
