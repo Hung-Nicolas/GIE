@@ -2287,7 +2287,7 @@ async function exportarPDF(id) {
             <div style="margin-top:8px;">
                 <table style="width:100%; border-collapse:collapse;">
                     <tr><td style="padding:2px 0 10px 0; width:50%;">Firma del Directivo:</td><td style="padding:2px 0 10px 0;">Fecha:</td></tr>
-                    <tr><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;"></td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;"></td></tr>
+                    <tr><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;"></td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;">${formatearFecha(new Date().toISOString())}</td></tr>
                 </table>
             </div>
         </div>
