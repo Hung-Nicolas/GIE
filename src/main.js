@@ -578,7 +578,7 @@ function initFiltros() {
 
 function buscarAlumno(query) {
     const resultados = document.getElementById('resultadosAlumno');
-    if (!query || query.length < 2) { resultados.classList.add('hidden'); return; }
+    if (!query || query.length < 1) { resultados.classList.add('hidden'); return; }
     const filtrados = alumnos.filter(a =>
         `${a.nombre} ${a.apellido}`.toLowerCase().includes(query.toLowerCase()) ||
         `${a.apellido} ${a.nombre}`.toLowerCase().includes(query.toLowerCase())
