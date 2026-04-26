@@ -325,6 +325,14 @@ function setupEventListeners() {
         filtrarAlumnos();
     });
 
+    ['filtroDocenteNombre', 'filtroDocenteRol', 'ordenDocentes'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const handler = () => filtrarDocentes();
+        el.addEventListener('change', handler);
+        if (id === 'filtroDocenteNombre') el.addEventListener('input', handler);
+    });
+
     const btnVolverNuevo = document.getElementById('btn-volver-nuevo');
     if (btnVolverNuevo) btnVolverNuevo.addEventListener('click', () => showSection('informes'));
 
@@ -397,6 +405,7 @@ function showSection(sectionId) {
         });
     }
     if (sectionId === 'usuarios') { mostrarSkeleton('usuarios'); cargarUsuarios().then(() => ocultarSkeleton('usuarios')); }
+    if (sectionId === 'docentes') { mostrarSkeleton('docentes'); cargarDocentes().then(() => ocultarSkeleton('docentes')); }
     if (sectionId === 'dashboard') { mostrarSkeleton('dashboard'); actualizarDashboard(); ocultarSkeleton('dashboard'); }
     if (sectionId === 'ajustes') { mostrarSkeleton('ajustes'); cargarEspacioBD().then(() => ocultarSkeleton('ajustes')); }
     if (sectionId === 'informes') {
@@ -1846,6 +1855,86 @@ async function cargarUsuarios() {
             </div>
         </div>`;
     }).join('');
+}
+
+async function cargarDocentes() {
+    await cargarUsuariosSupa();
+    filtrarDocentes();
+}
+
+function filtrarDocentes() {
+    const busqueda = (document.getElementById('filtroDocenteNombre')?.value || '').toLowerCase().trim();
+    const rol = document.getElementById('filtroDocenteRol')?.value || '';
+    const orden = document.getElementById('ordenDocentes')?.value || 'nombre_asc';
+
+    let lista = usuarios.filter(u => {
+        const matchBusqueda = !busqueda ||
+            `${u.nombre || ''} ${u.apellido || ''}`.toLowerCase().includes(busqueda) ||
+            (u.email || '').toLowerCase().includes(busqueda);
+        const matchRol = !rol || u.rol === rol;
+        return matchBusqueda && matchRol;
+    });
+
+    lista = lista.map(u => {
+        const creados = informes.filter(i => i.creado_por === u.id).length;
+        const pendientes = informes.filter(i => i.creado_por === u.id && i.estado === 'pendiente').length;
+        const aprobados = informes.filter(i => i.creado_por === u.id && i.estado === 'aprobado').length;
+        const rechazados = informes.filter(i => i.creado_por === u.id && i.estado === 'rechazado').length;
+        const revisados = informes.filter(i => i.revisado_por === u.id && (i.estado === 'aprobado' || i.estado === 'rechazado')).length;
+        return { ...u, creados, pendientes, aprobados, rechazados, revisados };
+    });
+
+    lista.sort((a, b) => {
+        if (orden === 'nombre_asc') return `${a.apellido || ''}, ${a.nombre || ''}`.localeCompare(`${b.apellido || ''}, ${b.nombre || ''}`);
+        if (orden === 'nombre_desc') return `${b.apellido || ''}, ${b.nombre || ''}`.localeCompare(`${a.apellido || ''}, ${a.nombre || ''}`);
+        if (orden === 'informes_desc') return b.creados - a.creados;
+        if (orden === 'informes_asc') return a.creados - b.creados;
+        return 0;
+    });
+
+    const rolColor = { regente: 'bg-purple-100 text-purple-700', preceptor: 'bg-blue-100 text-blue-700', docente: 'bg-green-100 text-green-700' };
+    const rolLabel = { regente: 'Regente', preceptor: 'Preceptor', docente: 'Docente' };
+
+    const nombreCompleto = (u) => `${u.apellido || ''}, ${u.nombre || ''}`;
+
+    document.getElementById('listaDocentesDesktop').innerHTML = lista.map(u => `
+        <tr class="hover:bg-slate-50 transition-colors">
+            <td class="px-4 py-3 font-medium">${nombreCompleto(u)}</td>
+            <td class="px-4 py-3 text-slate-500">${u.email}</td>
+            <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-medium capitalize ${rolColor[u.rol] || 'bg-slate-100 text-slate-600'}">${rolLabel[u.rol] || u.rol}</span></td>
+            <td class="px-4 py-3 text-center font-semibold text-slate-700">${u.creados}</td>
+            <td class="px-4 py-3 text-center"><span class="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">${u.pendientes}</span></td>
+            <td class="px-4 py-3 text-center"><span class="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">${u.aprobados}</span></td>
+            <td class="px-4 py-3 text-center"><span class="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">${u.rechazados}</span></td>
+        </tr>
+    `).join('');
+
+    document.getElementById('listaDocentesMobile').innerHTML = lista.map(u => `
+        <div class="p-4">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                    <p class="font-medium text-slate-800 text-sm">${nombreCompleto(u)}</p>
+                    <p class="text-xs text-slate-500 mt-0.5 truncate">${u.email}</p>
+                    <div class="mt-2">${u.rol ? `<span class="px-2 py-1 rounded-full text-xs font-medium capitalize ${rolColor[u.rol] || 'bg-slate-100 text-slate-600'}">${rolLabel[u.rol] || u.rol}</span>` : ''}</div>
+                </div>
+            </div>
+            <div class="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-slate-100 text-center">
+                <div><p class="text-lg font-bold text-slate-700">${u.creados}</p><p class="text-[10px] text-slate-500 uppercase">Creados</p></div>
+                <div><p class="text-lg font-bold text-amber-600">${u.pendientes}</p><p class="text-[10px] text-slate-500 uppercase">Pendientes</p></div>
+                <div><p class="text-lg font-bold text-green-600">${u.aprobados}</p><p class="text-[10px] text-slate-500 uppercase">Aprobados</p></div>
+                <div><p class="text-lg font-bold text-red-600">${u.rechazados}</p><p class="text-[10px] text-slate-500 uppercase">Rechazados</p></div>
+            </div>
+        </div>
+    `).join('');
+
+    const empty = document.getElementById('docentesEmpty');
+    if (lista.length === 0) {
+        document.getElementById('listaDocentesDesktop').innerHTML = '';
+        document.getElementById('listaDocentesMobile').innerHTML = '';
+        empty?.classList.remove('hidden');
+    } else {
+        empty?.classList.add('hidden');
+    }
 }
 
 async function crearUsuario(e) {
