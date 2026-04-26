@@ -2225,7 +2225,7 @@ async function exportarPDF(id) {
     container.style.cssText = 'padding:12px 24px; font-family:Arial,Helvetica,sans-serif; color:#000; max-width:800px; margin:0 auto; background:#fff; font-size:11px; line-height:1.4;';
     container.innerHTML = `
         <div style="text-align:center; margin-bottom:6px;">
-            ${logoSrc ? `<img src="${logoSrc}" style="height:50px; margin-bottom:4px;" />` : ''}
+            ${logoSrc ? `<img src="${logoSrc}" style="height:50px; margin:0 auto 4px; display:block;" />` : ''}
             <div style="font-size:10px; font-weight:bold;">GOBIERNO DE LA CIUDAD AUTÓNOMA DE BUENOS AIRES</div>
             <div style="font-size:10px; font-weight:bold;">MINISTERIO DE EDUCACIÓN</div>
             <div style="font-size:10px; font-weight:bold; margin-top:2px;">E.T. N°35 D.E. 18, "Ing. Eduardo Latzina"</div>
