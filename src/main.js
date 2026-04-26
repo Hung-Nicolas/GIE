@@ -339,6 +339,9 @@ function setupEventListeners() {
     const btnVolverAlumno = document.getElementById('btn-volver-alumno');
     if (btnVolverAlumno) btnVolverAlumno.addEventListener('click', () => showSection('alumnos'));
 
+    const btnVolverDocente = document.getElementById('btn-volver-docente');
+    if (btnVolverDocente) btnVolverDocente.addEventListener('click', () => showSection('docentes'));
+
     const btnNuevoInforme = document.getElementById('btn-nuevo-informe');
     if (btnNuevoInforme) btnNuevoInforme.addEventListener('click', () => {
         showSection('nuevo');
@@ -1796,6 +1799,152 @@ function verAlumno(alumnoId) {
     ocultarSkeleton('vistaAlumno');
 }
 
+function verDocente(userId) {
+    mostrarSkeleton('vistaDocente');
+    const u = usuarios.find(x => x.id === userId);
+    if (!u) { ocultarSkeleton('vistaDocente'); return; }
+    const lista = informes.filter(i => i.creado_por === userId).sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
+    const stats = { total: lista.length, pendiente: 0, aprobado: 0, rechazado: 0, archivado: 0 };
+    lista.forEach(i => { if (stats[i.estado] !== undefined) stats[i.estado]++; });
+
+    const rolColor = { regente: 'bg-purple-100 text-purple-700', preceptor: 'bg-blue-100 text-blue-700', docente: 'bg-green-100 text-green-700' };
+    document.getElementById('tarjetaDocente').innerHTML = `
+        <div class="flex items-center gap-4">
+            <div class="w-16 h-16 ${u.rol === 'regente' ? 'bg-purple-500' : u.rol === 'preceptor' ? 'bg-blue-500' : 'bg-green-500'} rounded-full flex items-center justify-center text-white text-2xl font-bold">${(u.nombre || '?')[0]}${(u.apellido || '?')[0]}</div>
+            <div>
+                <h2 class="text-xl font-bold text-slate-800">${u.apellido || ''}, ${u.nombre || ''}</h2>
+                <div class="flex items-center gap-2 mt-1">
+                    <p class="text-slate-500">${u.email}</p>
+                    ${u.rol ? `<span class="text-xs px-2 py-0.5 rounded-md font-medium ${rolColor[u.rol] || 'bg-slate-100 text-slate-600'}">${u.rol}</span>` : ''}
+                </div>
+                <p class="text-sm text-slate-400 mt-1">${stats.total} informe${stats.total !== 1 ? 's' : ''} creado${stats.total !== 1 ? 's' : ''}</p>
+            </div>
+        </div>
+        <div class="grid grid-cols-4 gap-4 mt-6">
+            <div class="text-center p-3 bg-amber-50 rounded-lg"><p class="text-2xl font-bold text-amber-600">${stats.pendiente}</p><p class="text-xs text-amber-700">Pendientes</p></div>
+            <div class="text-center p-3 bg-green-50 rounded-lg"><p class="text-2xl font-bold text-green-600">${stats.aprobado}</p><p class="text-xs text-green-700">Aprobados</p></div>
+            <div class="text-center p-3 bg-red-50 rounded-lg"><p class="text-2xl font-bold text-red-600">${stats.rechazado}</p><p class="text-xs text-red-700">Rechazados</p></div>
+            <div class="text-center p-3 bg-slate-50 rounded-lg"><p class="text-2xl font-bold text-slate-600">${stats.archivado}</p><p class="text-xs text-slate-700">Archivados</p></div>
+        </div>
+    `;
+
+    const ctx = document.getElementById('chartDocenteEstado').getContext('2d');
+    if (charts.docenteEstado) charts.docenteEstado.destroy();
+    const estadoLabels = ['Pendiente', 'Aprobado', 'Rechazado', 'Archivado'];
+    const estadoData = [stats.pendiente, stats.aprobado, stats.rechazado, stats.archivado];
+    const estadoColors = ['#fbbf24', '#22c55e', '#ef4444', '#94a3b8'];
+    charts.docenteEstado = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels: estadoLabels, datasets: [{ data: estadoData, backgroundColor: estadoColors, borderWidth: 0 }] },
+        options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+    });
+
+    const ctxTimeline = document.getElementById('chartDocenteTimeline').getContext('2d');
+    if (charts.docenteTimeline) charts.docenteTimeline.destroy();
+    const nivelInstancia = { leve: 1, grave: 2, muy_grave: 3 };
+    const colorInstancia = { leve: '#fbbf24', grave: '#f97316', muy_grave: '#ef4444' };
+    const labelInstancia = { leve: 'Leve', grave: 'Grave', muy_grave: 'Muy Grave' };
+
+    const diaKey = (fecha) => {
+        const d = new Date(fecha);
+        return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+    };
+    const grupos = new Map();
+    lista.forEach(i => {
+        const k = `${diaKey(i.fecha_creacion)}|${i.instancia}`;
+        if (!grupos.has(k)) grupos.set(k, []);
+        grupos.get(k).push(i);
+    });
+    const puntos = [];
+    grupos.forEach((informesGrupo, k) => {
+        const instancia = informesGrupo[0].instancia;
+        const avgX = informesGrupo.reduce((sum, i) => sum + new Date(i.fecha_creacion).getTime(), 0) / informesGrupo.length;
+        puntos.push({ x: avgX, y: nivelInstancia[instancia] ?? 4, instancia, informes: informesGrupo });
+    });
+
+    const crosshairPlugin = {
+        id: 'crosshair',
+        afterDraw: (chart) => {
+            if (chart.tooltip?._active?.length) {
+                const ctx = chart.ctx;
+                const pt = chart.tooltip._active[0].element;
+                const x = pt.x, y = pt.y;
+                const topY = chart.scales.y.top, bottomY = chart.scales.y.bottom;
+                const leftX = chart.scales.x.left, rightX = chart.scales.x.right;
+                ctx.save();
+                ctx.beginPath();
+                ctx.setLineDash([4, 4]);
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = 'rgba(100, 116, 139, 0.5)';
+                ctx.moveTo(x, topY); ctx.lineTo(x, bottomY);
+                ctx.moveTo(leftX, y); ctx.lineTo(rightX, y);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+    };
+
+    charts.docenteTimeline = new Chart(ctxTimeline, {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Informes',
+                data: puntos,
+                backgroundColor: puntos.map(p => colorInstancia[p.instancia] ?? '#3b82f6'),
+                pointRadius: puntos.map(p => p.informes.length > 1 ? 9 : 7),
+                pointHoverRadius: 11
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            onClick: (e, elements, chart) => {
+                if (!elements.length) return;
+                const punto = chart.data.datasets[elements[0].datasetIndex].data[elements[0].index];
+                if (!punto || !punto.informes) return;
+                if (punto.informes.length === 1) { verDetalle(punto.informes[0].id); }
+                else { abrirModalGrupoInformes(punto.informes, punto.x); }
+            },
+            plugins: {
+                legend: { display: false }, crosshair: true,
+                tooltip: {
+                    backgroundColor: '#1e293b', titleColor: '#f8fafc', bodyColor: '#f8fafc', cornerRadius: 8, padding: 10, displayColors: true,
+                    callbacks: {
+                        title: (items) => formatearFechaCorta(new Date(items[0].raw.x)),
+                        label: (item) => {
+                            const g = item.raw.informes;
+                            if (g.length === 1) return `${labelInstancia[g[0].instancia] ?? g[0].instancia} • ${g[0].titulo}`;
+                            return `${g.length} informes ${labelInstancia[g[0].instancia] ?? g[0].instancia}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { type: 'linear', ticks: { callback: (v) => formatearFechaCorta(new Date(v)), maxTicksLimit: 6 }, grid: { color: '#f1f5f9' } },
+                y: { min: 0.5, max: 4.5, ticks: { stepSize: 1, callback: (v) => { const labels = { 1: 'Leve', 2: 'Grave', 3: 'Muy Grave' }; return labels[v] ?? ''; } }, grid: { color: '#f1f5f9' } }
+            }
+        }
+    });
+
+    document.getElementById('historialDocente').innerHTML = lista.map(i => {
+        const alumno = getAlumno(i.alumno_id);
+        return `
+        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 instancia-${i.instancia}">
+            <div class="flex items-center gap-2 mb-1 flex-wrap">
+                <span class="status-${i.estado} px-2 py-0.5 rounded-full text-xs font-medium capitalize">${i.estado.replace('_', ' ')}</span>
+                <span class="text-xs text-slate-500">${formatearFechaCorta(i.fecha_creacion)}</span>
+            </div>
+            <h4 class="font-semibold text-slate-800">${i.titulo}</h4>
+            <p class="text-sm text-slate-600 line-clamp-2">${i.resumen}</p>
+            <p class="text-xs text-slate-500 mt-1">${alumno ? `${alumno.apellido}, ${alumno.nombre} · ${alumno.curso} ${alumno.division}` : 'Alumno desconocido'}</p>
+            <button onclick="verDetalle('${i.id}')" class="text-sm text-blue-600 hover:text-blue-700 mt-2">Ver detalle <i class="fas fa-arrow-right text-xs"></i></button>
+        </div>
+    `;
+    }).join('');
+
+    showSection('vistaDocente');
+    ocultarSkeleton('vistaDocente');
+}
+
 // ==================== USUARIOS ====================
 async function cargarUsuarios() {
     if (getPerfil().rol !== 'regente') return;
@@ -1887,6 +2036,8 @@ function filtrarDocentes() {
     lista.sort((a, b) => {
         if (orden === 'nombre_asc') return `${a.apellido || ''}, ${a.nombre || ''}`.localeCompare(`${b.apellido || ''}, ${b.nombre || ''}`);
         if (orden === 'nombre_desc') return `${b.apellido || ''}, ${b.nombre || ''}`.localeCompare(`${a.apellido || ''}, ${a.nombre || ''}`);
+        if (orden === 'rol_asc') return (a.rol || '').localeCompare(b.rol || '');
+        if (orden === 'rol_desc') return (b.rol || '').localeCompare(a.rol || '');
         if (orden === 'informes_desc') return b.creados - a.creados;
         if (orden === 'informes_asc') return a.creados - b.creados;
         return 0;
@@ -1898,7 +2049,7 @@ function filtrarDocentes() {
     const nombreCompleto = (u) => `${u.apellido || ''}, ${u.nombre || ''}`;
 
     document.getElementById('listaDocentesDesktop').innerHTML = lista.map(u => `
-        <tr class="hover:bg-slate-50 transition-colors">
+        <tr class="hover:bg-slate-50 transition-colors cursor-pointer" onclick="verDocente('${u.id}')">
             <td class="px-4 py-3 font-medium">${nombreCompleto(u)}</td>
             <td class="px-4 py-3 text-slate-500">${u.email}</td>
             <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-medium capitalize ${rolColor[u.rol] || 'bg-slate-100 text-slate-600'}">${rolLabel[u.rol] || u.rol}</span></td>
@@ -1910,7 +2061,7 @@ function filtrarDocentes() {
     `).join('');
 
     document.getElementById('listaDocentesMobile').innerHTML = lista.map(u => `
-        <div class="p-4">
+        <div class="p-4 cursor-pointer" onclick="verDocente('${u.id}')">
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0 flex-1">
                     <p class="font-medium text-slate-800 text-sm">${nombreCompleto(u)}</p>
@@ -2572,6 +2723,7 @@ window.debugGIE = function() {
 
 window.verDetalle = verDetalle;
 window.verAlumno = verAlumno;
+window.verDocente = verDocente;
 window.editarInforme = editarInforme;
 window.cambiarEstado = cambiarEstado;
 window.mostrarRechazo = mostrarRechazo;
