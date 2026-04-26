@@ -201,13 +201,7 @@ async function iniciarApp() {
             btn.classList.toggle('hidden', !esRegente);
         }
     });
-    // Ocultar contadores de informes para docentes desde el inicio
-    if (!esRegente) {
-        ['badgeTodos', 'badgePendientes', 'badgeResueltos'].forEach(id => {
-            const el = document.getElementById(id);
-            if (el) el.classList.add('hidden');
-        });
-    }
+
 
     await Promise.all([cargarAlumnos(), cargarInformes(), cargarPlantillas()]);
     initFiltros();
@@ -721,6 +715,7 @@ function filtrarInformes() {
     const turno = document.getElementById('filtroTurnoInformes')?.value || '';
     const estado = document.getElementById('filtroEstado').value;
     const instancia = document.getElementById('filtroInstancia').value;
+    const esRegente = getPerfil()?.rol === 'regente';
     const filtrados = informes.filter(i => {
         const alumno = getAlumno(i.alumno_id);
         const matchBusqueda = !busqueda ||
@@ -733,7 +728,6 @@ function filtrarInformes() {
         const matchEstado = !estado || i.estado === estado;
         const matchInstancia = !instancia || i.instancia === instancia;
         // Docentes solo ven sus propios informes en la lista general
-        const esRegente = getPerfil()?.rol === 'regente';
         const matchCreador = esRegente || i.creado_por === getPerfil()?.id;
         // Filtro rápido por tab
         const matchTab = tabInformesActivo === 'todos' ? true :
@@ -742,7 +736,7 @@ function filtrarInformes() {
         return matchBusqueda && matchCurso && matchDivision && matchTurno && matchEstado && matchInstancia && matchCreador && matchTab;
     });
 
-    // Actualizar badges (usando los datos ya filtrados por búsqueda/curso/instancia pero SIN el filtro de tab/estado)
+    // Actualizar badges (filtrados por creador también para docentes)
     const baseFiltrados = informes.filter(i => {
         const alumno = getAlumno(i.alumno_id);
         const matchBusqueda = !busqueda ||
@@ -760,10 +754,9 @@ function filtrarInformes() {
     const badgeTodos = document.getElementById('badgeTodos');
     const badgePendientes = document.getElementById('badgePendientes');
     const badgeResueltos = document.getElementById('badgeResueltos');
-    // Solo regentes ven los contadores; docentes no deben saber los totales
-    if (badgeTodos) { badgeTodos.textContent = esRegente ? baseFiltrados.length : ''; badgeTodos.classList.toggle('hidden', !esRegente); }
-    if (badgePendientes) { badgePendientes.textContent = esRegente ? baseFiltrados.filter(i => i.estado === 'pendiente').length : ''; badgePendientes.classList.toggle('hidden', !esRegente); }
-    if (badgeResueltos) { badgeResueltos.textContent = esRegente ? baseFiltrados.filter(i => i.estado !== 'pendiente').length : ''; badgeResueltos.classList.toggle('hidden', !esRegente); }
+    if (badgeTodos) badgeTodos.textContent = baseFiltrados.length;
+    if (badgePendientes) badgePendientes.textContent = baseFiltrados.filter(i => i.estado === 'pendiente').length;
+    if (badgeResueltos) badgeResueltos.textContent = baseFiltrados.filter(i => i.estado !== 'pendiente').length;
 
     renderizarInformes(filtrados);
 }
