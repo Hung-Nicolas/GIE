@@ -590,6 +590,8 @@ function seleccionarAlumno(id, nombre, apellido, curso, division, turno = '') {
     document.getElementById('alumnoSeleccionado').classList.remove('hidden');
     document.getElementById('resultadosAlumno').classList.add('hidden');
     document.getElementById('searchAlumno').value = '';
+    document.getElementById('buscadorAlumno').classList.add('hidden');
+    document.getElementById('btn-cambiar-alumno').classList.remove('hidden');
 }
 
 function limpiarAlumno() {
@@ -597,6 +599,9 @@ function limpiarAlumno() {
     document.getElementById('alumnoSeleccionado').classList.add('hidden');
     const btnCrear = document.getElementById('btn-crear-alumno-inline');
     if (btnCrear) btnCrear.classList.add('hidden');
+    document.getElementById('buscadorAlumno').classList.remove('hidden');
+    document.getElementById('btn-cambiar-alumno').classList.add('hidden');
+    document.getElementById('searchAlumno').focus();
 }
 
 // ==================== ALUMNOS - LISTADO ====================
