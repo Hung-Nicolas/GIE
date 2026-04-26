@@ -201,6 +201,13 @@ async function iniciarApp() {
             btn.classList.toggle('hidden', !esRegente);
         }
     });
+    // Ocultar contadores de informes para docentes desde el inicio
+    if (!esRegente) {
+        ['badgeTodos', 'badgePendientes', 'badgeResueltos'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.classList.add('hidden');
+        });
+    }
 
     await Promise.all([cargarAlumnos(), cargarInformes(), cargarPlantillas()]);
     initFiltros();
