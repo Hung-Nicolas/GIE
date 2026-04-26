@@ -2049,8 +2049,10 @@ window.confirmarEliminarUsuario = async function() {
     if (row) row.classList.add('animate-slide-out');
     if (card) card.classList.add('animate-slide-out');
 
+    console.log('[GIE] Intentando eliminar usuario:', id, 'perfil actual:', getPerfil());
     const { error } = await supabaseClient.rpc('eliminar_usuario_completo', { user_id: id });
     if (error) {
+        console.error('[GIE] Error RPC eliminar_usuario_completo:', error);
         if (row) row.classList.remove('animate-slide-out');
         if (card) card.classList.remove('animate-slide-out');
         return mostrarToast('Error eliminando usuario: ' + error.message, 'error');
