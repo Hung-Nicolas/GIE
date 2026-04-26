@@ -500,7 +500,11 @@
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
                 <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div>
-                        <label class="block text-xs font-medium text-slate-500 mb-1">Grado</label>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Nombre o Apellido</label>
+                        <input type="text" id="filtroAlumnoNombre" placeholder="Ej: Barreto Cristian" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Año</label>
                         <select id="filtroAlumnoCurso" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
                             <option value="">Todos</option>
                             <option value="1°">1°</option>
@@ -532,10 +536,6 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-xs font-medium text-slate-500 mb-1">Nombre o Apellido</label>
-                        <input type="text" id="filtroAlumnoNombre" placeholder="Ej: Barreto Cristian" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
-                    </div>
-                    <div>
                         <label class="block text-xs font-medium text-slate-500 mb-1">Ordenar por</label>
                         <select id="ordenAlumnos" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
                             <option value="informes_desc">Más informes</option>
@@ -543,8 +543,8 @@
                             <option value="apellido_asc">Apellido A-Z</option>
                             <option value="apellido_desc">Apellido Z-A</option>
                             <option value="nombre_asc">Nombre A-Z</option>
-                            <option value="curso_asc">Grado ↑</option>
-                            <option value="curso_desc">Grado ↓</option>
+                            <option value="curso_asc">Año ↑</option>
+                            <option value="curso_desc">Año ↓</option>
                         </select>
                     </div>
                 </div>
