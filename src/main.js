@@ -248,10 +248,46 @@ function setupEventListeners() {
 
     let debounceTimer;
     const searchAlumno = document.getElementById('searchAlumno');
+    const resultadosAlumno = document.getElementById('resultadosAlumno');
     if (searchAlumno) {
         searchAlumno.addEventListener('input', (e) => {
             clearTimeout(debounceTimer);
             debounceTimer = setTimeout(() => buscarAlumno(e.target.value), 300);
+        });
+        // Navegación por teclado en resultados de alumno
+        searchAlumno.addEventListener('keydown', (e) => {
+            if (!resultadosAlumno || resultadosAlumno.classList.contains('hidden')) return;
+            const items = resultadosAlumno.querySelectorAll('[data-alumno-id]');
+            if (items.length === 0) return;
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                items[0].focus();
+            } else if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                const first = items[0];
+                seleccionarAlumno(first.dataset.alumnoId, first.dataset.alumnoNombre, first.dataset.alumnoApellido, first.dataset.alumnoCurso, first.dataset.alumnoDivision, first.dataset.alumnoTurno);
+            }
+        });
+    }
+    if (resultadosAlumno) {
+        resultadosAlumno.addEventListener('keydown', (e) => {
+            const items = Array.from(resultadosAlumno.querySelectorAll('[data-alumno-id]'));
+            const current = document.activeElement;
+            const idx = items.indexOf(current);
+            if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                if (idx >= 0 && idx < items.length - 1) items[idx + 1].focus();
+            } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                if (idx > 0) items[idx - 1].focus();
+                else if (idx === 0) searchAlumno.focus();
+            } else if (e.key === 'Enter' || e.key === 'Tab') {
+                e.preventDefault();
+                if (idx >= 0) {
+                    const item = items[idx];
+                    seleccionarAlumno(item.dataset.alumnoId, item.dataset.alumnoNombre, item.dataset.alumnoApellido, item.dataset.alumnoCurso, item.dataset.alumnoDivision, item.dataset.alumnoTurno);
+                }
+            }
         });
     }
 
@@ -589,8 +625,15 @@ function buscarAlumno(query) {
         if (btnCrear) btnCrear.classList.remove('hidden');
     } else {
         resultados.innerHTML = filtrados.map(a => `
-            <div onclick="seleccionarAlumno('${a.id}', '${a.nombre}', '${a.apellido}', '${a.curso}', '${a.division}', '${a.turno || ''}')"
-                class="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0">
+            <div tabindex="0"
+                data-alumno-id="${a.id}"
+                data-alumno-nombre="${a.nombre}"
+                data-alumno-apellido="${a.apellido}"
+                data-alumno-curso="${a.curso}"
+                data-alumno-division="${a.division}"
+                data-alumno-turno="${a.turno || ''}"
+                onclick="seleccionarAlumno('${a.id}', '${a.nombre}', '${a.apellido}', '${a.curso}', '${a.division}', '${a.turno || ''}')"
+                class="p-3 hover:bg-slate-50 focus:bg-blue-50 cursor-pointer border-b border-slate-100 last:border-0 outline-none">
                 <p class="font-medium text-sm">${a.apellido}, ${a.nombre}</p>
                 <p class="text-xs text-slate-500">${a.curso} ${a.division}${a.turno ? ' · ' + a.turno : ''}</p>
             </div>`).join('');
