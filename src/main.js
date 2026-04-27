@@ -403,6 +403,7 @@ function setupEventListeners() {
 
     const btnNuevoInforme = document.getElementById('btn-nuevo-informe');
     if (btnNuevoInforme) btnNuevoInforme.addEventListener('click', () => {
+        cancelarForm();
         showSection('nuevo');
     });
 
@@ -1056,6 +1057,7 @@ function cancelarForm() {
     document.getElementById('plantillaInforme').value = '';
     const otros = categorias.find(c => c.nombre.toLowerCase() === 'otros');
     document.getElementById('categoriaInforme').value = otros ? otros.id : '';
+    document.getElementById('observaciones').value = 'Se solicita trabajar con la familia, estudiante y PAT en el respeto por las normas institucionales de convivencia.';
 
     document.getElementById('editId').value = '';
     document.getElementById('tituloForm').textContent = 'Nuevo Informe';
