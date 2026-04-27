@@ -2832,9 +2832,15 @@ window.guardarNuevoAlumno = async function() {
         return mostrarToast('Error creando alumno: ' + error.message, 'error');
     }
     await cargarAlumnos();
-    seleccionarAlumno(data.id, data.nombre, data.apellido, data.curso, data.division, data.turno);
     cerrarModalCrearAlumno();
     mostrarToast('Alumno creado correctamente');
+    const enSeccionAlumnos = document.getElementById('alumnos') && !document.getElementById('alumnos').classList.contains('hidden');
+    if (enSeccionAlumnos) {
+        filtrarAlumnos();
+        verAlumno(data.id);
+    } else {
+        seleccionarAlumno(data.id, data.nombre, data.apellido, data.curso, data.division, data.turno);
+    }
 };
 
 // ==================== FECHA DE REUNIÓN ====================
