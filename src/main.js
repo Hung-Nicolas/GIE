@@ -259,10 +259,10 @@ function setupEventListeners() {
             if (!resultadosAlumno || resultadosAlumno.classList.contains('hidden')) return;
             const items = resultadosAlumno.querySelectorAll('[data-alumno-id]');
             if (items.length === 0) return;
-            if (e.key === 'ArrowDown') {
+            if (e.key === 'ArrowDown' || e.key === 'Tab') {
                 e.preventDefault();
                 items[0].focus();
-            } else if (e.key === 'Enter' || e.key === 'Tab') {
+            } else if (e.key === 'Enter') {
                 e.preventDefault();
                 const first = items[0];
                 seleccionarAlumno(first.dataset.alumnoId, first.dataset.alumnoNombre, first.dataset.alumnoApellido, first.dataset.alumnoCurso, first.dataset.alumnoDivision, first.dataset.alumnoTurno);
@@ -281,12 +281,18 @@ function setupEventListeners() {
                 e.preventDefault();
                 if (idx > 0) items[idx - 1].focus();
                 else if (idx === 0) searchAlumno.focus();
-            } else if (e.key === 'Enter' || e.key === 'Tab') {
+            } else if (e.key === 'Enter') {
                 e.preventDefault();
                 if (idx >= 0) {
                     const item = items[idx];
                     seleccionarAlumno(item.dataset.alumnoId, item.dataset.alumnoNombre, item.dataset.alumnoApellido, item.dataset.alumnoCurso, item.dataset.alumnoDivision, item.dataset.alumnoTurno);
                 }
+            } else if (e.key === 'Tab') {
+                if (idx >= 0 && idx < items.length - 1) {
+                    e.preventDefault();
+                    items[idx + 1].focus();
+                }
+                // Si es el último, dejar que el Tab natural continúe al siguiente campo del formulario
             }
         });
     }
@@ -1048,7 +1054,8 @@ function cancelarForm() {
     document.getElementById('searchAlumno').value = '';
     document.getElementById('resultadosAlumno').classList.add('hidden');
     document.getElementById('plantillaInforme').value = '';
-    document.getElementById('categoriaInforme').value = '';
+    const otros = categorias.find(c => c.nombre.toLowerCase() === 'otros');
+    document.getElementById('categoriaInforme').value = otros ? otros.id : '';
 
     document.getElementById('editId').value = '';
     document.getElementById('tituloForm').textContent = 'Nuevo Informe';
@@ -2450,7 +2457,12 @@ function renderizarSelectCategorias() {
         html += `<option value="${c.id}">${c.nombre}</option>`;
     });
     select.innerHTML = html;
-    if (actual) select.value = actual;
+    if (actual) {
+        select.value = actual;
+    } else {
+        const otros = categorias.find(c => c.nombre.toLowerCase() === 'otros');
+        if (otros) select.value = otros.id;
+    }
 }
 
 window.abrirModalPlantillas = function() {
@@ -2572,7 +2584,7 @@ async function exportarPDF(id) {
             <div style="font-size:10px; font-weight:bold;">GOBIERNO DE LA CIUDAD AUTÓNOMA DE BUENOS AIRES</div>
             <div style="font-size:10px; font-weight:bold;">MINISTERIO DE EDUCACIÓN</div>
             <div style="font-size:10px; font-weight:bold; margin-top:2px;">E.T. N°35 D.E. 18, "Ing. Eduardo Latzina"</div>
-            <div style="font-size:12px; font-weight:bold; margin-top:4px; text-decoration:underline;">INFORME DE CONDUCTA ESCOLAR</div>
+            <div style="font-size:12px; font-weight:bold; margin-top:4px; text-decoration:underline;">INFORME DE CONVIVENCIA ESCOLAR</div>
         </div>
 
         <div style="margin-bottom:6px;">
@@ -2661,7 +2673,7 @@ async function exportarPDFEnBlanco() {
             <div style="font-size:10px; font-weight:bold;">GOBIERNO DE LA CIUDAD AUTÓNOMA DE BUENOS AIRES</div>
             <div style="font-size:10px; font-weight:bold;">MINISTERIO DE EDUCACIÓN</div>
             <div style="font-size:10px; font-weight:bold; margin-top:2px;">E.T. N°35 D.E. 18, "Ing. Eduardo Latzina"</div>
-            <div style="font-size:12px; font-weight:bold; margin-top:4px; text-decoration:underline;">INFORME DE CONDUCTA ESCOLAR</div>
+            <div style="font-size:12px; font-weight:bold; margin-top:4px; text-decoration:underline;">INFORME DE CONVIVENCIA ESCOLAR</div>
         </div>
 
         <div style="margin-bottom:6px;">
