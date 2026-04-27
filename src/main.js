@@ -242,6 +242,7 @@ function setupEventListeners() {
     document.querySelectorAll('.nav-btn').forEach(btn => {
         btn.addEventListener('click', () => {
             const section = btn.dataset.section;
+            if (section === 'nuevo') cancelarForm();
             if (section) showSection(section);
         });
     });
