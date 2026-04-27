@@ -86,6 +86,15 @@ CREATE POLICY "alumnos_select_all"
     USING (activo = TRUE);
 
 -- -----------------------------------------------------------
+-- ALUMNOS: todos los usuarios autenticados pueden insertar
+-- -----------------------------------------------------------
+DROP POLICY IF EXISTS "alumnos_insert_authenticated" ON public.alumnos;
+CREATE POLICY "alumnos_insert_authenticated"
+    ON public.alumnos FOR INSERT
+    TO authenticated
+    WITH CHECK (TRUE);
+
+-- -----------------------------------------------------------
 -- PERFILES: todos pueden leer (necesario para joins),
 --           cualquiera puede insertar (el trigger maneja el resto)
 -- -----------------------------------------------------------
