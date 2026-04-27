@@ -206,7 +206,7 @@ async function iniciarApp() {
     // Navegación según rol
     document.querySelectorAll('.nav-btn').forEach(btn => {
         const section = btn.dataset.section;
-        if (section === 'dashboard' || section === 'estadisticas') {
+        if (section === 'dashboard' || section === 'estadisticas' || section === 'docentes') {
             btn.classList.toggle('hidden', !esRegente);
         }
     });
