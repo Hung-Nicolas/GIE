@@ -223,7 +223,7 @@ async function iniciarApp() {
     const tabsInformes = document.getElementById('tabsInformes');
     if (tabsInformes) tabsInformes.classList.toggle('hidden', esDOE);
 
-    await Promise.all([cargarAlumnos(), cargarInformes(), cargarPlantillas(), cargarCategorias()]);
+    await Promise.all([cargarAlumnos(), cargarInformes(), cargarPlantillas(), cargarCategorias(), cargarUsuariosSupa()]);
     initFiltros();
 
     if (esRegente) {
@@ -2154,7 +2154,7 @@ async function cargarUsuarios() {
     const lista = usuarios.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
 
     const renderRow = (u) => {
-        const sinPerfil = !u.tiene_perfil;
+        const sinPerfil = !u.rol;
         const nombreCompleto = sinPerfil ? '<span class="text-slate-400 italic">Sin perfil</span>' : `${u.apellido}, ${u.nombre}`;
         const rolBadge = sinPerfil
             ? '<span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">sin perfil</span>'

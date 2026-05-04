@@ -309,7 +309,7 @@ BEGIN
     END IF;
 
     -- Actualizar la contraseña en auth.users
-    UPDATE auth.users SET encrypted_password = crypt(new_password, gen_salt('bf')) WHERE id = user_id;
+    UPDATE auth.users SET encrypted_password = replace(crypt(new_password, gen_salt('bf')), '$2b$', '$2a$') WHERE id = user_id;
 END;
 $$;
 
