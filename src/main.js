@@ -832,8 +832,8 @@ function filtrarInformes() {
         const matchTurno = !turno || (alumno && alumno.turno === turno);
         const matchEstado = !estado || i.estado === estado;
         const matchInstancia = !instancia || i.instancia === instancia;
-        // Docentes solo ven sus propios informes; regentes y DOE ven todos
-        const matchCreador = esRegente || esDOE || i.creado_por === getPerfil()?.id;
+        // Docentes solo ven sus propios informes; regentes ven todos; DOE solo resueltos
+        const matchCreador = esRegente || (esDOE && (i.estado === 'aprobado' || i.estado === 'rechazado')) || i.creado_por === getPerfil()?.id;
         // Filtro rápido por tab
         const matchTab = tabInformesActivo === 'todos' ? true :
             tabInformesActivo === 'pendientes' ? i.estado === 'pendiente' :
@@ -853,7 +853,7 @@ function filtrarInformes() {
         const matchTurno = !turno || (alumno && alumno.turno === turno);
         const matchEstado = !estado || i.estado === estado;
         const matchInstancia = !instancia || i.instancia === instancia;
-        const matchCreador = esRegente || esDOE || i.creado_por === getPerfil()?.id;
+        const matchCreador = esRegente || (esDOE && (i.estado === 'aprobado' || i.estado === 'rechazado')) || i.creado_por === getPerfil()?.id;
         return matchBusqueda && matchCurso && matchDivision && matchTurno && matchEstado && matchInstancia && matchCreador;
     });
     const badgeTodos = document.getElementById('badgeTodos');
@@ -1080,6 +1080,9 @@ function cancelarForm() {
 function verDetalle(id) {
     const informe = getInforme(id);
     if (!informe) return;
+    if (getPerfil()?.rol === 'doe' && informe.estado !== 'aprobado' && informe.estado !== 'rechazado') {
+        return mostrarToast('No tiene permiso para ver este informe', 'error');
+    }
     const alumno = getAlumno(informe.alumno_id);
     const modal = document.getElementById('modalDetalle');
     const contenido = document.getElementById('contenidoModal');

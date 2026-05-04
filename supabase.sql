@@ -150,7 +150,10 @@ DROP POLICY IF EXISTS "informes_select" ON public.informes;
 CREATE POLICY "informes_select"
     ON public.informes FOR SELECT
     TO anon, authenticated
-    USING (true);
+    USING (
+        public.perfil_rol() != 'doe'
+        OR estado IN ('aprobado', 'rechazado')
+    );
 
 DROP POLICY IF EXISTS "informes_insert" ON public.informes;
 CREATE POLICY "informes_insert"
