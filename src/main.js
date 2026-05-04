@@ -149,10 +149,28 @@ async function cargarInformes() {
 
 async function cargarUsuariosSupa() {
     if (!USE_SUPABASE) return;
+    
+    // Intentar RPC primero (trae email + perfiles)
     const { data, error } = await supabaseClient.rpc('listar_usuarios_completos');
-    if (error) { mostrarToast('Error cargando usuarios', 'error'); return; }
-    usuarios = data || [];
-    // Usuarios cargados
+    if (!error && data && data.length > 0) {
+        usuarios = data;
+        console.log('[GIE] Usuarios cargados vía RPC:', usuarios.length);
+        return;
+    }
+    
+    if (error) {
+        console.error('[GIE] Error en listar_usuarios_completos:', error);
+    }
+    
+    // Fallback: leer perfiles directamente (evita problemas de permisos con auth.users)
+    const { data: perfiles, error: errPerfiles } = await supabaseClient.from('perfiles').select('*');
+    if (errPerfiles) {
+        console.error('[GIE] Error cargando perfiles:', errPerfiles);
+        mostrarToast('Error cargando usuarios', 'error');
+        return;
+    }
+    usuarios = perfiles || [];
+    console.log('[GIE] Usuarios cargados vía perfiles:', usuarios.length);
 }
 
 // --- Helpers de acceso sincrónico ---
@@ -1118,7 +1136,34 @@ function renderizarHistorial(historial) {
         observaciones: '<i class="fas fa-comment-dots text-blue-400"></i>',
         reunion: '<i class="fas fa-calendar-check text-teal-500"></i>',
         reunion_pospuesta: '<i class="fas fa-calendar-plus text-teal-500"></i>',
-        reunion_eliminada: '<i class="fas fa-calendar-times text-slate-500"></i>'
+        reunion_eliminada: '<i class="fas fa-calendar-times text-slate-500"></i>',
+        suspension: '<i class="fas fa-user-slash text-red-600"></i>',
+        llamado_padres: '<i class="fas fa-phone-alt text-orange-500"></i>',
+        entrevista: '<i class="fas fa-comments text-purple-500"></i>',
+        derivacion: '<i class="fas fa-hands-helping text-pink-500"></i>',
+        amonestacion: '<i class="fas fa-exclamation-triangle text-yellow-600"></i>',
+        notificacion: '<i class="fas fa-bell text-cyan-500"></i>',
+        tarea_reparacion: '<i class="fas fa-tools text-slate-600"></i>',
+        otra_accion: '<i class="fas fa-ellipsis-h text-slate-400"></i>'
+    };
+    const labelAccion = {
+        creacion: 'Creación',
+        edicion: 'Edición',
+        aprobacion: 'Aprobación',
+        rechazo: 'Rechazo',
+        revision: 'Revisión',
+        observaciones: 'Observación',
+        reunion: 'Reunión',
+        reunion_pospuesta: 'Reunión pospuesta',
+        reunion_eliminada: 'Reunión eliminada',
+        suspension: 'Suspensión',
+        llamado_padres: 'Llamado a padres',
+        entrevista: 'Entrevista',
+        derivacion: 'Derivación',
+        amonestacion: 'Amonestación',
+        notificacion: 'Notificación',
+        tarea_reparacion: 'Tarea de reparación',
+        otra_accion: 'Otra acción'
     };
     return `
     <div class="relative pl-4 border-l-2 border-slate-200 space-y-4">
@@ -1127,15 +1172,16 @@ function renderizarHistorial(historial) {
             const nombre = getNombreUsuario(h.usuario_id) || 'Sistema';
             const fecha = formatearFecha(h.fecha);
             const hora = new Date(h.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+            const tipo = labelAccion[h.accion] || (h.accion ? h.accion.charAt(0).toUpperCase() + h.accion.slice(1) : 'Acción');
             return `
             <div class="relative">
                 <div class="absolute -left-[21px] top-0 w-3 h-3 rounded-full bg-white border-2 border-blue-400 flex items-center justify-center text-[8px]"></div>
                 <div class="flex items-start gap-2">
-                    <span class="mt-0.5 text-sm">${iconoAccion[h.accion] || '<i class="fas fa-circle text-slate-300"></i>'}</span>
+                    <span class="mt-0.5 text-sm">${iconoAccion[h.accion] || '<i class="fas fa-sticky-note text-slate-400"></i>'}</span>
                     <div class="flex-1 min-w-0">
-                        <p class="text-xs text-slate-500">${fecha} · ${hora}</p>
-                        <p class="text-sm font-medium text-slate-700">${nombre}</p>
-                        <p class="text-sm text-slate-600">${h.detalle || h.accion}</p>
+                        <p class="text-xs text-slate-500">${fecha} · ${hora} · <span class="font-medium text-slate-600">${nombre}</span></p>
+                        <p class="text-xs font-semibold text-blue-600 uppercase tracking-wide">${tipo}</p>
+                        <p class="text-sm text-slate-600">${h.detalle || ''}</p>
                     </div>
                 </div>
             </div>`;
@@ -1155,6 +1201,9 @@ function verDetalle(id) {
     const modal = document.getElementById('modalDetalle');
     const contenido = document.getElementById('contenidoModal');
     const acciones = document.getElementById('accionesModal');
+    const esDOE = getPerfil()?.rol === 'doe';
+    const esRegente = getPerfil()?.rol === 'regente';
+    const puedeEditar = (informe.creado_por === getPerfil().id && informe.estado === 'pendiente' && !esDOE) || esRegente;
 
     contenido.innerHTML = `
         <div class="flex items-center gap-3 mb-4 flex-wrap">
@@ -1183,14 +1232,34 @@ function verDetalle(id) {
             </div>
             <div><p class="text-sm font-medium text-slate-700 mb-1">Descripción de la problemática</p><p class="text-slate-600 whitespace-pre-wrap">${informe.resumen}</p></div>
 
-            ${informe.observaciones ? `<div class="p-3 bg-blue-50 border border-blue-200 rounded-lg"><p class="text-sm font-medium text-blue-800 mb-1">Observaciones</p><p class="text-blue-700 whitespace-pre-wrap">${informe.observaciones}</p></div>` : ''}
+            ${informe.observaciones ? `<div class="p-3 bg-blue-50 border border-blue-200 rounded-lg"><p class="text-sm font-medium text-blue-800 mb-1">Observaciones previas</p><p class="text-blue-700 whitespace-pre-wrap">${informe.observaciones}</p></div>` : ''}
             ${informe.motivo_rechazo ? `<div class="p-3 bg-red-50 border border-red-200 rounded-lg"><p class="text-sm font-medium text-red-800 mb-1">Motivo del rechazo</p><p class="text-red-700">${informe.motivo_rechazo}</p></div>` : ''}
             ${informe.fecha_revision ? `<div class="text-sm text-slate-500"><i class="fas fa-check-double mr-1"></i>Revisado por ${getNombreUsuario(informe.revisado_por)} el ${formatearFecha(informe.fecha_revision)}</div>` : ''}
         </div>
+        
         <div class="mt-6 border-t border-slate-200 pt-4">
             <h4 class="text-sm font-semibold text-slate-700 mb-3"><i class="fas fa-history mr-2 text-blue-500"></i>Historial del informe</h4>
             <div id="historialInforme">Cargando historial...</div>
         </div>
+        
+        ${!esDOE ? `
+        <div class="mt-6 border-t border-slate-200 pt-4 space-y-4">
+            <h4 class="text-sm font-semibold text-slate-700"><i class="fas fa-plus-circle mr-2 text-green-500"></i>Agregar seguimiento</h4>
+            
+            <div class="p-3 bg-slate-50 rounded-lg space-y-2">
+                <label class="text-xs font-medium text-slate-600">Nueva observación</label>
+                <textarea id="nuevaObservacionTexto" rows="2" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none text-sm" placeholder="Escriba una observación..."></textarea>
+                <button onclick="agregarObservacion('${informe.id}')" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors">Agregar observación</button>
+            </div>
+            
+            <div class="p-3 bg-slate-50 rounded-lg space-y-2">
+                <label class="text-xs font-medium text-slate-600">Acción tomada</label>
+                <input type="text" id="nuevaAccionTipo" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="Ej: Suspensión, Llamado a padres, Entrevista...">
+                <textarea id="nuevaAccionDetalle" rows="2" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none text-sm" placeholder="Detalle de la acción..."></textarea>
+                <button onclick="agregarAccion('${informe.id}')" class="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors">Agregar acción</button>
+            </div>
+        </div>
+        ` : ''}
     `;
 
     cargarHistorial(informe.id).then(historial => {
@@ -1198,12 +1267,11 @@ function verDetalle(id) {
         if (container) container.innerHTML = renderizarHistorial(historial);
     });
 
-    const esDOE = getPerfil()?.rol === 'doe';
     acciones.innerHTML = '';
-    if (informe.creado_por === getPerfil().id && informe.estado === 'pendiente' && !esDOE) {
+    if (puedeEditar) {
         acciones.innerHTML += `<button onclick="editarInforme('${informe.id}')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-edit mr-2"></i>Editar</button>`;
     }
-    if (getPerfil().rol === 'regente') {
+    if (esRegente) {
         if (informe.estado === 'pendiente') {
             acciones.innerHTML += `
                 <button id="btn-modal-aprobar-${informe.id}" onclick="aprobarConAnimacion('${informe.id}', this)" class="flex-1 min-w-[120px] bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-check mr-2"></i>Aprobar</button>
@@ -1217,6 +1285,36 @@ function verDetalle(id) {
     modal.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
 }
+
+async function agregarObservacion(informeId) {
+    const textarea = document.getElementById('nuevaObservacionTexto');
+    const texto = textarea?.value.trim();
+    if (!texto) return mostrarToast('Ingrese una observación', 'error');
+    await registrarHistorial(informeId, 'observaciones', texto);
+    const historial = await cargarHistorial(informeId);
+    const container = document.getElementById('historialInforme');
+    if (container) container.innerHTML = renderizarHistorial(historial);
+    textarea.value = '';
+    mostrarToast('Observación agregada');
+}
+window.agregarObservacion = agregarObservacion;
+
+async function agregarAccion(informeId) {
+    const tipoInput = document.getElementById('nuevaAccionTipo');
+    const detalleText = document.getElementById('nuevaAccionDetalle');
+    const tipo = tipoInput?.value.trim();
+    const detalle = detalleText?.value.trim();
+    if (!tipo) return mostrarToast('Ingrese el tipo de acción', 'error');
+    if (!detalle) return mostrarToast('Ingrese el detalle de la acción', 'error');
+    await registrarHistorial(informeId, tipo, detalle);
+    const historial = await cargarHistorial(informeId);
+    const container = document.getElementById('historialInforme');
+    if (container) container.innerHTML = renderizarHistorial(historial);
+    tipoInput.value = '';
+    detalleText.value = '';
+    mostrarToast('Acción registrada');
+}
+window.agregarAccion = agregarAccion;
 
 function cerrarModal() { document.getElementById('modalDetalle').classList.add('hidden'); document.body.classList.remove('overflow-hidden'); }
 
@@ -2668,7 +2766,7 @@ async function exportarPDF(id) {
     // Cargar logo como base64
     let logoSrc = '';
     try {
-        const res = await fetch('./logo-informe.png');
+        const res = await fetch('./GIE_logo.png');
         const blob = await res.blob();
         logoSrc = await new Promise((resolve) => {
             const reader = new FileReader();
@@ -2757,7 +2855,7 @@ async function exportarPDFEnBlanco() {
     // Cargar logo como base64
     let logoSrc = '';
     try {
-        const res = await fetch('./logo-informe.png');
+        const res = await fetch('./GIE_logo.png');
         const blob = await res.blob();
         logoSrc = await new Promise((resolve) => {
             const reader = new FileReader();

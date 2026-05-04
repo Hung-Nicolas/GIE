@@ -459,11 +459,7 @@ CREATE TABLE IF NOT EXISTS public.historial_informes (
     informe_id UUID NOT NULL REFERENCES public.informes(id) ON DELETE CASCADE,
     usuario_id UUID REFERENCES public.perfiles(id),
     fecha TIMESTAMPTZ DEFAULT timezone('utc'::text, now()),
-    accion TEXT NOT NULL CHECK (accion IN (
-        'creacion', 'edicion', 'aprobacion', 'rechazo',
-        'revision', 'observaciones', 'reunion',
-        'reunion_pospuesta', 'reunion_eliminada'
-    )),
+    accion TEXT NOT NULL,
     detalle TEXT
 );
 
@@ -497,3 +493,25 @@ CREATE POLICY "historial_insert"
 --    a los informes, crear un bucket "adjuntos" con políticas RLS.
 --
 -- ============================================================
+
+-- ============================================================
+-- MIGRACIÓN: Eliminar CHECK constraint de accion en historial_informes
+-- (para permitir texto libre)
+-- ============================================================
+DO $$
+DECLARE
+    conname TEXT;
+BEGIN
+    SELECT tc.constraint_name INTO conname
+    FROM information_schema.table_constraints tc
+    JOIN information_schema.constraint_column_usage ccu
+      ON tc.constraint_name = ccu.constraint_name
+    WHERE tc.table_name = 'historial_informes'
+      AND tc.constraint_type = 'CHECK'
+      AND ccu.column_name = 'accion';
+
+    IF conname IS NOT NULL THEN
+        EXECUTE format('ALTER TABLE public.historial_informes DROP CONSTRAINT %I', conname);
+    END IF;
+END
+$$;
