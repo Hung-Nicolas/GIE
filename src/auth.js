@@ -157,14 +157,7 @@ export function setupLoginBanner() {
     if (modoDemoBox) modoDemoBox.classList.add('hidden');
 
     const loginCard = document.querySelector('#login .bg-white');
-    if (USE_SUPABASE) {
-        if (loginCard && !loginCard.querySelector('.supabase-banner')) {
-            const banner = document.createElement('div');
-            banner.className = 'mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200 text-center supabase-banner';
-            banner.innerHTML = '<p class="text-xs text-blue-700"><i class="fas fa-plug mr-1"></i> Conectado a Supabase Auth.</p>';
-            loginCard.appendChild(banner);
-        }
-    } else {
+    if (!USE_SUPABASE) {
         if (loginCard && !loginCard.querySelector('.no-supabase-banner')) {
             const banner = document.createElement('div');
             banner.className = 'mt-4 p-3 bg-red-50 rounded-lg border border-red-200 text-center no-supabase-banner';

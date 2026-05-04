@@ -202,6 +202,7 @@ async function iniciarApp() {
     updateAuthUI();
     showApp();
     const esRegente = getPerfil()?.rol === 'regente';
+    const esDOE = getPerfil()?.rol === 'doe';
 
     // Navegación según rol
     document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -209,8 +210,16 @@ async function iniciarApp() {
         if (section === 'dashboard' || section === 'estadisticas' || section === 'docentes') {
             btn.classList.toggle('hidden', !esRegente);
         }
+        if (section === 'nuevo') {
+            btn.classList.toggle('hidden', esDOE);
+        }
     });
 
+    // Ocultar botones de creación para DOE
+    const btnNuevoInformeHeader = document.getElementById('btn-nuevo-informe');
+    if (btnNuevoInformeHeader) btnNuevoInformeHeader.classList.toggle('hidden', esDOE);
+    const btnCrearAlumno = document.getElementById('btn-crear-alumno');
+    if (btnCrearAlumno) btnCrearAlumno.classList.toggle('hidden', esDOE);
 
     await Promise.all([cargarAlumnos(), cargarInformes(), cargarPlantillas(), cargarCategorias()]);
     initFiltros();
@@ -811,6 +820,7 @@ function filtrarInformes() {
     const estado = document.getElementById('filtroEstado').value;
     const instancia = document.getElementById('filtroInstancia').value;
     const esRegente = getPerfil()?.rol === 'regente';
+    const esDOE = getPerfil()?.rol === 'doe';
     const filtrados = informes.filter(i => {
         const alumno = getAlumno(i.alumno_id);
         const matchBusqueda = !busqueda ||
@@ -822,8 +832,8 @@ function filtrarInformes() {
         const matchTurno = !turno || (alumno && alumno.turno === turno);
         const matchEstado = !estado || i.estado === estado;
         const matchInstancia = !instancia || i.instancia === instancia;
-        // Docentes solo ven sus propios informes en la lista general
-        const matchCreador = esRegente || i.creado_por === getPerfil()?.id;
+        // Docentes solo ven sus propios informes; regentes y DOE ven todos
+        const matchCreador = esRegente || esDOE || i.creado_por === getPerfil()?.id;
         // Filtro rápido por tab
         const matchTab = tabInformesActivo === 'todos' ? true :
             tabInformesActivo === 'pendientes' ? i.estado === 'pendiente' :
@@ -843,7 +853,7 @@ function filtrarInformes() {
         const matchTurno = !turno || (alumno && alumno.turno === turno);
         const matchEstado = !estado || i.estado === estado;
         const matchInstancia = !instancia || i.instancia === instancia;
-        const matchCreador = esRegente || i.creado_por === getPerfil()?.id;
+        const matchCreador = esRegente || esDOE || i.creado_por === getPerfil()?.id;
         return matchBusqueda && matchCurso && matchDivision && matchTurno && matchEstado && matchInstancia && matchCreador;
     });
     const badgeTodos = document.getElementById('badgeTodos');
@@ -992,6 +1002,7 @@ window.aprobarConAnimacion = async function(id, btn) {
 
 async function guardarInforme(e) {
     e.preventDefault();
+    if (getPerfil()?.rol === 'doe') return mostrarToast('No tiene permiso para guardar informes', 'error');
     const alumnoId = document.getElementById('alumnoId').value;
     if (!alumnoId) return mostrarToast('Debe seleccionar un alumno', 'error');
     const editId = document.getElementById('editId').value;
@@ -1107,8 +1118,9 @@ function verDetalle(id) {
         </div>
     `;
 
+    const esDOE = getPerfil()?.rol === 'doe';
     acciones.innerHTML = '';
-    if (informe.creado_por === getPerfil().id && informe.estado === 'pendiente') {
+    if (informe.creado_por === getPerfil().id && informe.estado === 'pendiente' && !esDOE) {
         acciones.innerHTML += `<button onclick="editarInforme('${informe.id}')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-edit mr-2"></i>Editar</button>`;
     }
     if (getPerfil().rol === 'regente') {
@@ -1160,6 +1172,7 @@ function abrirModalGrupoInformes(informesGrupo, timestampDia, mostrarAlumno = fa
 }
 
 async function cambiarEstado(id, nuevoEstado, options = {}) {
+    if (getPerfil()?.rol === 'doe') return mostrarToast('No tiene permiso para cambiar estados', 'error');
     const { silent = false, cerrarModal: debeCerrarModal = true, recargarLista = true, fecha_reunion } = options;
     const updates = {
         estado: nuevoEstado,
@@ -1199,6 +1212,7 @@ function cerrarModalRechazo() {
     window._rechazoItemEl = null;
 }
 async function confirmarRechazo() {
+    if (getPerfil()?.rol === 'doe') return mostrarToast('No tiene permiso para rechazar informes', 'error');
     const motivo = document.getElementById('motivoRechazo').value.trim();
     const btnConfirmar = document.getElementById('btn-confirmar-rechazo');
     if (!motivo) {
@@ -1247,6 +1261,7 @@ async function confirmarRechazo() {
 }
 
 function editarInforme(id) {
+    if (getPerfil()?.rol === 'doe') return mostrarToast('No tiene permiso para editar informes', 'error');
     const informe = getInforme(id);
     if (!informe) return;
     const alumno = getAlumno(informe.alumno_id);
@@ -1906,10 +1921,11 @@ function verDocente(userId) {
     const stats = { total: lista.length, pendiente: 0, aprobado: 0, rechazado: 0, archivado: 0 };
     lista.forEach(i => { if (stats[i.estado] !== undefined) stats[i.estado]++; });
 
-    const rolColor = { regente: 'bg-purple-100 text-purple-700', preceptor: 'bg-blue-100 text-blue-700', docente: 'bg-green-100 text-green-700' };
+    const rolColor = { regente: 'bg-purple-100 text-purple-700', preceptor: 'bg-blue-100 text-blue-700', docente: 'bg-green-100 text-green-700', doe: 'bg-orange-100 text-orange-700' };
+    const avatarColor = { regente: 'bg-purple-500', preceptor: 'bg-blue-500', docente: 'bg-green-500', doe: 'bg-orange-500' };
     document.getElementById('tarjetaDocente').innerHTML = `
         <div class="flex items-center gap-4">
-            <div class="w-16 h-16 ${u.rol === 'regente' ? 'bg-purple-500' : u.rol === 'preceptor' ? 'bg-blue-500' : 'bg-green-500'} rounded-full flex items-center justify-center text-white text-2xl font-bold">${(u.nombre || '?')[0]}${(u.apellido || '?')[0]}</div>
+            <div class="w-16 h-16 ${avatarColor[u.rol] || 'bg-slate-500'} rounded-full flex items-center justify-center text-white text-2xl font-bold">${(u.nombre || '?')[0]}${(u.apellido || '?')[0]}</div>
             <div>
                 <h2 class="text-xl font-bold text-slate-800">${u.apellido || ''}, ${u.nombre || ''}</h2>
                 <div class="flex items-center gap-2 mt-1">
@@ -2055,7 +2071,7 @@ async function cargarUsuarios() {
         const nombreCompleto = sinPerfil ? '<span class="text-slate-400 italic">Sin perfil</span>' : `${u.apellido}, ${u.nombre}`;
         const rolBadge = sinPerfil
             ? '<span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">sin perfil</span>'
-            : `<span class="px-2 py-1 rounded-full text-xs font-medium capitalize ${u.rol === 'regente' ? 'bg-purple-100 text-purple-700' : u.rol === 'preceptor' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'}">${u.rol}</span>`;
+            : `<span class="px-2 py-1 rounded-full text-xs font-medium capitalize ${u.rol === 'regente' ? 'bg-purple-100 text-purple-700' : u.rol === 'preceptor' ? 'bg-blue-100 text-blue-700' : u.rol === 'doe' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}">${u.rol}</span>`;
         const activoBadge = sinPerfil
             ? '<span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">-</span>'
             : `<span class="px-2 py-1 rounded-full text-xs font-medium ${u.activo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${u.activo ? 'Activo' : 'Inactivo'}</span>`;
@@ -2142,8 +2158,8 @@ function filtrarDocentes() {
         return 0;
     });
 
-    const rolColor = { regente: 'bg-purple-100 text-purple-700', preceptor: 'bg-blue-100 text-blue-700', docente: 'bg-green-100 text-green-700' };
-    const rolLabel = { regente: 'Regente', preceptor: 'Preceptor', docente: 'Docente' };
+    const rolColor = { regente: 'bg-purple-100 text-purple-700', preceptor: 'bg-blue-100 text-blue-700', docente: 'bg-green-100 text-green-700', doe: 'bg-orange-100 text-orange-700' };
+    const rolLabel = { regente: 'Regente', preceptor: 'Preceptor', docente: 'Docente', doe: 'DOE' };
 
     const nombreCompleto = (u) => `${u.apellido || ''}, ${u.nombre || ''}`;
 
@@ -2877,6 +2893,7 @@ window.cerrarModalCrearAlumno = function() {
     document.body.classList.remove('overflow-hidden');
 };
 window.guardarNuevoAlumno = async function() {
+    if (getPerfil()?.rol === 'doe') return mostrarToast('No tiene permiso para crear alumnos', 'error');
     const nombre = document.getElementById('newAlumnoNombre').value.trim();
     const apellido = document.getElementById('newAlumnoApellido').value.trim();
     const curso = document.getElementById('newAlumnoCurso').value;

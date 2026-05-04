@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS public.perfiles (
     email TEXT UNIQUE NOT NULL,
     nombre TEXT NOT NULL,
     apellido TEXT NOT NULL,
-    rol TEXT NOT NULL CHECK (rol IN ('regente', 'docente', 'preceptor')),
+    rol TEXT NOT NULL CHECK (rol IN ('regente', 'docente', 'preceptor', 'doe')),
     activo BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now())
 );
@@ -156,7 +156,7 @@ DROP POLICY IF EXISTS "informes_insert" ON public.informes;
 CREATE POLICY "informes_insert"
     ON public.informes FOR INSERT
     TO authenticated
-    WITH CHECK (creado_por = auth.uid());
+    WITH CHECK (creado_por = auth.uid() AND public.perfil_rol() != 'doe');
 
 DROP POLICY IF EXISTS "informes_update" ON public.informes;
 CREATE POLICY "informes_update"
@@ -164,7 +164,7 @@ CREATE POLICY "informes_update"
     TO authenticated
     USING (
         public.perfil_rol() = 'regente'
-        OR (creado_por = auth.uid() AND estado = 'pendiente')
+        OR (creado_por = auth.uid() AND estado = 'pendiente' AND public.perfil_rol() != 'doe')
     );
 
 -- 4. TABLA PLANTILLAS (plantillas de informes predefinidas)
@@ -395,6 +395,7 @@ AS $$
 DECLARE
     caller_rol TEXT;
     target_rol TEXT;
+    target_email TEXT;
 BEGIN
     -- Verificar que el llamante sea regente
     SELECT rol INTO caller_rol FROM public.perfiles WHERE id = auth.uid();
@@ -408,7 +409,6 @@ BEGIN
     END IF;
 
     -- No permitir eliminar al administrador principal
-    DECLARE target_email TEXT;
     SELECT email INTO target_email FROM public.perfiles WHERE id = user_id;
     IF target_email = 'admin@gie.com' THEN
         RAISE EXCEPTION 'No se puede eliminar al usuario administrador';

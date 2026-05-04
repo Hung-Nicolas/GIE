@@ -4,7 +4,7 @@
 
 GIE es una aplicación web de gestión de informes disciplinarios y académicos escolares. Es una **SPA (Single Page Application) de solo cliente** construida con HTML, CSS, JavaScript vanilla y **Vite** como bundler / dev server. La persistencia, autenticación y autorización se realizan exclusivamente mediante **Supabase** (PostgreSQL + Auth).
 
-El sistema permite a docentes y preceptores crear informes sobre conducta de alumnos, y a los regentes revisar, aprobar o rechazar dichos informes. Incluye dashboard con estadísticas, calendario de reuniones, filtros de búsqueda, gestión de usuarios, vista detallada por alumno, exportación a PDF, plantillas de informes y suscripción en tiempo real.
+El sistema permite a docentes y preceptores crear informes sobre conducta de alumnos, a los regentes revisar, aprobar o rechazar dichos informes, y a los DOE (Departamento de Orientación Escolar) visualizar informes y alumnos en modo solo lectura. Incluye dashboard con estadísticas, calendario de reuniones, filtros de búsqueda, gestión de usuarios, vista detallada por alumno, exportación a PDF, plantillas de informes y suscripción en tiempo real.
 
 La interfaz, el código y toda la documentación interna están en **español**.
 
@@ -152,6 +152,7 @@ Toda la lógica de la aplicación reside en este archivo (~2260 líneas). Se org
 |-----|----------|
 | `regente` | Acceso total: ver todos los informes, aprobar/rechazar/reactivar, gestión de usuarios (crear/editar/eliminar), ver Dashboard y Estadísticas, administrar plantillas. |
 | `docente` / `preceptor` | Solo ver y crear/editar sus propios informes. No pueden editar informes aprobados. No ven Dashboard, Estadísticas ni la sección Usuarios. |
+| `doe` | Solo lectura: ver todos los informes y alumnos, acceder a Ajustes. No puede crear, editar, eliminar ni cambiar estados de informes. No ve Dashboard, Estadísticas, Docentes ni Usuarios. |
 
 La UI oculta elementos según el rol mediante clases CSS `hidden` y condicionales en el renderizado. En Supabase, las políticas RLS refuerzan estas restricciones en el servidor.
 
@@ -255,7 +256,7 @@ node reset-pass.js
 - **No existe `src/db.js`**. No crearlo ni modificar referencias a él en los archivos legacy; esos archivos no se usan.
 - Si se agrega nueva funcionalidad, agregarla directamente en `src/main.js` en la sección correspondiente, manteniendo el patrón de funciones nombradas en español.
 - No utilizar `localStorage` para autenticación ni sesión. La auth es exclusivamente Supabase (`sessionStorage`).
-- Respetar el sistema de roles (`regente`, `docente`, `preceptor`) al implementar nuevas pantallas o acciones.
+- Respetar el sistema de roles (`regente`, `docente`, `preceptor`, `doe`) al implementar nuevas pantallas o acciones.
 - Las nuevas dependencias de frontend deben instalarse vía `npm install` e importarse como ES modules.
 - Las funciones usadas en `onclick` del HTML deben exponerse explícitamente a `window` (ej. `window.miNuevaFuncion = miNuevaFuncion;`).
 - Al modificar el schema de datos, actualizar tanto `supabase.sql` como `seed.sql`.
