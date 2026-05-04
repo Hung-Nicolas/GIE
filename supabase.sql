@@ -174,7 +174,7 @@ CREATE POLICY "informes_update"
 CREATE TABLE IF NOT EXISTS public.plantillas (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     titulo TEXT NOT NULL,
-    instancia TEXT NOT NULL CHECK (instancia IN ('leve', 'grave', 'muy_grave', 'otro')),
+    instancia TEXT NOT NULL CHECK (instancia IN ('leve', 'grave', 'muy_grave', 'consejo', 'otro')),
     resumen TEXT NOT NULL,
     creado_por UUID REFERENCES public.perfiles(id),
     usos INTEGER DEFAULT 0,
@@ -238,10 +238,10 @@ $$;
 -- MIGRACIONES (actualizaciones de schema)
 -- ============================================================
 
--- Restringir instancia a valores válidos (leve, grave, muy_grave)
+-- Restringir instancia a valores válidos (leve, grave, muy_grave, consejo)
 ALTER TABLE public.informes DROP CONSTRAINT IF EXISTS informes_instancia_check;
-UPDATE public.informes SET instancia = 'leve' WHERE instancia NOT IN ('leve', 'grave', 'muy_grave');
-ALTER TABLE public.informes ADD CONSTRAINT informes_instancia_check CHECK (instancia IN ('leve', 'grave', 'muy_grave'));
+UPDATE public.informes SET instancia = 'leve' WHERE instancia NOT IN ('leve', 'grave', 'muy_grave', 'consejo');
+ALTER TABLE public.informes ADD CONSTRAINT informes_instancia_check CHECK (instancia IN ('leve', 'grave', 'muy_grave', 'consejo'));
 
 -- Agregar columna observaciones
 ALTER TABLE public.informes ADD COLUMN IF NOT EXISTS observaciones TEXT;
