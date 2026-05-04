@@ -1040,6 +1040,7 @@ async function guardarInforme(e) {
         const { error } = await supabaseClient.from('informes').update(datos).eq('id', editId);
         if (error) { return mostrarToast('Error actualizando informe', 'error'); }
         // Informe actualizado
+        await registrarHistorial(editId, 'edicion', `Informe editado por ${getNombreUsuario(getPerfil().id)}`);
         await cargarInformes();
         mostrarToast('Informe actualizado correctamente');
     } else {
@@ -1056,6 +1057,7 @@ async function guardarInforme(e) {
         const { error } = await supabaseClient.from('informes').insert(nuevo);
         if (error) { return mostrarToast('Error guardando informe', 'error'); }
         // Informe creado
+        await registrarHistorial(nuevo.id, 'creacion', `Informe creado por ${getNombreUsuario(getPerfil().id)}`);
         await cargarInformes();
         mostrarToast('Informe creado correctamente');
     }
@@ -1077,6 +1079,70 @@ function cancelarForm() {
     document.getElementById('tituloForm').textContent = 'Nuevo Informe';
     document.getElementById('txtBtnGuardar').textContent = 'Guardar Informe';
 }
+
+// ==================== HISTORIAL DE INFORMES ====================
+async function registrarHistorial(informeId, accion, detalle) {
+    if (!USE_SUPABASE) return;
+    const { error } = await supabaseClient.from('historial_informes').insert({
+        informe_id: informeId,
+        usuario_id: getPerfil()?.id,
+        accion,
+        detalle
+    });
+    if (error) console.error('[GIE] Error registrando historial:', error);
+}
+window.registrarHistorial = registrarHistorial;
+
+async function cargarHistorial(informeId) {
+    if (!USE_SUPABASE) return [];
+    const { data, error } = await supabaseClient
+        .from('historial_informes')
+        .select('*')
+        .eq('informe_id', informeId)
+        .order('fecha', { ascending: true });
+    if (error) { console.error('[GIE] Error cargando historial:', error); return []; }
+    return data || [];
+}
+window.cargarHistorial = cargarHistorial;
+
+function renderizarHistorial(historial) {
+    if (!historial.length) {
+        return '<p class="text-xs text-slate-400 italic">Sin registros de historial.</p>';
+    }
+    const iconoAccion = {
+        creacion: '<i class="fas fa-file-alt text-blue-500"></i>',
+        edicion: '<i class="fas fa-edit text-amber-500"></i>',
+        aprobacion: '<i class="fas fa-check-circle text-green-500"></i>',
+        rechazo: '<i class="fas fa-times-circle text-red-500"></i>',
+        revision: '<i class="fas fa-search text-indigo-500"></i>',
+        observaciones: '<i class="fas fa-comment-dots text-blue-400"></i>',
+        reunion: '<i class="fas fa-calendar-check text-teal-500"></i>',
+        reunion_pospuesta: '<i class="fas fa-calendar-plus text-teal-500"></i>',
+        reunion_eliminada: '<i class="fas fa-calendar-times text-slate-500"></i>'
+    };
+    return `
+    <div class="relative pl-4 border-l-2 border-slate-200 space-y-4">
+        ${historial.map((h, idx) => {
+            const esUltimo = idx === historial.length - 1;
+            const nombre = getNombreUsuario(h.usuario_id) || 'Sistema';
+            const fecha = formatearFecha(h.fecha);
+            const hora = new Date(h.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
+            return `
+            <div class="relative">
+                <div class="absolute -left-[21px] top-0 w-3 h-3 rounded-full bg-white border-2 border-blue-400 flex items-center justify-center text-[8px]"></div>
+                <div class="flex items-start gap-2">
+                    <span class="mt-0.5 text-sm">${iconoAccion[h.accion] || '<i class="fas fa-circle text-slate-300"></i>'}</span>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-xs text-slate-500">${fecha} · ${hora}</p>
+                        <p class="text-sm font-medium text-slate-700">${nombre}</p>
+                        <p class="text-sm text-slate-600">${h.detalle || h.accion}</p>
+                    </div>
+                </div>
+            </div>`;
+        }).join('')}
+    </div>`;
+}
+window.renderizarHistorial = renderizarHistorial;
 
 // ==================== DETALLE Y ACCIONES ====================
 function verDetalle(id) {
@@ -1121,7 +1187,16 @@ function verDetalle(id) {
             ${informe.motivo_rechazo ? `<div class="p-3 bg-red-50 border border-red-200 rounded-lg"><p class="text-sm font-medium text-red-800 mb-1">Motivo del rechazo</p><p class="text-red-700">${informe.motivo_rechazo}</p></div>` : ''}
             ${informe.fecha_revision ? `<div class="text-sm text-slate-500"><i class="fas fa-check-double mr-1"></i>Revisado por ${getNombreUsuario(informe.revisado_por)} el ${formatearFecha(informe.fecha_revision)}</div>` : ''}
         </div>
+        <div class="mt-6 border-t border-slate-200 pt-4">
+            <h4 class="text-sm font-semibold text-slate-700 mb-3"><i class="fas fa-history mr-2 text-blue-500"></i>Historial del informe</h4>
+            <div id="historialInforme">Cargando historial...</div>
+        </div>
     `;
+
+    cargarHistorial(informe.id).then(historial => {
+        const container = document.getElementById('historialInforme');
+        if (container) container.innerHTML = renderizarHistorial(historial);
+    });
 
     const esDOE = getPerfil()?.rol === 'doe';
     acciones.innerHTML = '';
@@ -1190,6 +1265,9 @@ async function cambiarEstado(id, nuevoEstado, options = {}) {
     const { error } = await supabaseClient.from('informes').update(updates).eq('id', id);
     if (error) { return mostrarToast('Error actualizando estado', 'error'); }
     // Estado cambiado
+    const accionHistorial = nuevoEstado === 'aprobado' ? 'aprobacion' : nuevoEstado === 'rechazado' ? 'rechazo' : 'revision';
+    const detalleHistorial = nuevoEstado === 'aprobado' ? `Informe aprobado por ${getNombreUsuario(getPerfil().id)}` : nuevoEstado === 'rechazado' ? `Informe rechazado por ${getNombreUsuario(getPerfil().id)}` : `Informe enviado a revisión por ${getNombreUsuario(getPerfil().id)}`;
+    await registrarHistorial(id, accionHistorial, detalleHistorial);
     await cargarInformes();
     if (!silent) mostrarToast(`Informe ${nuevoEstado.replace('_', ' ')} correctamente`);
     if (debeCerrarModal) cerrarModal();
@@ -1251,6 +1329,7 @@ async function confirmarRechazo() {
     const { error } = await supabaseClient.from('informes').update(updates).eq('id', rechazoId);
     if (error) { return mostrarToast('Error rechazando informe', 'error'); }
     // Informe rechazado
+    await registrarHistorial(rechazoId, 'rechazo', `Informe rechazado por ${getNombreUsuario(getPerfil().id)}. Motivo: ${motivo}`);
     await cargarInformes();
 
     mostrarToast('Informe rechazado');
@@ -2971,6 +3050,7 @@ window.guardarCambioReunion = async function() {
     const fecha = document.getElementById('gestionReunionFecha').value || null;
     const { error } = await supabaseClient.from('informes').update({ fecha_reunion: fecha }).eq('id', id);
     if (error) return mostrarToast('Error actualizando reunión', 'error');
+    await registrarHistorial(id, 'reunion', `Fecha de reunión actualizada por ${getNombreUsuario(getPerfil().id)}`);
     await cargarInformes();
     actualizarDashboard();
     cerrarModalGestionReunion();
@@ -2984,6 +3064,7 @@ window.posponerReunion = async function(dias) {
     const fechaStr = fecha.toISOString().split('T')[0];
     const { error } = await supabaseClient.from('informes').update({ fecha_reunion: fechaStr }).eq('id', id);
     if (error) return mostrarToast('Error posponiendo reunión', 'error');
+    await registrarHistorial(id, 'reunion_pospuesta', `Reunión pospuesta ${dias} días por ${getNombreUsuario(getPerfil().id)}`);
     await cargarInformes();
     actualizarDashboard();
     cerrarModalGestionReunion();
@@ -2994,6 +3075,7 @@ window.eliminarReunion = async function() {
     if (!confirm('¿Eliminar la fecha de reunión?')) return;
     const { error } = await supabaseClient.from('informes').update({ fecha_reunion: null }).eq('id', id);
     if (error) return mostrarToast('Error eliminando reunión', 'error');
+    await registrarHistorial(id, 'reunion_eliminada', `Fecha de reunión eliminada por ${getNombreUsuario(getPerfil().id)}`);
     await cargarInformes();
     actualizarDashboard();
     cerrarModalGestionReunion();

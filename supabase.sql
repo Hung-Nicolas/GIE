@@ -452,6 +452,36 @@ GRANT EXECUTE ON FUNCTION public.obtener_espacio_bd() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.obtener_espacio_bd() TO anon;
 
 -- ============================================================
+-- 11. TABLA HISTORIAL DE INFORMES
+-- ============================================================
+CREATE TABLE IF NOT EXISTS public.historial_informes (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    informe_id UUID NOT NULL REFERENCES public.informes(id) ON DELETE CASCADE,
+    usuario_id UUID REFERENCES public.perfiles(id),
+    fecha TIMESTAMPTZ DEFAULT timezone('utc'::text, now()),
+    accion TEXT NOT NULL CHECK (accion IN (
+        'creacion', 'edicion', 'aprobacion', 'rechazo',
+        'revision', 'observaciones', 'reunion',
+        'reunion_pospuesta', 'reunion_eliminada'
+    )),
+    detalle TEXT
+);
+
+ALTER TABLE public.historial_informes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "historial_select" ON public.historial_informes;
+CREATE POLICY "historial_select"
+    ON public.historial_informes FOR SELECT
+    TO authenticated
+    USING (true);
+
+DROP POLICY IF EXISTS "historial_insert" ON public.historial_informes;
+CREATE POLICY "historial_insert"
+    ON public.historial_informes FOR INSERT
+    TO authenticated
+    WITH CHECK (true);
+
+-- ============================================================
 -- CONFIGURACIÓN RECOMENDADA EN SUPABASE DASHBOARD
 -- ============================================================
 --
