@@ -19,7 +19,7 @@ VALUES
   ('33333333-3333-3333-3333-333333333333', '00000000-0000-0000-0000-000000000000', 'docente@gie.com', crypt('docente123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
   ('44444444-4444-4444-4444-444444444444', '00000000-0000-0000-0000-000000000000', 'regente@gie.com', crypt('regente123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now()),
   ('55555555-5555-5555-5555-555555555555', '00000000-0000-0000-0000-000000000000', 'admin@gie.com', crypt('admin123', gen_salt('bf')), now(), '{"provider":"email","providers":["email"]}', '{}', now(), now())
-ON CONFLICT (email) DO NOTHING;
+;
 
 UPDATE public.perfiles SET nombre = 'test', apellido = 'DOE', rol = 'doe', activo = true WHERE id = '11111111-1111-1111-1111-111111111111';
 UPDATE public.perfiles SET nombre = 'test', apellido = 'preceptor', rol = 'preceptor', activo = true WHERE id = '22222222-2222-2222-2222-222222222222';
