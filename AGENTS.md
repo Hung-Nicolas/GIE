@@ -12,33 +12,34 @@ La interfaz, el código y toda la documentación interna están en **español**.
 
 | Capa | Tecnología | Origen |
 |------|-----------|--------|
-| Bundler / Dev server | Vite | npm |
-| Estilos | Tailwind CSS v3 + PostCSS + Autoprefixer | npm |
+| Bundler / Dev server | Vite 5.4.10 | npm |
+| Estilos | Tailwind CSS v3.4.14 + PostCSS 8.4.47 + Autoprefixer 10.4.20 | npm |
 | Iconografía | Font Awesome 6.4.0 | CDN (cdnjs) |
 | Lógica | JavaScript vanilla (ES modules) | `src/main.js` |
-| Gráficos | Chart.js v4 | npm |
-| Exportación PDF | html2pdf.js | npm |
+| Gráficos | Chart.js v4.4.6 | npm |
+| Exportación PDF | html2pdf.js v0.10.2 | npm |
 | Tipografía | Inter (Google Fonts) | CDN |
-| Backend / Auth / DB | Supabase | `@supabase/supabase-js` |
+| Backend / Auth / DB | Supabase | `@supabase/supabase-js` v2.104.0 |
 | CI / Deploy | GitHub Actions → GitHub Pages | `.github/workflows/deploy.yml` |
 
 ## Estructura del proyecto
 
 ```
 .
-├── index.html                   # Entry point HTML (estructura completa de la SPA)
-├── package.json                 # Dependencias npm (vite, tailwindcss, chart.js, etc.)
-├── vite.config.js               # Configuración de Vite (base: '/GIE/', puerto 3000)
-├── tailwind.config.js           # Configuración de Tailwind CSS
-├── postcss.config.js            # Configuración de PostCSS
+├── index.html                   # Entry point HTML (estructura completa de la SPA, ~1306 líneas)
+├── package.json                 # Dependencias npm (versión 1.4.0, type: module)
+├── vite.config.js               # Configuración de Vite (base: '/GIE/', puerto 3000, outDir: 'dist')
+├── tailwind.config.js           # Configuración de Tailwind CSS (content: index.html + src/**/*)
+├── postcss.config.js            # Configuración de PostCSS (tailwindcss + autoprefixer)
 ├── .env                         # Variables de entorno (Supabase) — NO versionar
 ├── .gitignore                   # Ignora node_modules/, dist/, .env, etc.
 ├── AGENTS.md                    # Este archivo
 ├── TESTING.md                   # Plan de pruebas manual
-├── supabase.sql                 # Schema SQL completo para Supabase (tablas, RLS, triggers, funciones RPC)
-├── seed.sql                     # Datos de demostración para Supabase (alumnos + informes)
+├── supabase.sql                 # Schema SQL completo para Supabase (tablas, RLS, triggers, funciones RPC, datos demo)
+├── seed.sql                     # Datos de demostración para Supabase (40 alumnos, 5 categorías, ~60 informes)
 ├── test.sql                     # Queries de verificación para el SQL Editor de Supabase
 ├── ejemplos.sql                 # Queries de ejemplo / referencia
+├── migracion_categorias.sql     # Script de migración: crea tabla categorías y vincula con informes
 ├── fix_duplicados_alumnos.sql   # Script de corrección: elimina alumnos duplicados
 ├── fix_duplicados_informes.sql  # Script de corrección: elimina informes duplicados
 ├── fix_grado_7_a_6.sql          # Script de corrección: migra alumnos de 7° a 6°
@@ -47,10 +48,10 @@ La interfaz, el código y toda la documentación interna están en **español**.
 ├── dist/                        # Build de producción (generado por Vite)
 ├── node_modules/                # Dependencias instaladas
 └── src/
-    ├── main.js                  # Punto de entrada JS y ÚNICO módulo activo (~2260 líneas, monolito)
+    ├── main.js                  # Punto de entrada JS y ÚNICO módulo activo (~3013 líneas, monolito)
     ├── config.js                # Cliente Supabase y flag USE_SUPABASE
     ├── auth.js                  # Autenticación: login, logout, restauración de sesión, helpers de UI
-    ├── styles.css               # Tailwind directives + estilos custom (status-, instancia-, animate-)
+    ├── styles.css               # Tailwind directives + estilos custom (status-, instancia-, animate-, skeleton-)
     ├── app.js                   # LEGACY — No se utiliza (importa src/db.js que no existe)
     ├── dashboard.js             # LEGACY — No se utiliza (importa src/db.js que no existe)
     ├── estadisticas.js          # LEGACY — No se utiliza (importa src/db.js que no existe)
@@ -105,54 +106,58 @@ La aplicación **solo funciona con Supabase**. No hay backend propio ni modo off
 
 **Tablas principales:**
 - **`auth.users`** + **`public.perfiles`** (1:1) — usuarios, roles y estado activo/inactivo.
-- **`public.alumnos`** — catálogo de alumnos (lectura desde la app).
-- **`public.informes`** — informes con RLS por rol. Campos clave: `estado`, `instancia`, `tipo_falta`, `fecha_reunion`, `observaciones`, `motivo_rechazo`.
+- **`public.alumnos`** — catálogo de alumnos (lectura/insert desde la app; el formulario de creación de alumno está activo en `main.js`).
+- **`public.categorias`** — categorías de informes (Conducta, Disciplina, Asistencia, Académica, Otros) con color asociado.
+- **`public.informes`** — informes con RLS por rol. Campos clave: `estado`, `instancia`, `tipo_falta`, `fecha_reunion`, `observaciones`, `motivo_rechazo`, `categoria_id`.
 - **`public.plantillas`** — plantillas personalizadas de informes con contador de usos (`usos`).
 
 **Funciones RPC (SECURITY DEFINER):**
 - `actualizar_password_usuario(user_id UUID, new_password TEXT)` — regente cambia contraseñas.
 - `listar_usuarios_completos()` — LEFT JOIN de `auth.users` + `perfiles`.
 - `sincronizar_perfil(...)` — upsert manual de perfil.
-- `eliminar_usuario_completo(user_id UUID)` — elimina usuario de `auth.users` (y perfiles por CASCADE), previa validación de que el llamante es regente y no elimina a otro regente.
+- `eliminar_usuario_completo(user_id UUID)` — elimina usuario de `auth.users` (y perfiles por CASCADE), previa validación de que el llamante es regente, no se elimina a sí mismo, y no elimina al administrador principal (`admin@gie.com`).
+- `obtener_espacio_bd()` — retorna tamaño de la base de datos (usado en panel de administración).
 
 **Triggers:**
 - `on_auth_user_created` — crea automáticamente un registro en `public.perfiles` al insertar en `auth.users`.
 
 **Realtime:**
-- Suscripción al canal `informes_changes` de Supabase. Cualquier cambio en la tabla `informes` recarga los datos y refresca las vistas activas sin necesidad de refrescar la página.
+- Suscripción al canal `informes_changes` de Supabase en `setupEventListeners()`. Cualquier cambio en la tabla `informes` recarga los datos y refresca las vistas activas (`informes` y `dashboard`) sin necesidad de refrescar la página.
 
 ### Módulo `src/main.js` (monolito funcional)
 
-Toda la lógica de la aplicación reside en este archivo (~2260 líneas). Se organiza internamente en secciones comentadas:
+Toda la lógica de la aplicación reside en este archivo (~3013 líneas). Se organiza internamente en secciones comentadas:
 
-1. **Estado global** — Arrays `alumnos`, `informes`, `usuarios`, `plantillas`; objeto `charts`; variables de calendario (`calCurrentDate`, `calSelectedDate`); `tabInformesActivo`.
-2. **Plantillas predefinidas** — `PLANTILLAS_INFORME` (~13 plantillas de ejemplo).
-3. **Carga inicial de datos** — `cargarAlumnos()`, `cargarInformes()`, `cargarUsuariosSupa()`, `cargarPlantillas()`.
-4. **Helpers** — `getAlumno()`, `getInforme()`, `getNombreUsuario()`.
+1. **Estado global** — Arrays `alumnos`, `informes`, `usuarios`, `categorias`, `plantillas`; objeto `charts`; variables de calendario (`calCurrentDate`, `calSelectedDate`); `tabInformesActivo`; `periodoTendenciaDias`.
+2. **Plantillas predefinidas** — `PLANTILLAS_INFORME` (~12 plantillas de ejemplo).
+3. **Carga inicial de datos** — `cargarAlumnos()`, `cargarInformes()`, `cargarUsuariosSupa()`, `cargarPlantillas()`, `cargarCategorias()`.
+4. **Helpers** — `getAlumno()`, `getInforme()`, `getNombreUsuario()`, `parseFechaLocal()`, `getEstadoVisual()`.
 5. **Inicialización** — `DOMContentLoaded` → `setupLoginBanner()`, `setupLoginForm()`, `setupEventListeners()`, `restoreSession()`, `iniciarApp()`.
-6. **Navegación** — `showSection()`, `toggleSidebar()`, `logout()`.
-7. **Utilidades** — `formatearFecha()`, `formatearFechaCorta()`, `generarId()`, `mostrarToast()`.
-8. **Alumnos** — `buscarAlumno()` (con debounce de 300 ms), `seleccionarAlumno()`, `limpiarAlumno()`.
+6. **Navegación** — `showSection()`, `toggleSidebar()`, `logout()`, skeletons (`mostrarSkeleton` / `ocultarSkeleton`).
+7. **Utilidades** — `formatearFecha()`, `formatearFechaCorta()`, `generarId()`, `mostrarToast()`, `initFiltros()`.
+8. **Alumnos** — `buscarAlumno()` (con debounce de 300 ms), `seleccionarAlumno()`, `limpiarAlumno()`, `filtrarAlumnos()`, `renderizarAlumnos()`, `guardarNuevoAlumno()`.
 9. **Informes - CRUD** — `filtrarInformes()`, `renderizarInformes()`, `guardarInforme()`, `editarInforme()`, `cancelarForm()`.
    - Nota: al crear un informe, el campo `tipo_falta` se guarda siempre como `'Otra'`.
-10. **Detalle y acciones** — `verDetalle()`, `cambiarEstado()`, `mostrarRechazo()`, `confirmarRechazo()`.
+10. **Detalle y acciones** — `verDetalle()`, `cambiarEstado()`, `mostrarRechazo()`, `confirmarRechazo()`, `abrirModalGrupoInformes()`.
 11. **Acciones rápidas con animación** — `accionRapidaAprobar()`, `accionRapidaRechazar()`, `aprobarDesdeDashboard()`, `rechazarDesdeDashboard()`, `aprobarConAnimacion()`.
-12. **Dashboard** — `actualizarDashboard()` con contadores, calendario de reuniones (`renderCalendarioReuniones()`, `renderReunionesDiaSeleccionado()`), pendientes de revisión, historial reciente y gráfico de dona.
-13. **Estadísticas** — `cargarEstadisticas()` con gráficos de barras (por curso + drill-down por división), torta (por tipo de falta), línea (tendencia mensual) y tabla top alumnos.
+12. **Dashboard** — `actualizarDashboard()` con contadores, calendario de reuniones (`renderCalendarioReuniones()`, `renderReunionesDiaSeleccionado()`, `seleccionarDiaCal()`), pendientes de revisión, historial reciente y gráfico de dona.
+13. **Estadísticas** — `cargarEstadisticas()` con gráficos de barras (por curso + drill-down por división), torta (por tipo de falta), línea (tendencia mensual), selector de período (`cambiarPeriodoTendencia`) y tabla top alumnos.
 14. **Vista alumno** — `verAlumno()` con resumen, historial, gráfico de dona individual y línea de tiempo.
-15. **Usuarios** — `cargarUsuarios()`, `crearUsuario()`, `sincronizarPerfilUsuario()`, `editarUsuarioForm()`, `guardarEdicionUsuario()`, `eliminarUsuario()`.
-16. **Plantillas CRUD** — `cargarPlantillas()`, `calcularTendenciaPlantillas()`, `renderizarSelectPlantillas()`, `renderizarListaPlantillas()`, `abrirModalPlantillas()`, `crearPlantilla()`, `eliminarPlantilla()`.
-17. **Reuniones** — `confirmarFechaReunion()`, `guardarCambioReunion()`, `posponerReunion()`, `eliminarReunion()`.
-18. **Exportar PDF** — `exportarPDF()` genera HTML dinámico para `html2pdf.js`.
-19. **Exposición global** — Funciones usadas en `onclick` del HTML se asignan a `window` al final del archivo.
+15. **Vista docente** — `verDocente()` con historial de informes creados por ese usuario.
+16. **Usuarios** — `cargarUsuarios()`, `cargarDocentes()`, `filtrarDocentes()`, `crearUsuario()`, `sincronizarPerfilUsuario()`, `editarUsuarioForm()`, `guardarEdicionUsuario()`, `eliminarUsuario()`.
+17. **Plantillas CRUD** — `cargarPlantillas()`, `calcularTendenciaPlantillas()`, `renderizarSelectPlantillas()`, `renderizarSelectCategorias()`, `renderizarListaPlantillas()`, `abrirModalPlantillas()`, `crearPlantilla()`, `eliminarPlantilla()`.
+18. **Reuniones** — `confirmarFechaReunion()`, `guardarCambioReunion()`, `posponerReunion()`, `eliminarReunion()`.
+19. **Exportar PDF** — `exportarPDF()`, `exportarPDFEnBlanco()` generan HTML dinámico para `html2pdf.js`.
+20. **Espacio BD** — `cargarEspacioBD()`, `renderizarEspacioBD()`, `formatearBytes()`.
+21. **Exposición global** — Funciones usadas en `onclick` del HTML se asignan a `window` al final del archivo.
 
 ### Control de acceso basado en roles (RBAC)
 
 | Rol | Permisos |
 |-----|----------|
-| `regente` | Acceso total: ver todos los informes, aprobar/rechazar/reactivar, gestión de usuarios (crear/editar/eliminar), ver Dashboard y Estadísticas, administrar plantillas. |
-| `docente` / `preceptor` | Solo ver y crear/editar sus propios informes. No pueden editar informes aprobados. No ven Dashboard, Estadísticas ni la sección Usuarios. |
-| `doe` | Solo lectura: ver todos los informes y alumnos, acceder a Ajustes. No puede crear, editar, eliminar ni cambiar estados de informes. No ve Dashboard, Estadísticas, Docentes ni Usuarios. |
+| `regente` | Acceso total: ver todos los informes, aprobar/rechazar/reactivar, gestión de usuarios (crear/editar/eliminar), ver Dashboard, Estadísticas, Docentes y administrar plantillas. |
+| `docente` / `preceptor` | Solo ver y crear/editar sus propios informes. No pueden editar informes aprobados. No ven Dashboard, Estadísticas, Docentes ni la sección Usuarios. |
+| `doe` | Solo lectura: ver todos los informes y alumnos, acceder a Ajustes. No puede crear, editar, eliminar ni cambiar estados de informes. No ve Dashboard, Estadísticas, Docentes ni Usuarios. Ocultados los botones de creación de informes y alumnos. |
 
 La UI oculta elementos según el rol mediante clases CSS `hidden` y condicionales en el renderizado. En Supabase, las políticas RLS refuerzan estas restricciones en el servidor.
 
@@ -163,6 +168,7 @@ La UI oculta elementos según el rol mediante clases CSS `hidden` y condicionale
 - **Slide-out**: `animate-slide-out` al aprobar/rechazar informes desde listas.
 - **Pop / Shake**: `animate-pop` para checkmarks, `animate-shake` para validaciones.
 - **Spinner**: clase `btn-spinner` para botones en carga.
+- **Skeletons**: clases `skeleton`, `skeleton-text`, `skeleton-card`, `skeleton-circle` para estados de carga.
 
 ## Convenciones de código
 
@@ -172,11 +178,12 @@ La UI oculta elementos según el rol mediante clases CSS `hidden` y condicionale
 - **Clases CSS personalizadas** definidas en `src/styles.css` con prefijos semánticos:
   - `status-*` para badges de estado (`pendiente`, `aprobado`, `rechazado`, `archivado`, `en_revision`)
   - `instancia-*` para bordes laterales según gravedad (`leve`, `grave`, `muy_grave`)
-  - `animate-*` para animaciones (`fade-in`, `slide-out`, `pop`, `shake`)
+  - `animate-*` para animaciones (`fade-in`, `fade-in-slow`, `slide-out`, `pop`, `shake`)
+  - `skeleton-*` para estados de carga
 - **Logs de consola**: prefijados con `[GIE]` y emoji para facilitar debugging.
 - **Fechas**: formateadas para la locale `es-AR` (día/mes/año).
 - **`onclick` en HTML**: cualquier función invocada desde atributos `onclick` en el HTML debe exponerse explícitamente a `window` (ver final de `main.js`).
-- **Tailwind**: se usa para layout, spacing, colores y utilidades; los estilos custom solo complementan animaciones y estados semánticos.
+- **Tailwind**: se usa para layout, spacing, colores y utilidades; los estilos custom solo complementan animaciones, estados semánticos y skeletons.
 
 ## Testing
 
@@ -186,7 +193,7 @@ El archivo `TESTING.md` contiene un plan de pruebas manual completo cubriendo:
 - Autenticación (login, logout, sesión persistente, usuario desactivado)
 - Dashboard (calendario, reuniones, pendientes, historial, gráficos)
 - Informes (CRUD, filtros, aprobar/rechazar, PDF, plantillas)
-- Alumnos (listado, filtros, detalle)
+- Alumnos (listado, filtros, detalle, creación)
 - Estadísticas (gráficos, drill-down, top alumnos)
 - Usuarios (crear, editar, cambiar contraseña, desactivar, eliminar)
 - Roles y permisos
@@ -212,7 +219,7 @@ El workflow `.github/workflows/deploy.yml` se ejecuta en cada push a `main` o ma
 2. Setup de Node.js 22 con cache de npm
 3. `npm ci`
 4. `npm run build` (inyecta `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` desde GitHub Secrets)
-5. Deploy a la rama `gh-pages` mediante `peaceiris/actions-gh-pages@v4`
+5. Deploy a GitHub Pages mediante `actions/deploy-pages@v4`
 
 > **Requisito**: el repositorio debe tener configurados los secrets `VITE_SUPABASE_URL` y `VITE_SUPABASE_ANON_KEY` en GitHub → Settings → Secrets and variables → Actions.
 
@@ -226,10 +233,11 @@ El workflow `.github/workflows/deploy.yml` se ejecuta en cada push a `main` o ma
    VITE_SUPABASE_ANON_KEY=eyJ...
    ```
 4. Ejecutar `supabase.sql` en el SQL Editor de Supabase (ejecutar como `postgres` o con "Run without RLS" si aplica)
-5. En Auth → Providers → Email, desactivar **"Confirm email"**
-6. En Database → Replication → Realtime, agregar tabla `informes` a la publicación `supabase_realtime`
-7. (Opcional) Ejecutar `seed.sql` para cargar datos de demostración
-8. Crear usuarios de demo desde Authentication → Users → Add user (los perfiles se crean automáticamente por el trigger)
+5. Si el proyecto ya existe y no tiene la tabla `categorias`, ejecutar también `migracion_categorias.sql`
+6. En Auth → Providers → Email, desactivar **"Confirm email"**
+7. En Database → Replication → Realtime, agregar tabla `informes` a la publicación `supabase_realtime`
+8. (Opcional) Ejecutar `seed.sql` para cargar datos de demostración (ejecutar con "Run without RLS")
+9. Crear usuarios de demo desde Authentication → Users → Add user (los perfiles se crean automáticamente por el trigger)
 
 ### Script de reset de contraseña
 
@@ -259,6 +267,7 @@ node reset-pass.js
 - Respetar el sistema de roles (`regente`, `docente`, `preceptor`, `doe`) al implementar nuevas pantallas o acciones.
 - Las nuevas dependencias de frontend deben instalarse vía `npm install` e importarse como ES modules.
 - Las funciones usadas en `onclick` del HTML deben exponerse explícitamente a `window` (ej. `window.miNuevaFuncion = miNuevaFuncion;`).
-- Al modificar el schema de datos, actualizar tanto `supabase.sql` como `seed.sql`.
+- Al modificar el schema de datos, actualizar tanto `supabase.sql` como `seed.sql` (y `migracion_categorias.sql` si aplica).
 - El archivo `src/main.js` es intencionalmente monolítico. Si se decide refactorizar a módulos, hay que tener en cuenta que los archivos legacy (`app.js`, `dashboard.js`, etc.) no son funcionales en su estado actual.
 - Al agregar campos al formulario de informes, recordar actualizar: validaciones en `guardarInforme()`, renderizado en `renderizarInformes()` / `verDetalle()`, y estadísticas si aplica.
+- Al crear nuevas tablas, habilitar RLS y definir políticas acordes al rol del usuario para mantener la seguridad del modelo actual.
