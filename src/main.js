@@ -215,11 +215,13 @@ async function iniciarApp() {
         }
     });
 
-    // Ocultar botones de creación para DOE
+    // Ocultar botones de creación y tabs de filtros para DOE
     const btnNuevoInformeHeader = document.getElementById('btn-nuevo-informe');
     if (btnNuevoInformeHeader) btnNuevoInformeHeader.classList.toggle('hidden', esDOE);
     const btnCrearAlumno = document.getElementById('btn-crear-alumno');
     if (btnCrearAlumno) btnCrearAlumno.classList.toggle('hidden', esDOE);
+    const tabsInformes = document.getElementById('tabsInformes');
+    if (tabsInformes) tabsInformes.classList.toggle('hidden', esDOE);
 
     await Promise.all([cargarAlumnos(), cargarInformes(), cargarPlantillas(), cargarCategorias()]);
     initFiltros();
