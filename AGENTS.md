@@ -27,7 +27,7 @@ La interfaz, el código y toda la documentación interna están en **español**.
 ```
 .
 ├── index.html                   # Entry point HTML (estructura completa de la SPA, ~1306 líneas)
-├── package.json                 # Dependencias npm (versión 1.4.0, type: module)
+├── package.json                 # Dependencias npm (versión 1.5.0, type: module)
 ├── vite.config.js               # Configuración de Vite (base: '/GIE/', puerto 3000, outDir: 'dist')
 ├── tailwind.config.js           # Configuración de Tailwind CSS (content: index.html + src/**/*)
 ├── postcss.config.js            # Configuración de PostCSS (tailwindcss + autoprefixer)
