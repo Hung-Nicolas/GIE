@@ -2420,21 +2420,16 @@ window.guardarEdicionUsuario = async function() {
         const { error } = await supabaseClient.from('perfiles').update(updates).eq('id', id);
         if (error) { return mostrarToast('Error editando usuario', 'error'); }
 
-        // 2. Actualizar contraseña vía RPC si se ingresó una nueva
+        // 2. Actualizar contraseña vía Edge Function si se ingresó una nueva
         if (password) {
             if (password.length < 6) {
                 return mostrarToast('La contraseña debe tener al menos 6 caracteres', 'error');
             }
-            const { error: rpcError } = await supabaseClient.rpc('actualizar_password_usuario', {
-                user_id: id,
-                new_password: password
+            const { error: fnError } = await supabaseClient.functions.invoke('actualizar-password', {
+                body: { user_id: id, new_password: password }
             });
-            if (rpcError) {
-                // Error cambiando contraseña
-                if (rpcError.message?.includes('function') || rpcError.message?.includes('does not exist') || rpcError.code === '42883') {
-                    return mostrarToast('La función RPC no está configurada en Supabase. Ejecutá el SQL de supabase.sql en el SQL Editor.', 'error');
-                }
-                return mostrarToast('Error cambiando contraseña: ' + rpcError.message, 'error');
+            if (fnError) {
+                return mostrarToast('Error cambiando contraseña: ' + (fnError.message || fnError), 'error');
             }
             // Contraseña actualizada
         }
