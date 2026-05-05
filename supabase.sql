@@ -47,7 +47,7 @@ CREATE TABLE IF NOT EXISTS public.informes (
     instancia TEXT NOT NULL,
     resumen TEXT NOT NULL,
     descargo TEXT,
-    estado TEXT NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'aprobado', 'rechazado')),
+    estado TEXT NOT NULL DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'revisado', 'anulado', 'archivado', 'derivado')),
     creado_por UUID REFERENCES public.perfiles(id) ON DELETE SET NULL,
     revisado_por UUID REFERENCES public.perfiles(id) ON DELETE SET NULL,
     fecha_creacion TIMESTAMPTZ DEFAULT timezone('utc'::text, now()),
@@ -152,7 +152,7 @@ CREATE POLICY "informes_select"
     TO anon, authenticated
     USING (
         public.perfil_rol() != 'doe'
-        OR estado IN ('aprobado', 'rechazado')
+        OR estado IN ('derivado', 'archivado', 'anulado')
     );
 
 DROP POLICY IF EXISTS "informes_insert" ON public.informes;

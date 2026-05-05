@@ -10,7 +10,7 @@ let informes = [];
 let usuarios = [];
 let categorias = [];
 let charts = {};
-let rechazoId = null;
+let anulacionId = null;
 let calCurrentDate = new Date();
 let calSelectedDate = null;
 let plantillas = [];
@@ -372,16 +372,16 @@ function setupEventListeners() {
     const btnCerrarModal = document.getElementById('btn-cerrar-modal');
     if (btnCerrarModal) btnCerrarModal.addEventListener('click', cerrarModal);
 
-    const btnCerrarRechazo = document.getElementById('btn-cerrar-rechazo');
-    if (btnCerrarRechazo) btnCerrarRechazo.addEventListener('click', cerrarModalRechazo);
+    const btnCerrarAnulacion = document.getElementById('btn-cerrar-anulacion');
+    if (btnCerrarAnulacion) btnCerrarAnulacion.addEventListener('click', cerrarModalAnulacion);
 
-    const btnConfirmarRechazo = document.getElementById('btn-confirmar-rechazo');
-    if (btnConfirmarRechazo) btnConfirmarRechazo.addEventListener('click', confirmarRechazo);
+    const btnConfirmarAnulacion = document.getElementById('btn-confirmar-anulacion');
+    if (btnConfirmarAnulacion) btnConfirmarAnulacion.addEventListener('click', confirmarAnulacion);
 
-    const modalRechazo = document.getElementById('modalRechazo');
-    if (modalRechazo) {
-        modalRechazo.addEventListener('click', (e) => {
-            if (e.target.id === 'modalRechazo') cerrarModalRechazo();
+    const modalAnulacion = document.getElementById('modalAnulacion');
+    if (modalAnulacion) {
+        modalAnulacion.addEventListener('click', (e) => {
+            if (e.target.id === 'modalAnulacion') cerrarModalAnulacion();
         });
     }
 
@@ -812,7 +812,13 @@ function renderizarAlumnos(lista, informesPorAlumno) {
 
 // ==================== INFORMES - CRUD ====================
 function actualizarTabsInformes() {
-    const tabs = { todos: document.getElementById('tabTodos'), pendientes: document.getElementById('tabPendientes'), resueltos: document.getElementById('tabResueltos') };
+    const tabs = {
+        todos: document.getElementById('tabTodos'),
+        pendientes: document.getElementById('tabPendientes'),
+        revisados: document.getElementById('tabRevisados'),
+        derivados: document.getElementById('tabDerivados'),
+        finales: document.getElementById('tabFinales')
+    };
     Object.entries(tabs).forEach(([key, btn]) => {
         if (!btn) return;
         if (key === tabInformesActivo) {
@@ -852,12 +858,14 @@ function filtrarInformes() {
         const matchTurno = !turno || (alumno && alumno.turno === turno);
         const matchEstado = !estado || i.estado === estado;
         const matchInstancia = !instancia || i.instancia === instancia;
-        // Docentes solo ven sus propios informes; regentes ven todos; DOE solo resueltos
-        const matchCreador = esRegente || (esDOE && (i.estado === 'aprobado' || i.estado === 'rechazado')) || i.creado_por === getPerfil()?.id;
+        // Docentes solo ven sus propios informes; regentes ven todos; DOE ve derivados/archivados/anulados
+        const matchCreador = esRegente || (esDOE && ['derivado', 'archivado', 'anulado'].includes(i.estado)) || i.creado_por === getPerfil()?.id;
         // Filtro rápido por tab
         const matchTab = tabInformesActivo === 'todos' ? true :
             tabInformesActivo === 'pendientes' ? i.estado === 'pendiente' :
-            i.estado !== 'pendiente';
+            tabInformesActivo === 'revisados' ? i.estado === 'revisado' :
+            tabInformesActivo === 'derivados' ? i.estado === 'derivado' :
+            ['archivado', 'anulado'].includes(i.estado);
         return matchBusqueda && matchCurso && matchDivision && matchTurno && matchEstado && matchInstancia && matchCreador && matchTab;
     });
 
@@ -873,15 +881,19 @@ function filtrarInformes() {
         const matchTurno = !turno || (alumno && alumno.turno === turno);
         const matchEstado = !estado || i.estado === estado;
         const matchInstancia = !instancia || i.instancia === instancia;
-        const matchCreador = esRegente || (esDOE && (i.estado === 'aprobado' || i.estado === 'rechazado')) || i.creado_por === getPerfil()?.id;
+        const matchCreador = esRegente || (esDOE && ['derivado', 'archivado', 'anulado'].includes(i.estado)) || i.creado_por === getPerfil()?.id;
         return matchBusqueda && matchCurso && matchDivision && matchTurno && matchEstado && matchInstancia && matchCreador;
     });
     const badgeTodos = document.getElementById('badgeTodos');
     const badgePendientes = document.getElementById('badgePendientes');
-    const badgeResueltos = document.getElementById('badgeResueltos');
+    const badgeRevisados = document.getElementById('badgeRevisados');
+    const badgeDerivados = document.getElementById('badgeDerivados');
+    const badgeFinales = document.getElementById('badgeFinales');
     if (badgeTodos) badgeTodos.textContent = baseFiltrados.length;
     if (badgePendientes) badgePendientes.textContent = baseFiltrados.filter(i => i.estado === 'pendiente').length;
-    if (badgeResueltos) badgeResueltos.textContent = baseFiltrados.filter(i => i.estado !== 'pendiente').length;
+    if (badgeRevisados) badgeRevisados.textContent = baseFiltrados.filter(i => i.estado === 'revisado').length;
+    if (badgeDerivados) badgeDerivados.textContent = baseFiltrados.filter(i => i.estado === 'derivado').length;
+    if (badgeFinales) badgeFinales.textContent = baseFiltrados.filter(i => ['archivado', 'anulado'].includes(i.estado)).length;
 
     renderizarInformes(filtrados);
 }
@@ -892,11 +904,11 @@ function renderCardInforme(i) {
     const estadoVisual = i.estado;
     const accionesRapidas = (esRegente && i.estado === 'pendiente') ? `
         <div class="flex gap-2 mt-3 pt-3 border-t border-slate-100">
-            <button onclick="event.stopPropagation(); accionRapidaAprobar('${i.id}', this)" class="flex-1 bg-green-50 hover:bg-green-100 text-green-700 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1">
-                <i class="fas fa-check"></i> Aprobar
+            <button onclick="event.stopPropagation(); accionRapidaRevisar('${i.id}', this)" class="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1">
+                <i class="fas fa-eye"></i> Revisar
             </button>
-            <button onclick="event.stopPropagation(); accionRapidaRechazar('${i.id}', this)" class="flex-1 bg-red-50 hover:bg-red-100 text-red-700 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1">
-                <i class="fas fa-times"></i> Rechazar
+            <button onclick="event.stopPropagation(); accionRapidaAnular('${i.id}', this)" class="flex-1 bg-red-50 hover:bg-red-100 text-red-700 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1">
+                <i class="fas fa-ban"></i> Anular
             </button>
         </div>` : '';
     return `
@@ -927,7 +939,9 @@ function renderizarInformes(lista) {
     sinResultados.classList.add('hidden');
 
     const pendientes = lista.filter(i => i.estado === 'pendiente');
-    const resueltos = lista.filter(i => i.estado !== 'pendiente');
+    const revisados = lista.filter(i => i.estado === 'revisado');
+    const derivados = lista.filter(i => i.estado === 'derivado');
+    const finales = lista.filter(i => ['archivado', 'anulado'].includes(i.estado));
 
     // Ordenar pendientes por instancia (muy_grave > grave > leve), luego fecha
     const ordenInstancia = { consejo: -1, muy_grave: 0, grave: 1, leve: 2 };
@@ -937,8 +951,10 @@ function renderizarInformes(lista) {
         if (ordA !== ordB) return ordA - ordB;
         return new Date(b.fecha_creacion) - new Date(a.fecha_creacion);
     });
-    // Ordenar resueltos por fecha más reciente
-    resueltos.sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
+    // Ordenar resto por fecha más reciente
+    revisados.sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
+    derivados.sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
+    finales.sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
 
     let html = '';
     if (pendientes.length > 0) {
@@ -949,75 +965,83 @@ function renderizarInformes(lista) {
         </div>
         <div class="space-y-3 mb-6">${pendientes.map(renderCardInforme).join('')}</div>`;
     }
-    if (resueltos.length > 0) {
+    if (revisados.length > 0) {
         html += `
         <div class="flex items-center gap-2 mb-3">
-            <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Resueltos</h3>
-            <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">${resueltos.length}</span>
+            <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Revisados</h3>
+            <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">${revisados.length}</span>
         </div>
-        <div class="space-y-3">${resueltos.map(renderCardInforme).join('')}</div>`;
+        <div class="space-y-3 mb-6">${revisados.map(renderCardInforme).join('')}</div>`;
+    }
+    if (derivados.length > 0) {
+        html += `
+        <div class="flex items-center gap-2 mb-3">
+            <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Derivados</h3>
+            <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">${derivados.length}</span>
+        </div>
+        <div class="space-y-3 mb-6">${derivados.map(renderCardInforme).join('')}</div>`;
+    }
+    if (finales.length > 0) {
+        html += `
+        <div class="flex items-center gap-2 mb-3">
+            <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Finales</h3>
+            <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">${finales.length}</span>
+        </div>
+        <div class="space-y-3">${finales.map(renderCardInforme).join('')}</div>`;
     }
     contenedor.innerHTML = html;
-    // Registrar cards nuevas en el observer para animar al hacer scroll
     contenedor.querySelectorAll('.card-scroll').forEach(card => cardObserver.observe(card));
 }
 
-window.accionRapidaAprobar = async function(id, btn) {
+window.accionRapidaRevisar = async function(id, btn) {
     const item = document.getElementById('item-' + id);
     if (!item) return;
-    mostrarModalFechaReunion(id, async (informeId, fechaReunion) => {
-        btn.innerHTML = '<span class="btn-spinner"></span>';
-        btn.disabled = true;
-        await new Promise(r => setTimeout(r, 300));
-        item.classList.add('animate-slide-out');
-        await new Promise(r => setTimeout(r, 400));
-        item.remove();
-        await cambiarEstado(informeId, 'aprobado', { cerrarModal: false, recargarLista: false, fecha_reunion: fechaReunion });
-    });
+    btn.innerHTML = '<span class="btn-spinner"></span>';
+    btn.disabled = true;
+    await new Promise(r => setTimeout(r, 300));
+    item.classList.add('animate-slide-out');
+    await new Promise(r => setTimeout(r, 400));
+    item.remove();
+    await cambiarEstado(id, 'revisado', { cerrarModal: false, recargarLista: false });
 };
 
-window.accionRapidaRechazar = function(id, btn) {
+window.accionRapidaAnular = function(id, btn) {
     const item = document.getElementById('item-' + id);
     if (!item) return;
-    // Guardar referencia para animar al confirmar
-    window._rechazoItemId = id;
-    window._rechazoItemEl = item;
-    mostrarRechazo(id);
+    window._anulacionItemId = id;
+    window._anulacionItemEl = item;
+    mostrarAnulacion(id);
 };
 
-window.aprobarDesdeDashboard = async function(id, btn) {
+window.revisarDesdeDashboard = async function(id, btn) {
     const item = document.getElementById('dash-item-' + id);
     if (!item) return;
-    mostrarModalFechaReunion(id, async (informeId, fechaReunion) => {
-        btn.innerHTML = '<span class="btn-spinner"></span>';
-        btn.disabled = true;
-        await new Promise(r => setTimeout(r, 300));
-        item.classList.add('animate-slide-out');
-        await new Promise(r => setTimeout(r, 400));
-        item.remove();
-        await cambiarEstado(informeId, 'aprobado', { cerrarModal: false, recargarLista: false, fecha_reunion: fechaReunion });
-    });
+    btn.innerHTML = '<span class="btn-spinner"></span>';
+    btn.disabled = true;
+    await new Promise(r => setTimeout(r, 300));
+    item.classList.add('animate-slide-out');
+    await new Promise(r => setTimeout(r, 400));
+    item.remove();
+    await cambiarEstado(id, 'revisado', { cerrarModal: false, recargarLista: false });
 };
 
-window.rechazarDesdeDashboard = function(id, btn) {
+window.anularDesdeDashboard = function(id, btn) {
     const item = document.getElementById('dash-item-' + id);
     if (!item) return;
-    window._rechazoItemId = id;
-    window._rechazoItemEl = item;
-    mostrarRechazo(id);
+    window._anulacionItemId = id;
+    window._anulacionItemEl = item;
+    mostrarAnulacion(id);
 };
 
-window.aprobarConAnimacion = async function(id, btn) {
-    mostrarModalFechaReunion(id, async (informeId, fechaReunion) => {
-        btn.disabled = true;
-        btn.innerHTML = '<span class="btn-spinner mr-2"></span> Aprobando...';
-        await new Promise(r => setTimeout(r, 500));
-        btn.innerHTML = '<i class="fas fa-check animate-pop mr-2"></i> Aprobado';
-        btn.classList.remove('bg-green-600', 'hover:bg-green-700');
-        btn.classList.add('bg-green-700');
-        await new Promise(r => setTimeout(r, 400));
-        await cambiarEstado(informeId, 'aprobado', { fecha_reunion: fechaReunion });
-    });
+window.revisarConAnimacion = async function(id, btn) {
+    btn.disabled = true;
+    btn.innerHTML = '<span class="btn-spinner mr-2"></span> Revisando...';
+    await new Promise(r => setTimeout(r, 500));
+    btn.innerHTML = '<i class="fas fa-check animate-pop mr-2"></i> Revisado';
+    btn.classList.remove('bg-green-600', 'hover:bg-green-700');
+    btn.classList.add('bg-green-700');
+    await new Promise(r => setTimeout(r, 400));
+    await cambiarEstado(id, 'revisado');
 };
 
 async function guardarInforme(e) {
@@ -1052,7 +1076,7 @@ async function guardarInforme(e) {
     if (editId) {
         const inf = getInforme(editId);
         if (!inf) return mostrarToast('Informe no encontrado', 'error');
-        if (inf.estado === 'aprobado') return mostrarToast('No se puede editar un informe aprobado', 'error');
+        if (['archivado', 'anulado'].includes(inf.estado)) return mostrarToast('No se puede editar un informe finalizado', 'error');
         if (inf.creado_por !== getPerfil().id && getPerfil().rol !== 'regente') return mostrarToast('No tiene permiso para editar', 'error');
 
         const { error } = await supabaseClient.from('informes').update(datos).eq('id', editId);
@@ -1194,7 +1218,7 @@ window.renderizarHistorial = renderizarHistorial;
 function verDetalle(id) {
     const informe = getInforme(id);
     if (!informe) return;
-    if (getPerfil()?.rol === 'doe' && informe.estado !== 'aprobado' && informe.estado !== 'rechazado') {
+    if (getPerfil()?.rol === 'doe' && !['derivado', 'archivado', 'anulado'].includes(informe.estado)) {
         return mostrarToast('No tiene permiso para ver este informe', 'error');
     }
     const alumno = getAlumno(informe.alumno_id);
@@ -1203,7 +1227,7 @@ function verDetalle(id) {
     const acciones = document.getElementById('accionesModal');
     const esDOE = getPerfil()?.rol === 'doe';
     const esRegente = getPerfil()?.rol === 'regente';
-    const puedeEditar = (informe.creado_por === getPerfil().id && informe.estado === 'pendiente' && !esDOE) || esRegente;
+    const puedeEditar = (informe.creado_por === getPerfil().id && informe.estado === 'pendiente' && !esDOE) || (esRegente && informe.estado !== 'archivado' && informe.estado !== 'anulado');
 
     contenido.innerHTML = `
         <div class="flex items-center gap-3 mb-4 flex-wrap">
@@ -1233,7 +1257,7 @@ function verDetalle(id) {
             <div><p class="text-sm font-medium text-slate-700 mb-1">Descripción de la problemática</p><p class="text-slate-600 whitespace-pre-wrap">${informe.resumen}</p></div>
 
             ${informe.observaciones ? `<div class="p-3 bg-blue-50 border border-blue-200 rounded-lg"><p class="text-sm font-medium text-blue-800 mb-1">Observaciones previas</p><p class="text-blue-700 whitespace-pre-wrap">${informe.observaciones}</p></div>` : ''}
-            ${informe.motivo_rechazo ? `<div class="p-3 bg-red-50 border border-red-200 rounded-lg"><p class="text-sm font-medium text-red-800 mb-1">Motivo del rechazo</p><p class="text-red-700">${informe.motivo_rechazo}</p></div>` : ''}
+            ${informe.motivo_rechazo ? `<div class="p-3 bg-red-50 border border-red-200 rounded-lg"><p class="text-sm font-medium text-red-800 mb-1">Motivo de la anulación</p><p class="text-red-700">${informe.motivo_rechazo}</p></div>` : ''}
             ${informe.fecha_revision ? `<div class="text-sm text-slate-500"><i class="fas fa-check-double mr-1"></i>Revisado por ${getNombreUsuario(informe.revisado_por)} el ${formatearFecha(informe.fecha_revision)}</div>` : ''}
         </div>
         
@@ -1242,7 +1266,7 @@ function verDetalle(id) {
             <div id="historialInforme">Cargando historial...</div>
         </div>
         
-        ${!esDOE ? `
+        ${(!esDOE || informe.estado === 'derivado') && informe.estado !== 'archivado' && informe.estado !== 'anulado' ? `
         <div class="mt-6 border-t border-slate-200 pt-4 space-y-4">
             <h4 class="text-sm font-semibold text-slate-700"><i class="fas fa-plus-circle mr-2 text-green-500"></i>Agregar seguimiento</h4>
             
@@ -1274,11 +1298,16 @@ function verDetalle(id) {
     if (esRegente) {
         if (informe.estado === 'pendiente') {
             acciones.innerHTML += `
-                <button id="btn-modal-aprobar-${informe.id}" onclick="aprobarConAnimacion('${informe.id}', this)" class="flex-1 min-w-[120px] bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-check mr-2"></i>Aprobar</button>
-                <button onclick="mostrarRechazo('${informe.id}')" class="flex-1 min-w-[120px] bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-times mr-2"></i>Rechazar</button>`;
+                <button id="btn-modal-revisar-${informe.id}" onclick="revisarConAnimacion('${informe.id}', this)" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-eye mr-2"></i>Revisar</button>
+                <button onclick="mostrarAnulacion('${informe.id}')" class="flex-1 min-w-[120px] bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-ban mr-2"></i>Anular</button>`;
         }
-        if (informe.estado === 'rechazado') {
-            acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'pendiente')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-redo mr-2"></i>Reactivar</button>`;
+        if (informe.estado === 'revisado') {
+            acciones.innerHTML += `
+                <button onclick="cambiarEstado('${informe.id}', 'archivado')" class="flex-1 min-w-[120px] bg-slate-600 hover:bg-slate-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-archive mr-2"></i>Archivar</button>
+                <button onclick="cambiarEstado('${informe.id}', 'derivado')" class="flex-1 min-w-[120px] bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-share mr-2"></i>Derivar</button>`;
+        }
+        if (informe.estado === 'derivado') {
+            acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'pendiente')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-undo mr-2"></i>Volver a pendiente</button>`;
         }
     }
     acciones.innerHTML += `<button onclick="exportarPDF('${informe.id}')" class="min-w-[120px] bg-slate-600 hover:bg-slate-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-file-pdf mr-2"></i>PDF</button>`;
@@ -1350,54 +1379,78 @@ function abrirModalGrupoInformes(informesGrupo, timestampDia, mostrarAlumno = fa
 }
 
 async function cambiarEstado(id, nuevoEstado, options = {}) {
-    if (getPerfil()?.rol === 'doe') return mostrarToast('No tiene permiso para cambiar estados', 'error');
     const { silent = false, cerrarModal: debeCerrarModal = true, recargarLista = true, fecha_reunion } = options;
+    const esDOE = getPerfil()?.rol === 'doe';
+    const esRegente = getPerfil()?.rol === 'regente';
+    const informe = getInforme(id);
+    
+    // DOE solo puede devolver de derivado a pendiente
+    if (esDOE && !(informe?.estado === 'derivado' && nuevoEstado === 'pendiente')) {
+        return mostrarToast('No tiene permiso para cambiar este estado', 'error');
+    }
+    // Solo regente puede cambiar otros estados
+    if (!esDOE && !esRegente) return mostrarToast('No tiene permiso para cambiar estados', 'error');
+    
     const updates = {
         estado: nuevoEstado,
         revisado_por: getPerfil().id,
         fecha_revision: new Date().toISOString()
     };
-    if (nuevoEstado !== 'rechazado') updates.motivo_rechazo = null;
+    if (nuevoEstado !== 'anulado') updates.motivo_rechazo = null;
     if (fecha_reunion !== undefined) updates.fecha_reunion = fecha_reunion;
 
     const { error } = await supabaseClient.from('informes').update(updates).eq('id', id);
     if (error) { return mostrarToast('Error actualizando estado', 'error'); }
-    // Estado cambiado
-    const accionHistorial = nuevoEstado === 'aprobado' ? 'aprobacion' : nuevoEstado === 'rechazado' ? 'rechazo' : 'revision';
-    const detalleHistorial = nuevoEstado === 'aprobado' ? `Informe aprobado por ${getNombreUsuario(getPerfil().id)}` : nuevoEstado === 'rechazado' ? `Informe rechazado por ${getNombreUsuario(getPerfil().id)}` : `Informe enviado a revisión por ${getNombreUsuario(getPerfil().id)}`;
+    
+    const labelMap = {
+        pendiente: 'devuelto a pendiente',
+        revisado: 'revisado',
+        anulado: 'anulado',
+        archivado: 'archivado',
+        derivado: 'derivado al DOE'
+    };
+    const accionMap = {
+        pendiente: 'revision',
+        revisado: 'revision',
+        anulado: 'anulado',
+        archivado: 'archivado',
+        derivado: 'derivacion'
+    };
+    const accionHistorial = accionMap[nuevoEstado] || 'revision';
+    const detalleHistorial = `Informe ${labelMap[nuevoEstado] || nuevoEstado} por ${getNombreUsuario(getPerfil().id)}`;
     await registrarHistorial(id, accionHistorial, detalleHistorial);
     await cargarInformes();
-    if (!silent) mostrarToast(`Informe ${nuevoEstado.replace('_', ' ')} correctamente`);
+    if (!silent) mostrarToast(`Informe ${labelMap[nuevoEstado] || nuevoEstado} correctamente`);
     if (debeCerrarModal) cerrarModal();
     if (recargarLista) filtrarInformes();
     actualizarDashboard();
 }
 
-function mostrarRechazo(id) {
-    rechazoId = id;
-    document.getElementById('modalRechazo').classList.remove('hidden');
+function mostrarAnulacion(id) {
+    anulacionId = id;
+    document.getElementById('modalAnulacion').classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
-    document.getElementById('motivoRechazo').value = '';
-    const modalContent = document.getElementById('modalRechazo').querySelector('.bg-white');
+    document.getElementById('motivoAnulacion').value = '';
+    const modalContent = document.getElementById('modalAnulacion').querySelector('.bg-white');
     if (modalContent) {
         modalContent.classList.remove('animate-fade-in');
         void modalContent.offsetWidth; // trigger reflow
         modalContent.classList.add('animate-fade-in');
     }
 }
-function cerrarModalRechazo() {
-    document.getElementById('modalRechazo').classList.add('hidden');
+function cerrarModalAnulacion() {
+    document.getElementById('modalAnulacion').classList.add('hidden');
     document.body.classList.remove('overflow-hidden');
-    rechazoId = null;
+    anulacionId = null;
     window._rechazoItemId = null;
     window._rechazoItemEl = null;
 }
-async function confirmarRechazo() {
-    if (getPerfil()?.rol === 'doe') return mostrarToast('No tiene permiso para rechazar informes', 'error');
-    const motivo = document.getElementById('motivoRechazo').value.trim();
-    const btnConfirmar = document.getElementById('btn-confirmar-rechazo');
+async function confirmarAnulacion() {
+    if (getPerfil()?.rol === 'doe') return mostrarToast('No tiene permiso para anular informes', 'error');
+    const motivo = document.getElementById('motivoAnulacion').value.trim();
+    const btnConfirmar = document.getElementById('btn-confirmar-anulacion');
     if (!motivo) {
-        const textarea = document.getElementById('motivoRechazo');
+        const textarea = document.getElementById('motivoAnulacion');
         textarea.classList.add('animate-shake');
         setTimeout(() => textarea.classList.remove('animate-shake'), 400);
         return mostrarToast('Debe indicar un motivo', 'error');
@@ -1419,19 +1472,19 @@ async function confirmarRechazo() {
     }
 
     const updates = {
-        estado: 'rechazado',
+        estado: 'anulado',
         motivo_rechazo: motivo,
         revisado_por: getPerfil().id,
         fecha_revision: new Date().toISOString()
     };
-    const { error } = await supabaseClient.from('informes').update(updates).eq('id', rechazoId);
+    const { error } = await supabaseClient.from('informes').update(updates).eq('id', anulacionId);
     if (error) { return mostrarToast('Error rechazando informe', 'error'); }
     // Informe rechazado
-    await registrarHistorial(rechazoId, 'rechazo', `Informe rechazado por ${getNombreUsuario(getPerfil().id)}. Motivo: ${motivo}`);
+    await registrarHistorial(anulacionId, 'anulado', `Informe anulado por ${getNombreUsuario(getPerfil().id)}. Motivo: ${motivo}`);
     await cargarInformes();
 
-    mostrarToast('Informe rechazado');
-    cerrarModalRechazo();
+    mostrarToast('Informe anulado');
+    cerrarModalAnulacion();
     if (!vinoDesdeLista) filtrarInformes();
     actualizarDashboard();
 
@@ -1579,15 +1632,15 @@ function renderReunionesDiaSeleccionado() {
 }
 
 function actualizarDashboard() {
-    const estados = { pendiente: 0, aprobado: 0, rechazado: 0, archivado: 0 };
+    const estados = { pendiente: 0, revisado: 0, derivado: 0, archivado: 0, anulado: 0 };
     const instancias = { leve: 0, grave: 0, muy_grave: 0, consejo: 0 };
     informes.forEach(i => {
         if (estados[i.estado] !== undefined) estados[i.estado]++;
         if (instancias[i.instancia] !== undefined) instancias[i.instancia]++;
     });
     document.getElementById('dashPendientes').textContent = estados.pendiente;
-    document.getElementById('dashAprobados').textContent = estados.aprobado;
-    document.getElementById('dashRechazados').textContent = estados.rechazado;
+    document.getElementById('dashAprobados').textContent = estados.revisado;
+    document.getElementById('dashRechazados').textContent = estados.derivado;
     document.getElementById('dashTotal').textContent = informes.length;
 
     // ── 1. Calendario + Reuniones ──
@@ -1613,26 +1666,27 @@ function actualizarDashboard() {
                     </div>
                 </div>
                 <div class="flex gap-2 shrink-0">
-                    <button onclick="event.stopPropagation(); aprobarDesdeDashboard('${i.id}', this)" class="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs rounded-lg transition-colors"><i class="fas fa-check mr-1"></i>Aprobar</button>
-                    <button onclick="event.stopPropagation(); rechazarDesdeDashboard('${i.id}', this)" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg transition-colors"><i class="fas fa-times mr-1"></i>Rechazar</button>
+                    <button onclick="event.stopPropagation(); revisarDesdeDashboard('${i.id}', this)" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors"><i class="fas fa-eye mr-1"></i>Revisar</button>
+                    <button onclick="event.stopPropagation(); anularDesdeDashboard('${i.id}', this)" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg transition-colors"><i class="fas fa-ban mr-1"></i>Anular</button>
                 </div>
             </div>`;
         }).join('');
     document.getElementById('dashPendientesLista').innerHTML = pendientesHTML;
     document.getElementById('dashPendientesLista')?.querySelectorAll('.card-scroll').forEach(card => cardObserver.observe(card));
 
-    // ── 3. Historial reciente (aprobados + rechazados) ──
+    // ── 3. Historial reciente (todos excepto pendientes) ──
     const historial = informes
-        .filter(i => i.estado === 'aprobado' || i.estado === 'rechazado')
+        .filter(i => i.estado !== 'pendiente')
         .sort((a, b) => new Date(b.fecha_revision || b.fecha_creacion) - new Date(a.fecha_revision || a.fecha_creacion))
         .slice(0, 12);
+    const colorEstado = { revisado: 'bg-blue-500', derivado: 'bg-green-500', archivado: 'bg-slate-500', anulado: 'bg-red-500' };
     const historialHTML = historial.length === 0
         ? '<p class="text-sm text-slate-400 italic">Sin historial.</p>'
         : historial.map(i => {
             const alumno = getAlumno(i.alumno_id);
             return `
             <div class="flex items-start gap-3 p-3 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer card-scroll" onclick="verDetalle('${i.id}')">
-                <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${i.estado === 'aprobado' ? 'bg-green-500' : 'bg-red-500'}">${alumno ? alumno.nombre[0] + alumno.apellido[0] : '?'}</div>
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${colorEstado[i.estado] || 'bg-slate-500'}">${alumno ? alumno.nombre[0] + alumno.apellido[0] : '?'}</div>
                 <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium text-slate-800 truncate">${i.titulo}</p>
                     <p class="text-xs text-slate-500">${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'} • ${formatearFechaCorta(i.fecha_revision || i.fecha_creacion)}</p>
@@ -2103,8 +2157,13 @@ function verDocente(userId) {
     const u = usuarios.find(x => x.id === userId);
     if (!u) { ocultarSkeleton('vistaDocente'); return; }
     const lista = informes.filter(i => i.creado_por === userId).sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
-    const stats = { total: lista.length, pendiente: 0, aprobado: 0, rechazado: 0, archivado: 0 };
-    lista.forEach(i => { if (stats[i.estado] !== undefined) stats[i.estado]++; });
+    const stats = { total: lista.length, pendiente: 0, revisado: 0, derivado: 0, final: 0 };
+    lista.forEach(i => {
+        if (i.estado === 'pendiente') stats.pendiente++;
+        else if (i.estado === 'revisado') stats.revisado++;
+        else if (i.estado === 'derivado') stats.derivado++;
+        else if (['archivado', 'anulado'].includes(i.estado)) stats.final++;
+    });
 
     const rolColor = { regente: 'bg-purple-100 text-purple-700', preceptor: 'bg-blue-100 text-blue-700', docente: 'bg-green-100 text-green-700', doe: 'bg-orange-100 text-orange-700' };
     const avatarColor = { regente: 'bg-purple-500', preceptor: 'bg-blue-500', docente: 'bg-green-500', doe: 'bg-orange-500' };
@@ -2122,17 +2181,17 @@ function verDocente(userId) {
         </div>
         <div class="grid grid-cols-4 gap-4 mt-6">
             <div class="text-center p-3 bg-amber-50 rounded-lg"><p class="text-2xl font-bold text-amber-600">${stats.pendiente}</p><p class="text-xs text-amber-700">Pendientes</p></div>
-            <div class="text-center p-3 bg-green-50 rounded-lg"><p class="text-2xl font-bold text-green-600">${stats.aprobado}</p><p class="text-xs text-green-700">Aprobados</p></div>
-            <div class="text-center p-3 bg-red-50 rounded-lg"><p class="text-2xl font-bold text-red-600">${stats.rechazado}</p><p class="text-xs text-red-700">Rechazados</p></div>
-            <div class="text-center p-3 bg-slate-50 rounded-lg"><p class="text-2xl font-bold text-slate-600">${stats.archivado}</p><p class="text-xs text-slate-700">Archivados</p></div>
+            <div class="text-center p-3 bg-blue-50 rounded-lg"><p class="text-2xl font-bold text-blue-600">${stats.revisado}</p><p class="text-xs text-blue-700">Revisados</p></div>
+            <div class="text-center p-3 bg-green-50 rounded-lg"><p class="text-2xl font-bold text-green-600">${stats.derivado}</p><p class="text-xs text-green-700">Derivados</p></div>
+            <div class="text-center p-3 bg-slate-50 rounded-lg"><p class="text-2xl font-bold text-slate-600">${stats.final}</p><p class="text-xs text-slate-700">Finales</p></div>
         </div>
     `;
 
     const ctx = document.getElementById('chartDocenteEstado').getContext('2d');
     if (charts.docenteEstado) charts.docenteEstado.destroy();
-    const estadoLabels = ['Pendiente', 'Aprobado', 'Rechazado', 'Archivado'];
-    const estadoData = [stats.pendiente, stats.aprobado, stats.rechazado, stats.archivado];
-    const estadoColors = ['#fbbf24', '#22c55e', '#ef4444', '#94a3b8'];
+    const estadoLabels = ['Pendiente', 'Revisado', 'Derivado', 'Final'];
+    const estadoData = [stats.pendiente, stats.revisado, stats.derivado, stats.final];
+    const estadoColors = ['#fbbf24', '#3b82f6', '#22c55e', '#94a3b8'];
     charts.docenteEstado = new Chart(ctx, {
         type: 'doughnut',
         data: { labels: estadoLabels, datasets: [{ data: estadoData, backgroundColor: estadoColors, borderWidth: 0 }] },
@@ -2327,9 +2386,9 @@ function filtrarDocentes() {
     lista = lista.map(u => {
         const creados = informes.filter(i => i.creado_por === u.id).length;
         const pendientes = informes.filter(i => i.creado_por === u.id && i.estado === 'pendiente').length;
-        const aprobados = informes.filter(i => i.creado_por === u.id && i.estado === 'aprobado').length;
-        const rechazados = informes.filter(i => i.creado_por === u.id && i.estado === 'rechazado').length;
-        const revisados = informes.filter(i => i.revisado_por === u.id && (i.estado === 'aprobado' || i.estado === 'rechazado')).length;
+        const revisados = informes.filter(i => i.creado_por === u.id && i.estado === 'revisado').length;
+        const derivados = informes.filter(i => i.creado_por === u.id && i.estado === 'derivado').length;
+        const finales = informes.filter(i => i.revisado_por === u.id && ['archivado', 'anulado'].includes(i.estado)).length;
         return { ...u, creados, pendientes, aprobados, rechazados, revisados };
     });
 

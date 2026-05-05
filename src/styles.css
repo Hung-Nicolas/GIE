@@ -61,6 +61,21 @@ body {
     color: #4b5563;
 }
 
+.status-revisado {
+    background: #dbeafe;
+    color: #1e40af;
+}
+
+.status-anulado {
+    background: #fee2e2;
+    color: #991b1b;
+}
+
+.status-derivado {
+    background: #d1fae5;
+    color: #065f46;
+}
+
 .instancia-leve {
     border-left: 4px solid #fbbf24;
 }

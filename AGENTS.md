@@ -109,6 +109,7 @@ La aplicación **solo funciona con Supabase**. No hay backend propio ni modo off
 - **`public.alumnos`** — catálogo de alumnos (lectura/insert desde la app; el formulario de creación de alumno está activo en `main.js`).
 - **`public.categorias`** — categorías de informes (Conducta, Disciplina, Asistencia, Académica, Otros) con color asociado.
 - **`public.informes`** — informes con RLS por rol. Campos clave: `estado`, `instancia`, `tipo_falta`, `fecha_reunion`, `observaciones`, `motivo_rechazo`, `categoria_id`.
+  - Estados: `pendiente` → `revisado` → (`archivado` | `derivado`). También puede ser `anulado` (final).
 - **`public.plantillas`** — plantillas personalizadas de informes con contador de usos (`usos`).
 
 **Funciones RPC (SECURITY DEFINER):**
@@ -156,8 +157,8 @@ Toda la lógica de la aplicación reside en este archivo (~3013 líneas). Se org
 | Rol | Permisos |
 |-----|----------|
 | `regente` | Acceso total: ver todos los informes, aprobar/rechazar/reactivar, gestión de usuarios (crear/editar/eliminar), ver Dashboard, Estadísticas, Docentes y administrar plantillas. |
-| `docente` / `preceptor` | Solo ver y crear/editar sus propios informes. No pueden editar informes aprobados. No ven Dashboard, Estadísticas, Docentes ni la sección Usuarios. |
-| `doe` | Solo lectura: ver todos los informes y alumnos, acceder a Ajustes. No puede crear, editar, eliminar ni cambiar estados de informes. No ve Dashboard, Estadísticas, Docentes ni Usuarios. Ocultados los botones de creación de informes y alumnos. |
+| `docente` / `preceptor` | Solo ver y crear/editar sus propios informes. No pueden editar informes finalizados. No ven Dashboard, Estadísticas, Docentes ni la sección Usuarios. |
+| `doe` | Ver informes `derivados`, `archivados` y `anulados`. Puede agregar observaciones/acciones en informes derivados y devolverlos a `pendiente`. No ve Dashboard, Estadísticas, Docentes ni Usuarios. |
 
 La UI oculta elementos según el rol mediante clases CSS `hidden` y condicionales en el renderizado. En Supabase, las políticas RLS refuerzan estas restricciones en el servidor.
 
@@ -176,7 +177,7 @@ La UI oculta elementos según el rol mediante clases CSS `hidden` y condicionale
 - **Funciones**: `camelCase` descriptivo (ej. `formatearFecha`, `cambiarEstado`).
 - **IDs de DOM**: `camelCase` o `snake_case` indistintamente.
 - **Clases CSS personalizadas** definidas en `src/styles.css` con prefijos semánticos:
-  - `status-*` para badges de estado (`pendiente`, `aprobado`, `rechazado`, `archivado`, `en_revision`)
+  - `status-*` para badges de estado (`pendiente`, `revisado`, `anulado`, `archivado`, `derivado`)
   - `instancia-*` para bordes laterales según gravedad (`leve`, `grave`, `muy_grave`)
   - `animate-*` para animaciones (`fade-in`, `fade-in-slow`, `slide-out`, `pop`, `shake`)
   - `skeleton-*` para estados de carga
