@@ -17,6 +17,7 @@ let plantillas = [];
 let tabInformesActivo = 'todos'; // 'todos' | 'pendientes' | 'resueltos'
 let tabAlumnosActivo = 'todos'; // 'todos' | 'mis_cursos'
 let periodoTendenciaDias = 30;
+let _guardandoInforme = false;
 
 // IntersectionObserver para animar cards al hacer scroll (repite al subir/bajar)
 const cardObserver = new IntersectionObserver((entries) => {
@@ -246,11 +247,11 @@ async function iniciarApp() {
     const tabsAlumnos = document.getElementById('tabsAlumnos');
     if (tabsAlumnos) tabsAlumnos.classList.toggle('hidden', !(esDocenteOPreceptor || esPAT));
     const tabMisCursos = document.getElementById('tabAlumnosMisCursos');
-    if (tabMisCursos) tabMisCursos.classList.toggle('hidden', !esDocenteOPreceptor);
+    if (tabMisCursos) tabMisCursos.classList.toggle('hidden', !(esDocenteOPreceptor || esPAT));
     const tabMisAlumnos = document.getElementById('tabAlumnosMisAlumnos');
     if (tabMisAlumnos) tabMisAlumnos.classList.toggle('hidden', !esPAT);
     const cardMisCursos = document.getElementById('cardMisCursos');
-    if (cardMisCursos) cardMisCursos.classList.toggle('hidden', !esDocenteOPreceptor);
+    if (cardMisCursos) cardMisCursos.classList.toggle('hidden', !(esDocenteOPreceptor || esPAT));
     const cardMisAlumnosPAT = document.getElementById('cardMisAlumnosPAT');
     if (cardMisAlumnosPAT) cardMisAlumnosPAT.classList.toggle('hidden', !esPAT);
 
@@ -381,7 +382,7 @@ function setupEventListeners() {
         newRol.addEventListener('change', () => {
             const containerCursos = document.getElementById('containerCursosNuevoUsuario');
             const containerPAT = document.getElementById('containerAlumnosPATNuevoUsuario');
-            if (containerCursos) containerCursos.classList.toggle('hidden', !(newRol.value === 'docente' || newRol.value === 'preceptor'));
+            if (containerCursos) containerCursos.classList.toggle('hidden', !(newRol.value === 'docente' || newRol.value === 'preceptor' || newRol.value === 'pat'));
             if (containerPAT) containerPAT.classList.toggle('hidden', newRol.value !== 'pat');
         });
     }
@@ -392,7 +393,7 @@ function setupEventListeners() {
             const val = editUserRolEl.value;
             const cursosContainer = document.getElementById('editUserCursoAnio')?.parentElement;
             const patContainer = document.getElementById('editUserAlumnosPATContainer');
-            if (cursosContainer) cursosContainer.classList.toggle('hidden', !(val === 'docente' || val === 'preceptor'));
+            if (cursosContainer) cursosContainer.classList.toggle('hidden', !(val === 'docente' || val === 'preceptor' || val === 'pat'));
             if (patContainer) patContainer.classList.toggle('hidden', val !== 'pat');
         });
     }
@@ -405,6 +406,9 @@ function setupEventListeners() {
     }
     const btnCerrarModal = document.getElementById('btn-cerrar-modal');
     if (btnCerrarModal) btnCerrarModal.addEventListener('click', cerrarModal);
+
+    const btnCerrarModalGrupo = document.getElementById('btn-cerrar-modal-grupo');
+    if (btnCerrarModalGrupo) btnCerrarModalGrupo.addEventListener('click', cerrarModalGrupo);
 
     const btnCerrarAnulacion = document.getElementById('btn-cerrar-anulacion');
     if (btnCerrarAnulacion) btnCerrarAnulacion.addEventListener('click', cerrarModalAnulacion);
@@ -933,7 +937,7 @@ function filtrarInformes() {
         const matchEstado = !estado || i.estado === estado;
         const matchInstancia = !instancia || i.instancia === instancia;
         // Docentes/PAT solo ven sus propios informes (PAT también ve los de sus alumnos asignados); regentes ven todos; DOE ve derivados/archivados/anulados
-        const matchCreador = esRegente || (esDOE && ['derivado', 'archivado', 'anulado'].includes(i.estado)) || i.creado_por === getPerfil()?.id || (esPAT && misAlumnosPAT.includes(i.alumno_id));
+        const matchCreador = esRegente || (esDOE && i.estado === 'derivado') || i.creado_por === getPerfil()?.id || (esPAT && misAlumnosPAT.includes(i.alumno_id));
         // Filtro rápido por tab
         const matchTab = tabInformesActivo === 'todos' ? true :
             tabInformesActivo === 'pendientes' ? i.estado === 'pendiente' :
@@ -955,7 +959,7 @@ function filtrarInformes() {
         const matchTurno = !turno || (alumno && alumno.turno === turno);
         const matchEstado = !estado || i.estado === estado;
         const matchInstancia = !instancia || i.instancia === instancia;
-        const matchCreador = esRegente || (esDOE && ['derivado', 'archivado', 'anulado'].includes(i.estado)) || i.creado_por === getPerfil()?.id || (esPAT && misAlumnosPAT.includes(i.alumno_id));
+        const matchCreador = esRegente || (esDOE && i.estado === 'derivado') || i.creado_por === getPerfil()?.id || (esPAT && misAlumnosPAT.includes(i.alumno_id));
         return matchBusqueda && matchCurso && matchDivision && matchTurno && matchEstado && matchInstancia && matchCreador;
     });
     const badgeTodos = document.getElementById('badgeTodos');
@@ -1132,65 +1136,74 @@ window.revisarConAnimacion = async function(id, btn) {
 
 async function guardarInforme(e) {
     e.preventDefault();
-    if (getPerfil()?.rol === 'doe') return mostrarToast('No tiene permiso para guardar informes', 'error');
-    const alumnoId = document.getElementById('alumnoId').value;
-    if (!alumnoId) return mostrarToast('Debe seleccionar un alumno', 'error');
-    const editId = document.getElementById('editId').value;
-    const titulo = document.getElementById('titulo').value.trim();
-    const resumen = document.getElementById('resumen').value.trim();
-    const observaciones = document.getElementById('observaciones').value.trim();
-    const instancia = document.getElementById('instancia').value;
-    const categoriaId = document.getElementById('categoriaInforme').value;
+    if (_guardandoInforme) return;
+    _guardandoInforme = true;
+    const btn = e.submitter;
+    if (btn) { btn.disabled = true; btn.classList.add('opacity-50', 'cursor-not-allowed'); }
+    try {
+        if (getPerfil()?.rol === 'doe') return mostrarToast('No tiene permiso para guardar informes', 'error');
+        const alumnoId = document.getElementById('alumnoId').value;
+        if (!alumnoId) return mostrarToast('Debe seleccionar un alumno', 'error');
+        const editId = document.getElementById('editId').value;
+        const titulo = document.getElementById('titulo').value.trim();
+        const resumen = document.getElementById('resumen').value.trim();
+        const observaciones = document.getElementById('observaciones').value.trim();
+        const instancia = document.getElementById('instancia').value;
+        const categoriaId = document.getElementById('categoriaInforme').value;
 
-    // Validación de límites
-    if (titulo.length > 200) return mostrarToast('El título no puede exceder 200 caracteres', 'error');
-    if (resumen.length > 2000) return mostrarToast('La descripción no puede exceder 2000 caracteres', 'error');
-    if (observaciones.length > 1000) return mostrarToast('Las observaciones no pueden exceder 1000 caracteres', 'error');
-    if (!instancia) return mostrarToast('Debe seleccionar una instancia', 'error');
-    if (!categoriaId) return mostrarToast('Debe seleccionar una categoría', 'error');
+        // Validación de límites
+        if (titulo.length > 200) return mostrarToast('El título no puede exceder 200 caracteres', 'error');
+        if (resumen.length > 2000) return mostrarToast('La descripción no puede exceder 2000 caracteres', 'error');
+        if (observaciones.length > 1000) return mostrarToast('Las observaciones no pueden exceder 1000 caracteres', 'error');
+        if (!instancia) return mostrarToast('Debe seleccionar una instancia', 'error');
+        if (!categoriaId) return mostrarToast('Debe seleccionar una categoría', 'error');
 
-    const datos = {
-        alumno_id: alumnoId,
-        categoria_id: categoriaId,
-        tipo_falta: 'Otra',
-        instancia,
-        titulo,
-        resumen,
-        observaciones: observaciones || null
-    };
-
-    if (editId) {
-        const inf = getInforme(editId);
-        if (!inf) return mostrarToast('Informe no encontrado', 'error');
-        if (['archivado', 'anulado'].includes(inf.estado)) return mostrarToast('No se puede editar un informe finalizado', 'error');
-        if (inf.creado_por !== getPerfil().id && getPerfil().rol !== 'regente') return mostrarToast('No tiene permiso para editar', 'error');
-
-        const { error } = await supabaseClient.from('informes').update(datos).eq('id', editId);
-        if (error) { return mostrarToast('Error actualizando informe', 'error'); }
-        // Informe actualizado
-        await registrarHistorial(editId, 'edicion', `Informe editado por ${getNombreUsuario(getPerfil().id)}`);
-        await cargarInformes();
-        mostrarToast('Informe actualizado correctamente');
-    } else {
-        const nuevo = {
-            id: generarId(),
-            ...datos,
-            estado: 'pendiente',
-            creado_por: getPerfil().id,
-            revisado_por: null,
-            fecha_creacion: new Date().toISOString(),
-            fecha_revision: null,
-            motivo_rechazo: null
+        const datos = {
+            alumno_id: alumnoId,
+            categoria_id: categoriaId,
+            tipo_falta: 'Otra',
+            instancia,
+            titulo,
+            resumen,
+            observaciones: observaciones || null
         };
-        const { error } = await supabaseClient.from('informes').insert(nuevo);
-        if (error) { return mostrarToast('Error guardando informe', 'error'); }
-        // Informe creado
-        await registrarHistorial(nuevo.id, 'creacion', `Informe creado por ${getNombreUsuario(getPerfil().id)}`);
-        await cargarInformes();
-        mostrarToast('Informe creado correctamente');
+
+        if (editId) {
+            const inf = getInforme(editId);
+            if (!inf) return mostrarToast('Informe no encontrado', 'error');
+            if (['archivado', 'anulado'].includes(inf.estado)) return mostrarToast('No se puede editar un informe finalizado', 'error');
+            if (inf.creado_por !== getPerfil().id && getPerfil().rol !== 'regente') return mostrarToast('No tiene permiso para editar', 'error');
+
+            const { error } = await supabaseClient.from('informes').update(datos).eq('id', editId);
+            if (error) { return mostrarToast('Error actualizando informe', 'error'); }
+            // Informe actualizado
+            await registrarHistorial(editId, 'edicion', `Informe editado por ${getNombreUsuario(getPerfil().id)}`);
+            await cargarInformes();
+            mostrarToast('Informe actualizado correctamente');
+        } else {
+            const nuevo = {
+                id: generarId(),
+                ...datos,
+                estado: 'pendiente',
+                creado_por: getPerfil().id,
+                revisado_por: null,
+                fecha_creacion: new Date().toISOString(),
+                fecha_revision: null,
+                motivo_rechazo: null
+            };
+            const { error } = await supabaseClient.from('informes').insert(nuevo);
+            if (error) { return mostrarToast('Error guardando informe', 'error'); }
+            // Informe creado
+            await registrarHistorial(nuevo.id, 'creacion', `Informe creado por ${getNombreUsuario(getPerfil().id)}`);
+            await cargarInformes();
+            mostrarToast('Informe creado correctamente');
+        }
+        cancelarForm();
+        showSection('informes');
+    } finally {
+        _guardandoInforme = false;
+        if (btn) { btn.disabled = false; btn.classList.remove('opacity-50', 'cursor-not-allowed'); }
     }
-    cancelarForm();
-    showSection('informes');
 }
 
 function cancelarForm() {
@@ -1304,7 +1317,7 @@ window.renderizarHistorial = renderizarHistorial;
 function verDetalle(id) {
     const informe = getInforme(id);
     if (!informe) return;
-    if (getPerfil()?.rol === 'doe' && !['derivado', 'archivado', 'anulado'].includes(informe.estado)) {
+    if (getPerfil()?.rol === 'doe' && informe.estado !== 'derivado') {
         return mostrarToast('No tiene permiso para ver este informe', 'error');
     }
     const alumno = getAlumno(informe.alumno_id);
@@ -1362,12 +1375,14 @@ function verDetalle(id) {
                 <button onclick="agregarObservacion('${informe.id}')" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors">Agregar observación</button>
             </div>
             
+            ${!esDOE ? `
             <div class="p-3 bg-slate-50 rounded-lg space-y-2">
                 <label class="text-xs font-medium text-slate-600">Acción tomada</label>
                 <input type="text" id="nuevaAccionTipo" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="Ej: Suspensión, Llamado a padres, Entrevista...">
                 <textarea id="nuevaAccionDetalle" rows="2" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none text-sm" placeholder="Detalle de la acción..."></textarea>
                 <button onclick="agregarAccion('${informe.id}')" class="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors">Agregar acción</button>
             </div>
+            ` : ''}
         </div>
         ` : ''}
     `;
@@ -1392,9 +1407,9 @@ function verDetalle(id) {
                 <button onclick="cambiarEstado('${informe.id}', 'archivado')" class="flex-1 min-w-[120px] bg-slate-600 hover:bg-slate-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-archive mr-2"></i>Archivar</button>
                 <button onclick="cambiarEstado('${informe.id}', 'derivado')" class="flex-1 min-w-[120px] bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-share mr-2"></i>Derivar</button>`;
         }
-        if (informe.estado === 'derivado') {
-            acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'pendiente')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-undo mr-2"></i>Volver a pendiente</button>`;
-        }
+    }
+    if ((esRegente || esDOE) && informe.estado === 'derivado') {
+        acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'pendiente')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-undo mr-2"></i>Volver a pendiente</button>`;
     }
     acciones.innerHTML += `<button onclick="exportarPDF('${informe.id}')" class="min-w-[120px] bg-slate-600 hover:bg-slate-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-file-pdf mr-2"></i>PDF</button>`;
     modal.classList.remove('hidden');
@@ -1449,7 +1464,7 @@ function abrirModalGrupoInformes(informesGrupo, timestampDia, mostrarAlumno = fa
     contenido.innerHTML = informesGrupo.map(i => {
         const alumno = mostrarAlumno ? getAlumno(i.alumno_id) : null;
         return `
-        <div onclick="cerrarModalGrupo(); verDetalle('${i.id}')" class="cursor-pointer bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg p-4 transition-colors">
+        <div data-informe-id="${i.id}" class="cursor-pointer bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg p-4 transition-colors">
             <div class="flex items-center justify-between gap-2 mb-1 flex-wrap">
                 <span class="status-${i.estado} px-2 py-0.5 rounded-full text-xs font-medium capitalize">${i.estado.replace('_', ' ')}</span>
                 <span class="text-xs ${colorInstancia[i.instancia] ?? 'text-blue-600'} font-semibold capitalize">${labelInstancia[i.instancia] ?? i.instancia}</span>
@@ -1459,6 +1474,13 @@ function abrirModalGrupoInformes(informesGrupo, timestampDia, mostrarAlumno = fa
             <p class="text-xs text-slate-500 mt-1 line-clamp-2">${i.resumen}</p>
         </div>
     `}).join('');
+
+    contenido.querySelectorAll('[data-informe-id]').forEach(el => {
+        el.addEventListener('click', () => {
+            cerrarModalGrupo();
+            verDetalle(el.dataset.informeId);
+        });
+    });
 
     modal.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
@@ -2253,10 +2275,11 @@ function verDocente(userId) {
 
     const rolColor = { regente: 'bg-purple-100 text-purple-700', preceptor: 'bg-blue-100 text-blue-700', docente: 'bg-green-100 text-green-700', doe: 'bg-orange-100 text-orange-700', pat: 'bg-teal-100 text-teal-700' };
     const avatarColor = { regente: 'bg-purple-500', preceptor: 'bg-blue-500', docente: 'bg-green-500', doe: 'bg-orange-500', pat: 'bg-teal-500' };
+    const alumnosPat = (u.alumnos_pat || []).map(id => getAlumno(id)).filter(Boolean).sort((a, b) => `${a.apellido} ${a.nombre}`.localeCompare(`${b.apellido} ${b.nombre}`));
     document.getElementById('tarjetaDocente').innerHTML = `
         <div class="flex items-center gap-4">
             <div class="w-16 h-16 ${avatarColor[u.rol] || 'bg-slate-500'} rounded-full flex items-center justify-center text-white text-2xl font-bold">${(u.nombre || '?')[0]}${(u.apellido || '?')[0]}</div>
-            <div>
+            <div class="flex-1 min-w-0">
                 <h2 class="text-xl font-bold text-slate-800">${u.apellido || ''}, ${u.nombre || ''}</h2>
                 <div class="flex items-center gap-2 mt-1">
                     <p class="text-slate-500">${u.email}</p>
@@ -2267,6 +2290,16 @@ function verDocente(userId) {
                         ? (u.cursos || []).map(c => `<span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 font-medium">${c}</span>`).join('')
                         : '<span class="text-xs text-slate-400 italic">Sin cursos asignados</span>'}
                 </div>
+                ${u.rol === 'pat' ? `
+                <div class="mt-2">
+                    <p class="text-xs font-medium text-slate-600 mb-1">Alumnos asignados (${alumnosPat.length})</p>
+                    <div class="flex flex-wrap gap-1 max-h-32 overflow-y-auto pr-1">
+                        ${alumnosPat.length > 0
+                            ? alumnosPat.map(a => `<span onclick="verAlumno('${a.id}')" class="text-[10px] px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 border border-teal-100 font-medium cursor-pointer hover:bg-teal-100 transition-colors" title="${a.curso || ''} ${a.division || ''}">${a.apellido}, ${a.nombre}</span>`).join('')
+                            : '<span class="text-xs text-slate-400 italic">Sin alumnos asignados</span>'}
+                    </div>
+                </div>
+                ` : ''}
                 <p class="text-sm text-slate-400 mt-1">${stats.total} informe${stats.total !== 1 ? 's' : ''} creado${stats.total !== 1 ? 's' : ''}</p>
             </div>
         </div>
@@ -2410,16 +2443,13 @@ async function cargarUsuarios() {
         const activoBadge = sinPerfil
             ? '<span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">-</span>'
             : `<span class="px-2 py-1 rounded-full text-xs font-medium ${u.activo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${u.activo ? 'Activo' : 'Inactivo'}</span>`;
-        const cursosText = sinPerfil || !u.cursos || u.cursos.length === 0
-            ? '<span class="text-slate-400 text-xs">-</span>'
-            : `<span class="text-xs text-slate-600">${u.cursos.join(', ')}</span>`;
         const acciones = sinPerfil
             ? `<button onclick="sincronizarPerfilUsuario('${u.id}', '${u.email}')" class="text-sm text-amber-600 hover:text-amber-700" title="Crear perfil"><i class="fas fa-user-plus"></i></button>`
             : `${u.id === getPerfil().id ? '<span class="text-xs text-slate-400">Usted</span>' : `
                 <button onclick="editarUsuarioForm('${u.id}')" class="text-sm text-blue-600 hover:text-blue-700" title="Editar"><i class="fas fa-edit"></i></button>
                 ${u.id !== getPerfil().id && u.email !== 'admin@gie.com' ? `<button onclick="mostrarModalEliminar('${u.id}')" class="text-sm text-red-600 hover:text-red-700" title="Eliminar"><i class="fas fa-trash-alt"></i></button>` : ''}
             `}`;
-        return { nombreCompleto, rolBadge, activoBadge, acciones, sinPerfil, cursosText };
+        return { nombreCompleto, rolBadge, activoBadge, acciones, sinPerfil };
     };
 
     // Desktop
@@ -2427,10 +2457,9 @@ async function cargarUsuarios() {
         const r = renderRow(u);
         return `
         <tr id="user-row-${u.id}" class="hover:bg-slate-50 transition-colors ${r.sinPerfil ? 'bg-amber-50/50' : ''}">
-            <td class="px-4 py-3 font-medium">${r.nombreCompleto}</td>
+            <td class="px-4 py-3 font-medium cursor-pointer hover:text-blue-600 hover:underline" onclick="verDocente('${u.id}')">${r.nombreCompleto}</td>
             <td class="px-4 py-3 text-slate-500">${u.email}</td>
             <td class="px-4 py-3">${r.rolBadge}</td>
-            <td class="px-4 py-3">${r.cursosText}</td>
             <td class="px-4 py-3">${r.activoBadge}</td>
             <td class="px-4 py-3">
                 <div class="flex items-center gap-2">${r.acciones}</div>
@@ -2445,13 +2474,12 @@ async function cargarUsuarios() {
         <div id="user-card-${u.id}" class="p-4 ${r.sinPerfil ? 'bg-amber-50/50' : ''}">
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0 flex-1">
-                    <p class="font-medium text-slate-800 text-sm">${r.nombreCompleto}</p>
+                    <p class="font-medium text-slate-800 text-sm cursor-pointer hover:text-blue-600 hover:underline" onclick="verDocente('${u.id}')">${r.nombreCompleto}</p>
                     <p class="text-xs text-slate-500 mt-0.5 truncate">${u.email}</p>
                     <div class="flex items-center gap-2 mt-2">
                         ${r.rolBadge}
                         ${r.activoBadge}
                     </div>
-                    <div class="mt-1">${r.cursosText}</div>
                 </div>
                 <div class="flex items-center gap-3 shrink-0">
                     ${r.acciones}
@@ -2875,7 +2903,7 @@ window.editarUsuarioForm = function(id) {
     const val = u.rol || 'docente';
     const cursosContainer = document.getElementById('editUserCursoAnio')?.parentElement;
     const patContainer = document.getElementById('editUserAlumnosPATContainer');
-    if (cursosContainer) cursosContainer.classList.toggle('hidden', !(val === 'docente' || val === 'preceptor'));
+    if (cursosContainer) cursosContainer.classList.toggle('hidden', !(val === 'docente' || val === 'preceptor' || val === 'pat'));
     if (patContainer) patContainer.classList.toggle('hidden', val !== 'pat');
     document.getElementById('editUserPassword').value = '';
     // Email no editable en Supabase (requiere confirmación), contraseña sí vía RPC
