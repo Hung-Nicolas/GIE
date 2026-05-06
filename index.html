@@ -512,6 +512,14 @@
                     <i class="fas fa-plus"></i><span class="hidden sm:inline">Crear alumno</span>
                 </button>
             </div>
+            <div id="tabsAlumnos" class="flex gap-2 mb-4 overflow-x-auto hidden">
+                <button id="tabAlumnosTodos" onclick="setTabAlumnos('todos')" class="tab-alumnos px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white">
+                    Todos
+                </button>
+                <button id="tabAlumnosMisCursos" onclick="setTabAlumnos('mis_cursos')" class="tab-alumnos px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200">
+                    Mis cursos
+                </button>
+            </div>
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
                 <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                     <div>
@@ -652,8 +660,9 @@
                                     <th class="px-4 py-3">Rol</th>
                                     <th class="px-4 py-3 text-center">Creados</th>
                                     <th class="px-4 py-3 text-center">Pendientes</th>
-                                    <th class="px-4 py-3 text-center">Aprobados</th>
-                                    <th class="px-4 py-3 text-center">Rechazados</th>
+                                    <th class="px-4 py-3 text-center">Revisados</th>
+                                    <th class="px-4 py-3 text-center">Derivados</th>
+                                    <th class="px-4 py-3 text-center">Finales</th>
                                 </tr>
                             </thead>
                             <tbody id="listaDocentesDesktop" class="divide-y divide-slate-100"></tbody>
@@ -813,6 +822,35 @@
                             <i class="fas fa-eye"></i>
                         </button>
                     </div>
+                    <!-- Cursos para docente/preceptor -->
+                    <div id="containerCursosNuevoUsuario" class="col-span-1 md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Cursos asignados</label>
+                        <div class="flex gap-2 mb-3">
+                            <select id="newCursoAnio" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                                <option value="">Año</option>
+                                <option value="1°">1°</option>
+                                <option value="2°">2°</option>
+                                <option value="3°">3°</option>
+                                <option value="4°">4°</option>
+                                <option value="5°">5°</option>
+                                <option value="6°">6°</option>
+                            </select>
+                            <select id="newCursoDivision" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                                <option value="">Div</option>
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3">3</option>
+                                <option value="4">4</option>
+                                <option value="5">5</option>
+                                <option value="6">6</option>
+                                <option value="7">7</option>
+                                <option value="8">8</option>
+                                <option value="9">9</option>
+                            </select>
+                            <button type="button" onclick="agregarCursoNuevoUsuario()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">Agregar</button>
+                        </div>
+                        <div id="newCursosLista" class="flex flex-wrap gap-2"></div>
+                    </div>
                     <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition-colors">
                         <i class="fas fa-user-plus mr-2"></i>Crear Usuario
                     </button>
@@ -827,6 +865,7 @@
                                 <th class="px-4 py-3">Nombre</th>
                                 <th class="px-4 py-3">Email</th>
                                 <th class="px-4 py-3">Rol</th>
+                                <th class="px-4 py-3">Cursos</th>
                                 <th class="px-4 py-3">Estado</th>
                                 <th class="px-4 py-3">Acciones</th>
                             </tr>
@@ -889,6 +928,38 @@
                 </div>
             </div>
 
+            <!-- Mis cursos (visible para docentes/preceptores) -->
+            <div id="cardMisCursos" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
+                <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
+                    <i class="fas fa-chalkboard-teacher text-blue-500"></i> Mis cursos
+                </h3>
+                <div class="flex gap-2 mb-3">
+                    <select id="ajustesCursoAnio" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                        <option value="">Año</option>
+                        <option value="1°">1°</option>
+                        <option value="2°">2°</option>
+                        <option value="3°">3°</option>
+                        <option value="4°">4°</option>
+                        <option value="5°">5°</option>
+                        <option value="6°">6°</option>
+                    </select>
+                    <select id="ajustesCursoDivision" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                        <option value="">Div</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                        <option value="5">5</option>
+                        <option value="6">6</option>
+                        <option value="7">7</option>
+                        <option value="8">8</option>
+                        <option value="9">9</option>
+                    </select>
+                    <button onclick="agregarMiCurso()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">Agregar</button>
+                </div>
+                <div id="ajustesCursosLista" class="flex flex-wrap gap-2"></div>
+            </div>
+
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                 <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
                     <i class="fas fa-info-circle text-blue-500"></i> Acerca de
@@ -902,7 +973,7 @@
                         <li>Marquez Cristhian</li>
                         <li>Enrique Santino</li>
                     </ul>
-                    <p class="pt-2 text-slate-500">Versión <span class="font-mono font-medium text-slate-700">v1.5.1</span></p>
+                    <p class="pt-2 text-slate-500">Versión <span class="font-mono font-medium text-slate-700">v1.5.2</span></p>
                 </div>
             </div>
             </div>
@@ -1102,6 +1173,34 @@
                         <option value="doe">DOE</option>
                         <option value="regente">Regente</option>
                     </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Cursos asignados</label>
+                    <div class="flex gap-2 mb-3">
+                        <select id="editUserCursoAnio" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option value="">Año</option>
+                            <option value="1°">1°</option>
+                            <option value="2°">2°</option>
+                            <option value="3°">3°</option>
+                            <option value="4°">4°</option>
+                            <option value="5°">5°</option>
+                            <option value="6°">6°</option>
+                        </select>
+                        <select id="editUserCursoDivision" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
+                            <option value="">Div</option>
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3">3</option>
+                            <option value="4">4</option>
+                            <option value="5">5</option>
+                            <option value="6">6</option>
+                            <option value="7">7</option>
+                            <option value="8">8</option>
+                            <option value="9">9</option>
+                        </select>
+                        <button onclick="agregarCursoEditar()" class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-colors">Agregar</button>
+                    </div>
+                    <div id="editUserCursosLista" class="flex flex-wrap gap-2"></div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Nueva contraseña <span class="text-xs text-slate-400">(dejar vacío para no cambiar)</span></label>

@@ -12,19 +12,20 @@ TRUNCATE public.alumnos RESTART IDENTITY CASCADE;
 -- ============================================================
 -- PERFILES DEMO (usuarios ya existen en auth.users)
 -- ============================================================
-INSERT INTO public.perfiles (id, email, nombre, apellido, rol, activo)
+INSERT INTO public.perfiles (id, email, nombre, apellido, rol, activo, cursos)
 VALUES
-  ('c87ec2e0-2cd2-4c57-8a6c-0ddae8816866', 'doe@gmail.com', 'test', 'DOE', 'doe', true),
-  ('25ccc48e-bf45-48e3-94a0-c615e9f5ceee', 'preceptor@gie.com', 'test', 'preceptor', 'preceptor', true),
-  ('e297e8e7-ecbc-4062-af24-0d7423f22109', 'docente@gie.com', 'test', 'docente', 'docente', true),
-  ('c0b4da58-162c-447c-8910-cfadd840c868', 'regente@gie.com', 'test', 'regente', 'regente', true),
-  ('b2a0c71b-bdd4-4b1d-a3e3-a9974fefb6c0', 'admin@gie.com', 'Sistema', 'Admin', 'regente', true)
+  ('c87ec2e0-2cd2-4c57-8a6c-0ddae8816866', 'doe@gmail.com', 'test', 'DOE', 'doe', true, '{}'),
+  ('25ccc48e-bf45-48e3-94a0-c615e9f5ceee', 'preceptor@gie.com', 'test', 'preceptor', 'preceptor', true, '{}'),
+  ('e297e8e7-ecbc-4062-af24-0d7423f22109', 'docente@gie.com', 'test', 'docente', 'docente', true, ARRAY['1°2','4°4']),
+  ('c0b4da58-162c-447c-8910-cfadd840c868', 'regente@gie.com', 'test', 'regente', 'regente', true, '{}'),
+  ('b2a0c71b-bdd4-4b1d-a3e3-a9974fefb6c0', 'admin@gie.com', 'Sistema', 'Admin', 'regente', true, '{}')
 ON CONFLICT (id) DO UPDATE SET
   email = EXCLUDED.email,
   nombre = EXCLUDED.nombre,
   apellido = EXCLUDED.apellido,
   rol = EXCLUDED.rol,
-  activo = EXCLUDED.activo;
+  activo = EXCLUDED.activo,
+  cursos = EXCLUDED.cursos;
 
 -- 1. ALUMNOS (40 estudiantes, grados 1° a 6°, divisiones 1-3, turnos variados)
 INSERT INTO public.alumnos (id, nombre, apellido, curso, division, turno) VALUES

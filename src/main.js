@@ -1,7 +1,7 @@
 import Chart from 'chart.js/auto';
 import html2pdf from 'html2pdf.js';
 import { USE_SUPABASE, supabaseClient } from './config.js';
-import { getPerfil, esRegente, showLogin, showApp, restoreSession, doLogout, updateAuthUI, setupLoginForm, setupLoginBanner } from './auth.js';
+import { getPerfil, esRegente, setPerfilCursos, showLogin, showApp, restoreSession, doLogout, updateAuthUI, setupLoginForm, setupLoginBanner } from './auth.js';
 import './styles.css';
 
 // ==================== ESTADO GLOBAL ====================
@@ -15,6 +15,7 @@ let calCurrentDate = new Date();
 let calSelectedDate = null;
 let plantillas = [];
 let tabInformesActivo = 'todos'; // 'todos' | 'pendientes' | 'resueltos'
+let tabAlumnosActivo = 'todos'; // 'todos' | 'mis_cursos'
 let periodoTendenciaDias = 30;
 
 // IntersectionObserver para animar cards al hacer scroll (repite al subir/bajar)
@@ -240,6 +241,10 @@ async function iniciarApp() {
     if (btnCrearAlumno) btnCrearAlumno.classList.toggle('hidden', esDOE);
     const tabsInformes = document.getElementById('tabsInformes');
     if (tabsInformes) tabsInformes.classList.toggle('hidden', esDOE);
+    const tabsAlumnos = document.getElementById('tabsAlumnos');
+    if (tabsAlumnos) tabsAlumnos.classList.toggle('hidden', !(getPerfil()?.rol === 'docente' || getPerfil()?.rol === 'preceptor'));
+    const cardMisCursos = document.getElementById('cardMisCursos');
+    if (cardMisCursos) cardMisCursos.classList.toggle('hidden', !(getPerfil()?.rol === 'docente' || getPerfil()?.rol === 'preceptor'));
 
     await Promise.all([cargarAlumnos(), cargarInformes(), cargarPlantillas(), cargarCategorias(), cargarUsuariosSupa()]);
     initFiltros();
@@ -362,6 +367,14 @@ function setupEventListeners() {
 
     const formUsuario = document.getElementById('formUsuario');
     if (formUsuario) formUsuario.addEventListener('submit', crearUsuario);
+
+    const newRol = document.getElementById('newRol');
+    if (newRol) {
+        newRol.addEventListener('change', () => {
+            const container = document.getElementById('containerCursosNuevoUsuario');
+            if (container) container.classList.toggle('hidden', !(newRol.value === 'docente' || newRol.value === 'preceptor'));
+        });
+    }
 
     const modalDetalle = document.getElementById('modalDetalle');
     if (modalDetalle) {
@@ -500,7 +513,12 @@ function showSection(sectionId) {
     if (sectionId === 'usuarios') { mostrarSkeleton('usuarios'); cargarUsuarios().then(() => ocultarSkeleton('usuarios')); }
     if (sectionId === 'docentes') { mostrarSkeleton('docentes'); cargarDocentes().then(() => ocultarSkeleton('docentes')); }
     if (sectionId === 'dashboard') { mostrarSkeleton('dashboard'); actualizarDashboard(); ocultarSkeleton('dashboard'); }
-    if (sectionId === 'ajustes') { mostrarSkeleton('ajustes'); cargarEspacioBD().then(() => ocultarSkeleton('ajustes')); }
+    if (sectionId === 'ajustes') {
+        mostrarSkeleton('ajustes');
+        _cursosAjustes = [...(getPerfil()?.cursos || [])];
+        renderizarChipsCursos('ajustesCursosLista', _cursosAjustes, 'quitarMiCurso');
+        cargarEspacioBD().then(() => ocultarSkeleton('ajustes'));
+    }
     if (sectionId === 'informes') {
         mostrarSkeleton('informes');
         requestAnimationFrame(() => {
@@ -514,6 +532,10 @@ function showSection(sectionId) {
                 const savedTab = sessionStorage.getItem('gie_tab_informes');
                 if (savedTab && savedTab !== tabInformesActivo) {
                     tabInformesActivo = savedTab;
+                }
+                const savedTabAlumnos = sessionStorage.getItem('gie_tab_alumnos');
+                if (savedTabAlumnos && savedTabAlumnos !== tabAlumnosActivo) {
+                    tabAlumnosActivo = savedTabAlumnos;
                 }
                 actualizarTabsInformes();
                 filtrarInformes();
@@ -536,6 +558,7 @@ function showSection(sectionId) {
                     const savedOrden = sessionStorage.getItem('gie_orden_alumnos');
                     if (savedOrden !== null && ordenEl.value !== savedOrden) ordenEl.value = savedOrden;
                 }
+                actualizarTabsAlumnos();
                 filtrarAlumnos();
                 ocultarSkeleton('alumnos');
             }, 50);
@@ -707,6 +730,7 @@ function filtrarAlumnos() {
     const turno = document.getElementById('filtroAlumnoTurno')?.value || '';
     const nombre = document.getElementById('filtroAlumnoNombre')?.value.toLowerCase().trim() || '';
     const orden = document.getElementById('ordenAlumnos')?.value || 'informes_desc';
+    const misCursos = getPerfil()?.cursos || [];
 
     // Eliminar duplicados por ID (defensa contra datos corruptos)
     const unicos = [...new Map(alumnos.map(a => [a.id, a])).values()];
@@ -718,7 +742,8 @@ function filtrarAlumnos() {
         const matchNombre = !nombre ||
             `${a.nombre} ${a.apellido}`.toLowerCase().includes(nombre) ||
             `${a.apellido} ${a.nombre}`.toLowerCase().includes(nombre);
-        return matchCurso && matchDivision && matchTurno && matchNombre;
+        const matchMisCursos = tabAlumnosActivo !== 'mis_cursos' || misCursos.includes(`${a.curso || ''}${a.division || ''}`);
+        return matchCurso && matchDivision && matchTurno && matchNombre && matchMisCursos;
     });
 
     // Calcular cantidad de informes por alumno para ordenamiento
@@ -838,6 +863,24 @@ window.setTabInformes = function(tab) {
     actualizarTabsInformes();
     filtrarInformes();
 };
+
+window.setTabAlumnos = function(tab) {
+    tabAlumnosActivo = tab;
+    sessionStorage.setItem('gie_tab_alumnos', tab);
+    actualizarTabsAlumnos();
+    filtrarAlumnos();
+};
+
+function actualizarTabsAlumnos() {
+    document.querySelectorAll('.tab-alumnos').forEach(btn => {
+        const isActive = btn.id === `tabAlumnos${tabAlumnosActivo === 'mis_cursos' ? 'MisCursos' : 'Todos'}`;
+        btn.classList.toggle('bg-blue-600', isActive);
+        btn.classList.toggle('text-white', isActive);
+        btn.classList.toggle('bg-slate-100', !isActive);
+        btn.classList.toggle('text-slate-600', !isActive);
+        btn.classList.toggle('hover:bg-slate-200', !isActive);
+    });
+}
 
 function filtrarInformes() {
     const busqueda = document.getElementById('filtroBusqueda').value.toLowerCase();
@@ -2189,6 +2232,11 @@ function verDocente(userId) {
                     <p class="text-slate-500">${u.email}</p>
                     ${u.rol ? `<span class="text-xs px-2 py-0.5 rounded-md font-medium ${rolColor[u.rol] || 'bg-slate-100 text-slate-600'}">${u.rol}</span>` : ''}
                 </div>
+                <div class="flex flex-wrap gap-1.5 mt-2">
+                    ${(u.cursos || []).length > 0
+                        ? (u.cursos || []).map(c => `<span class="text-[10px] px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100 font-medium">${c}</span>`).join('')
+                        : '<span class="text-xs text-slate-400 italic">Sin cursos asignados</span>'}
+                </div>
                 <p class="text-sm text-slate-400 mt-1">${stats.total} informe${stats.total !== 1 ? 's' : ''} creado${stats.total !== 1 ? 's' : ''}</p>
             </div>
         </div>
@@ -2332,13 +2380,16 @@ async function cargarUsuarios() {
         const activoBadge = sinPerfil
             ? '<span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">-</span>'
             : `<span class="px-2 py-1 rounded-full text-xs font-medium ${u.activo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${u.activo ? 'Activo' : 'Inactivo'}</span>`;
+        const cursosText = sinPerfil || !u.cursos || u.cursos.length === 0
+            ? '<span class="text-slate-400 text-xs">-</span>'
+            : `<span class="text-xs text-slate-600">${u.cursos.join(', ')}</span>`;
         const acciones = sinPerfil
             ? `<button onclick="sincronizarPerfilUsuario('${u.id}', '${u.email}')" class="text-sm text-amber-600 hover:text-amber-700" title="Crear perfil"><i class="fas fa-user-plus"></i></button>`
             : `${u.id === getPerfil().id ? '<span class="text-xs text-slate-400">Usted</span>' : `
                 <button onclick="editarUsuarioForm('${u.id}')" class="text-sm text-blue-600 hover:text-blue-700" title="Editar"><i class="fas fa-edit"></i></button>
                 ${u.id !== getPerfil().id && u.email !== 'admin@gie.com' ? `<button onclick="mostrarModalEliminar('${u.id}')" class="text-sm text-red-600 hover:text-red-700" title="Eliminar"><i class="fas fa-trash-alt"></i></button>` : ''}
             `}`;
-        return { nombreCompleto, rolBadge, activoBadge, acciones, sinPerfil };
+        return { nombreCompleto, rolBadge, activoBadge, acciones, sinPerfil, cursosText };
     };
 
     // Desktop
@@ -2349,6 +2400,7 @@ async function cargarUsuarios() {
             <td class="px-4 py-3 font-medium">${r.nombreCompleto}</td>
             <td class="px-4 py-3 text-slate-500">${u.email}</td>
             <td class="px-4 py-3">${r.rolBadge}</td>
+            <td class="px-4 py-3">${r.cursosText}</td>
             <td class="px-4 py-3">${r.activoBadge}</td>
             <td class="px-4 py-3">
                 <div class="flex items-center gap-2">${r.acciones}</div>
@@ -2369,6 +2421,7 @@ async function cargarUsuarios() {
                         ${r.rolBadge}
                         ${r.activoBadge}
                     </div>
+                    <div class="mt-1">${r.cursosText}</div>
                 </div>
                 <div class="flex items-center gap-3 shrink-0">
                     ${r.acciones}
@@ -2402,7 +2455,7 @@ function filtrarDocentes() {
         const revisados = informes.filter(i => i.creado_por === u.id && i.estado === 'revisado').length;
         const derivados = informes.filter(i => i.creado_por === u.id && i.estado === 'derivado').length;
         const finales = informes.filter(i => i.revisado_por === u.id && ['archivado', 'anulado'].includes(i.estado)).length;
-        return { ...u, creados, pendientes, aprobados, rechazados, revisados };
+        return { ...u, creados, pendientes, revisados, derivados, finales };
     });
 
     lista.sort((a, b) => {
@@ -2427,8 +2480,9 @@ function filtrarDocentes() {
             <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-medium capitalize ${rolColor[u.rol] || 'bg-slate-100 text-slate-600'}">${rolLabel[u.rol] || u.rol}</span></td>
             <td class="px-4 py-3 text-center font-semibold text-slate-700">${u.creados}</td>
             <td class="px-4 py-3 text-center"><span class="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700">${u.pendientes}</span></td>
-            <td class="px-4 py-3 text-center"><span class="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">${u.aprobados}</span></td>
-            <td class="px-4 py-3 text-center"><span class="text-xs font-medium px-2 py-0.5 rounded-full bg-red-100 text-red-700">${u.rechazados}</span></td>
+            <td class="px-4 py-3 text-center"><span class="text-xs font-medium px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">${u.revisados}</span></td>
+            <td class="px-4 py-3 text-center"><span class="text-xs font-medium px-2 py-0.5 rounded-full bg-green-100 text-green-700">${u.derivados}</span></td>
+            <td class="px-4 py-3 text-center"><span class="text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">${u.finales}</span></td>
         </tr>
     `).join('');
 
@@ -2441,11 +2495,12 @@ function filtrarDocentes() {
                     <div class="mt-2">${u.rol ? `<span class="px-2 py-1 rounded-full text-xs font-medium capitalize ${rolColor[u.rol] || 'bg-slate-100 text-slate-600'}">${rolLabel[u.rol] || u.rol}</span>` : ''}</div>
                 </div>
             </div>
-            <div class="grid grid-cols-4 gap-2 mt-3 pt-3 border-t border-slate-100 text-center">
+            <div class="grid grid-cols-5 gap-2 mt-3 pt-3 border-t border-slate-100 text-center">
                 <div><p class="text-lg font-bold text-slate-700">${u.creados}</p><p class="text-[10px] text-slate-500 uppercase">Creados</p></div>
                 <div><p class="text-lg font-bold text-amber-600">${u.pendientes}</p><p class="text-[10px] text-slate-500 uppercase">Pendientes</p></div>
-                <div><p class="text-lg font-bold text-green-600">${u.aprobados}</p><p class="text-[10px] text-slate-500 uppercase">Aprobados</p></div>
-                <div><p class="text-lg font-bold text-red-600">${u.rechazados}</p><p class="text-[10px] text-slate-500 uppercase">Rechazados</p></div>
+                <div><p class="text-lg font-bold text-blue-600">${u.revisados}</p><p class="text-[10px] text-slate-500 uppercase">Revisados</p></div>
+                <div><p class="text-lg font-bold text-green-600">${u.derivados}</p><p class="text-[10px] text-slate-500 uppercase">Derivados</p></div>
+                <div><p class="text-lg font-bold text-slate-600">${u.finales}</p><p class="text-[10px] text-slate-500 uppercase">Finales</p></div>
             </div>
         </div>
     `).join('');
@@ -2503,24 +2558,33 @@ async function crearUsuario(e) {
         const { data: perfilCreado } = await supabaseClient.from('perfiles').select('*').eq('id', authData.user.id).single();
         if (!perfilCreado) {
             // Trigger no generó perfil, creando manualmente
+            const cursos = (rol === 'docente' || rol === 'preceptor') ? [..._cursosNuevoUsuario] : [];
             const { error: syncError } = await supabaseClient.rpc('sincronizar_perfil', {
                 p_id: authData.user.id,
                 p_email: email,
                 p_nombre: nombre,
                 p_apellido: apellido,
                 p_rol: rol,
-                p_activo: true
+                p_activo: true,
+                p_cursos: cursos
             });
             if (syncError) {
                 // Error sincronizando perfil
                 return mostrarToast('Usuario creado pero error al generar perfil', 'error');
             }
+        } else if (_cursosNuevoUsuario.length > 0 && (rol === 'docente' || rol === 'preceptor')) {
+            // Trigger generó perfil pero sin cursos, actualizamos
+            await supabaseClient.from('perfiles').update({ cursos: [..._cursosNuevoUsuario] }).eq('id', authData.user.id);
         }
         mostrarToast(`Usuario ${nombre} ${apellido} creado exitosamente`);
     } else {
         return mostrarToast('Servicio de autenticación no disponible', 'error');
     }
     document.getElementById('formUsuario').reset();
+    _cursosNuevoUsuario = [];
+    renderizarChipsCursos('newCursosLista', _cursosNuevoUsuario, 'quitarCursoNuevoUsuario');
+    const containerCursos = document.getElementById('containerCursosNuevoUsuario');
+    if (containerCursos) containerCursos.classList.add('hidden');
     await cargarUsuarios();
 }
 
@@ -2542,6 +2606,91 @@ window.sincronizarPerfilUsuario = async function(id, email) {
     await cargarUsuarios();
 };
 
+let _cursosEditando = [];
+let _cursosAjustes = [];
+let _cursosNuevoUsuario = [];
+
+function renderizarChipsCursos(containerId, cursos, onRemove) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    if (cursos.length === 0) {
+        container.innerHTML = '<span class="text-xs text-slate-400 italic">Sin cursos asignados</span>';
+        return;
+    }
+    container.innerHTML = cursos.map(c => `
+        <span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-xs font-medium px-2.5 py-1 rounded-full border border-blue-100">
+            ${c}
+            <button onclick="${onRemove}('${c}')" class="hover:text-blue-900 ml-0.5" title="Quitar"><i class="fas fa-times"></i></button>
+        </span>
+    `).join('');
+}
+
+window.agregarCursoEditar = function() {
+    const anio = document.getElementById('editUserCursoAnio').value;
+    const div = document.getElementById('editUserCursoDivision').value;
+    if (!anio || !div) return mostrarToast('Seleccioná año y división', 'error');
+    const curso = `${anio}${div}`;
+    if (_cursosEditando.includes(curso)) return mostrarToast('El curso ya está agregado', 'error');
+    _cursosEditando.push(curso);
+    _cursosEditando.sort();
+    renderizarChipsCursos('editUserCursosLista', _cursosEditando, 'quitarCursoEditar');
+    document.getElementById('editUserCursoAnio').value = '';
+    document.getElementById('editUserCursoDivision').value = '';
+};
+
+window.quitarCursoEditar = function(curso) {
+    _cursosEditando = _cursosEditando.filter(c => c !== curso);
+    renderizarChipsCursos('editUserCursosLista', _cursosEditando, 'quitarCursoEditar');
+};
+
+window.agregarMiCurso = async function() {
+    const anio = document.getElementById('ajustesCursoAnio').value;
+    const div = document.getElementById('ajustesCursoDivision').value;
+    if (!anio || !div) return mostrarToast('Seleccioná año y división', 'error');
+    const curso = `${anio}${div}`;
+    if (_cursosAjustes.includes(curso)) return mostrarToast('El curso ya está agregado', 'error');
+    const previo = [..._cursosAjustes];
+    _cursosAjustes.push(curso);
+    _cursosAjustes.sort();
+    renderizarChipsCursos('ajustesCursosLista', _cursosAjustes, 'quitarMiCurso');
+    document.getElementById('ajustesCursoAnio').value = '';
+    document.getElementById('ajustesCursoDivision').value = '';
+    const ok = await _persistirMisCursos();
+    if (!ok) {
+        _cursosAjustes = previo;
+        renderizarChipsCursos('ajustesCursosLista', _cursosAjustes, 'quitarMiCurso');
+    }
+};
+
+window.quitarMiCurso = async function(curso) {
+    const previo = [..._cursosAjustes];
+    _cursosAjustes = _cursosAjustes.filter(c => c !== curso);
+    renderizarChipsCursos('ajustesCursosLista', _cursosAjustes, 'quitarMiCurso');
+    const ok = await _persistirMisCursos();
+    if (!ok) {
+        _cursosAjustes = previo;
+        renderizarChipsCursos('ajustesCursosLista', _cursosAjustes, 'quitarMiCurso');
+    }
+};
+
+window.agregarCursoNuevoUsuario = function() {
+    const anio = document.getElementById('newCursoAnio').value;
+    const div = document.getElementById('newCursoDivision').value;
+    if (!anio || !div) return mostrarToast('Seleccioná año y división', 'error');
+    const curso = `${anio}${div}`;
+    if (_cursosNuevoUsuario.includes(curso)) return mostrarToast('El curso ya está agregado', 'error');
+    _cursosNuevoUsuario.push(curso);
+    _cursosNuevoUsuario.sort();
+    renderizarChipsCursos('newCursosLista', _cursosNuevoUsuario, 'quitarCursoNuevoUsuario');
+    document.getElementById('newCursoAnio').value = '';
+    document.getElementById('newCursoDivision').value = '';
+};
+
+window.quitarCursoNuevoUsuario = function(curso) {
+    _cursosNuevoUsuario = _cursosNuevoUsuario.filter(c => c !== curso);
+    renderizarChipsCursos('newCursosLista', _cursosNuevoUsuario, 'quitarCursoNuevoUsuario');
+};
+
 window.editarUsuarioForm = function(id) {
     const u = usuarios.find(x => x.id === id);
     if (!u) return mostrarToast('Usuario no encontrado', 'error');
@@ -2551,6 +2700,8 @@ window.editarUsuarioForm = function(id) {
     document.getElementById('editUserEmail').value = u.email;
     document.getElementById('editUserRol').value = u.rol || 'docente';
     document.getElementById('editUserActivo').checked = u.activo !== false;
+    _cursosEditando = [...(u.cursos || [])];
+    renderizarChipsCursos('editUserCursosLista', _cursosEditando, 'quitarCursoEditar');
     document.getElementById('editUserPassword').value = '';
     // Email no editable en Supabase (requiere confirmación), contraseña sí vía RPC
     const esSupa = USE_SUPABASE;
@@ -2586,7 +2737,7 @@ window.guardarEdicionUsuario = async function() {
 
     if (USE_SUPABASE) {
         // 1. Actualizar perfil
-        const updates = { nombre, apellido, rol, activo };
+        const updates = { nombre, apellido, rol, activo, cursos: _cursosEditando };
         const { error } = await supabaseClient.from('perfiles').update(updates).eq('id', id);
         if (error) { return mostrarToast('Error editando usuario', 'error'); }
 
@@ -2611,6 +2762,20 @@ window.guardarEdicionUsuario = async function() {
     cerrarModalEditarUsuario();
     await cargarUsuarios();
 };
+
+async function _persistirMisCursos() {
+    const cursos = [..._cursosAjustes];
+    const id = getPerfil()?.id;
+    if (!id) return false;
+    const { error } = await supabaseClient.from('perfiles').update({ cursos }).eq('id', id);
+    if (error) {
+        console.error('[GIE] Error guardando mis cursos:', error);
+        mostrarToast('Error guardando cursos', 'error');
+        return false;
+    }
+    setPerfilCursos(cursos);
+    return true;
+}
 
 let _eliminarUserId = null;
 

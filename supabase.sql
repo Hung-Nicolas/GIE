@@ -25,6 +25,7 @@ CREATE TABLE IF NOT EXISTS public.perfiles (
     apellido TEXT NOT NULL,
     rol TEXT NOT NULL CHECK (rol IN ('regente', 'docente', 'preceptor', 'doe')),
     activo BOOLEAN DEFAULT TRUE,
+    cursos TEXT[] DEFAULT '{}'::TEXT[],
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now())
 );
 
@@ -206,14 +207,15 @@ CREATE POLICY "plantillas_delete_regente" ON public.plantillas FOR DELETE USING 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.perfiles (id, email, nombre, apellido, rol, activo)
+    INSERT INTO public.perfiles (id, email, nombre, apellido, rol, activo, cursos)
     VALUES (
         new.id,
         new.email,
         COALESCE(new.raw_user_meta_data->>'nombre', 'Sin'),
         COALESCE(new.raw_user_meta_data->>'apellido', 'Nombre'),
         COALESCE(new.raw_user_meta_data->>'rol', 'docente'),
-        TRUE
+        TRUE,
+        '{}'::TEXT[]
     )
     ON CONFLICT (id) DO NOTHING;
     RETURN new;
@@ -230,6 +232,20 @@ BEGIN
             AFTER INSERT ON auth.users
             FOR EACH ROW
             EXECUTE FUNCTION public.handle_new_user();
+    END IF;
+END
+$$;
+
+-- ============================================================
+-- MIGRACIÓN: Agregar columna cursos a perfiles (si no existe)
+-- ============================================================
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'perfiles' AND column_name = 'cursos'
+    ) THEN
+        ALTER TABLE public.perfiles ADD COLUMN cursos TEXT[] DEFAULT '{}'::TEXT[];
     END IF;
 END
 $$;
@@ -333,6 +349,7 @@ ALTER TABLE public.informes ADD CONSTRAINT informes_revisado_por_fkey FOREIGN KE
 -- ============================================================
 
 -- Listar todos los usuarios de auth.users con sus perfiles (LEFT JOIN)
+DROP FUNCTION IF EXISTS public.listar_usuarios_completos();
 CREATE OR REPLACE FUNCTION public.listar_usuarios_completos()
 RETURNS TABLE(
     id UUID,
@@ -342,6 +359,7 @@ RETURNS TABLE(
     apellido TEXT,
     rol TEXT,
     activo BOOLEAN,
+    cursos TEXT[],
     tiene_perfil BOOLEAN
 )
 LANGUAGE sql
@@ -356,6 +374,7 @@ AS $$
     COALESCE(p.apellido, 'Nombre')::TEXT as apellido,
     COALESCE(p.rol, 'docente')::TEXT as rol,
     COALESCE(p.activo, true)::BOOLEAN as activo,
+    COALESCE(p.cursos, '{}'::TEXT[]) as cursos,
     (p.id IS NOT NULL)::BOOLEAN as tiene_perfil
   FROM auth.users u
   LEFT JOIN public.perfiles p ON u.id = p.id
@@ -365,13 +384,16 @@ $$;
 GRANT EXECUTE ON FUNCTION public.listar_usuarios_completos() TO authenticated;
 
 -- Sincronizar perfil para un usuario que no lo tiene
+DROP FUNCTION IF EXISTS public.sincronizar_perfil(UUID, TEXT, TEXT, TEXT, TEXT, BOOLEAN);
+DROP FUNCTION IF EXISTS public.sincronizar_perfil(UUID, TEXT, TEXT, TEXT, TEXT, BOOLEAN, TEXT[]);
 CREATE OR REPLACE FUNCTION public.sincronizar_perfil(
     p_id UUID,
     p_email TEXT,
     p_nombre TEXT DEFAULT 'Sin',
     p_apellido TEXT DEFAULT 'Nombre',
     p_rol TEXT DEFAULT 'docente',
-    p_activo BOOLEAN DEFAULT true
+    p_activo BOOLEAN DEFAULT true,
+    p_cursos TEXT[] DEFAULT '{}'::TEXT[]
 )
 RETURNS void
 LANGUAGE plpgsql
@@ -379,18 +401,19 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    INSERT INTO public.perfiles (id, email, nombre, apellido, rol, activo)
-    VALUES (p_id, p_email, p_nombre, p_apellido, p_rol, p_activo)
+    INSERT INTO public.perfiles (id, email, nombre, apellido, rol, activo, cursos)
+    VALUES (p_id, p_email, p_nombre, p_apellido, p_rol, p_activo, p_cursos)
     ON CONFLICT (id) DO UPDATE SET
         nombre = EXCLUDED.nombre,
         apellido = EXCLUDED.apellido,
         email = EXCLUDED.email,
         rol = EXCLUDED.rol,
-        activo = EXCLUDED.activo;
+        activo = EXCLUDED.activo,
+        cursos = EXCLUDED.cursos;
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.sincronizar_perfil(UUID, TEXT, TEXT, TEXT, TEXT, BOOLEAN) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.sincronizar_perfil(UUID, TEXT, TEXT, TEXT, TEXT, BOOLEAN, TEXT[]) TO authenticated;
 
 -- Eliminar usuario completamente (auth.users + perfiles via CASCADE)
 CREATE OR REPLACE FUNCTION public.eliminar_usuario_completo(user_id UUID)

@@ -5,6 +5,7 @@ let _perfil = null;
 
 export function getPerfil() { return _perfil; }
 export function setPerfil(p) { _perfil = p; }
+export function setPerfilCursos(cursos) { if (_perfil) _perfil.cursos = cursos; }
 export function esRegente() { return _perfil?.rol === 'regente'; }
 
 // ==================== VISIBILIDAD ====================
@@ -42,7 +43,8 @@ export async function restoreSession() {
             email: perfilData.email,
             nombre: perfilData.nombre,
             apellido: perfilData.apellido,
-            rol: perfilData.rol
+            rol: perfilData.rol,
+            cursos: perfilData.cursos || []
         };
         // Sesión restaurada
         return _perfil;
@@ -91,7 +93,8 @@ export async function doLogin(email, password) {
         email: perfilData.email,
         nombre: perfilData.nombre,
         apellido: perfilData.apellido,
-        rol: perfilData.rol
+        rol: perfilData.rol,
+        cursos: perfilData.cursos || []
     };
     // Login exitoso
     return { ok: true };

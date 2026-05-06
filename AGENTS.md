@@ -105,7 +105,7 @@ Si estas variables no están definidas o son inválidas, la app muestra un banne
 La aplicación **solo funciona con Supabase**. No hay backend propio ni modo offline operativo.
 
 **Tablas principales:**
-- **`auth.users`** + **`public.perfiles`** (1:1) — usuarios, roles y estado activo/inactivo.
+- **`auth.users`** + **`public.perfiles`** (1:1) — usuarios, roles, estado activo/inactivo, y cursos asignados (`cursos TEXT[]`).
 - **`public.alumnos`** — catálogo de alumnos (lectura/insert desde la app; el formulario de creación de alumno está activo en `main.js`).
 - **`public.categorias`** — categorías de informes (Conducta, Disciplina, Asistencia, Académica, Otros) con color asociado.
 - **`public.informes`** — informes con RLS por rol. Campos clave: `estado`, `instancia`, `tipo_falta`, `fecha_reunion`, `observaciones`, `motivo_rechazo`, `categoria_id`.
@@ -114,8 +114,8 @@ La aplicación **solo funciona con Supabase**. No hay backend propio ni modo off
 
 **Funciones RPC (SECURITY DEFINER):**
 - `actualizar_password_usuario(user_id UUID, new_password TEXT)` — regente cambia contraseñas.
-- `listar_usuarios_completos()` — LEFT JOIN de `auth.users` + `perfiles`.
-- `sincronizar_perfil(...)` — upsert manual de perfil.
+- `listar_usuarios_completos()` — LEFT JOIN de `auth.users` + `perfiles` (incluye `cursos`).
+- `sincronizar_perfil(...)` — upsert manual de perfil (acepta `p_cursos TEXT[]`).
 - `eliminar_usuario_completo(user_id UUID)` — elimina usuario de `auth.users` (y perfiles por CASCADE), previa validación de que el llamante es regente, no se elimina a sí mismo, y no elimina al administrador principal (`admin@gie.com`).
 - `obtener_espacio_bd()` — retorna tamaño de la base de datos (usado en panel de administración).
 
@@ -136,7 +136,7 @@ Toda la lógica de la aplicación reside en este archivo (~3013 líneas). Se org
 5. **Inicialización** — `DOMContentLoaded` → `setupLoginBanner()`, `setupLoginForm()`, `setupEventListeners()`, `restoreSession()`, `iniciarApp()`.
 6. **Navegación** — `showSection()`, `toggleSidebar()`, `logout()`, skeletons (`mostrarSkeleton` / `ocultarSkeleton`).
 7. **Utilidades** — `formatearFecha()`, `formatearFechaCorta()`, `generarId()`, `mostrarToast()`, `initFiltros()`.
-8. **Alumnos** — `buscarAlumno()` (con debounce de 300 ms), `seleccionarAlumno()`, `limpiarAlumno()`, `filtrarAlumnos()`, `renderizarAlumnos()`, `guardarNuevoAlumno()`.
+8. **Alumnos** — `buscarAlumno()` (con debounce de 300 ms), `seleccionarAlumno()`, `limpiarAlumno()`, `filtrarAlumnos()`, `renderizarAlumnos()`, `guardarNuevoAlumno()`. Incluye tabs "Todos" / "Mis cursos" para docentes/preceptores (`tabAlumnosActivo`, `setTabAlumnos()`, `actualizarTabsAlumnos()`).
 9. **Informes - CRUD** — `filtrarInformes()`, `renderizarInformes()`, `guardarInforme()`, `editarInforme()`, `cancelarForm()`.
    - Nota: al crear un informe, el campo `tipo_falta` se guarda siempre como `'Otra'`.
 10. **Detalle y acciones** — `verDetalle()`, `cambiarEstado()`, `mostrarRechazo()`, `confirmarRechazo()`, `abrirModalGrupoInformes()`.
@@ -145,7 +145,7 @@ Toda la lógica de la aplicación reside en este archivo (~3013 líneas). Se org
 13. **Estadísticas** — `cargarEstadisticas()` con gráficos de barras (por curso + drill-down por división), torta (por tipo de falta), línea (tendencia mensual), selector de período (`cambiarPeriodoTendencia`) y tabla top alumnos.
 14. **Vista alumno** — `verAlumno()` con resumen, historial, gráfico de dona individual y línea de tiempo.
 15. **Vista docente** — `verDocente()` con historial de informes creados por ese usuario.
-16. **Usuarios** — `cargarUsuarios()`, `cargarDocentes()`, `filtrarDocentes()`, `crearUsuario()`, `sincronizarPerfilUsuario()`, `editarUsuarioForm()`, `guardarEdicionUsuario()`, `eliminarUsuario()`.
+16. **Usuarios** — `cargarUsuarios()`, `cargarDocentes()`, `filtrarDocentes()`, `crearUsuario()`, `sincronizarPerfilUsuario()`, `editarUsuarioForm()`, `guardarEdicionUsuario()`, `eliminarUsuario()`. Los cursos asignados se muestran en la tabla y se editan desde el modal.
 17. **Plantillas CRUD** — `cargarPlantillas()`, `calcularTendenciaPlantillas()`, `renderizarSelectPlantillas()`, `renderizarSelectCategorias()`, `renderizarListaPlantillas()`, `abrirModalPlantillas()`, `crearPlantilla()`, `eliminarPlantilla()`.
 18. **Reuniones** — `confirmarFechaReunion()`, `guardarCambioReunion()`, `posponerReunion()`, `eliminarReunion()`.
 19. **Exportar PDF** — `exportarPDF()`, `exportarPDFEnBlanco()` generan HTML dinámico para `html2pdf.js`.
