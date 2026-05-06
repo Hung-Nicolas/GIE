@@ -44,7 +44,8 @@ export async function restoreSession() {
             nombre: perfilData.nombre,
             apellido: perfilData.apellido,
             rol: perfilData.rol,
-            cursos: perfilData.cursos || []
+            cursos: perfilData.cursos || [],
+            alumnos_pat: perfilData.alumnos_pat || []
         };
         // Sesión restaurada
         return _perfil;
@@ -94,7 +95,8 @@ export async function doLogin(email, password) {
         nombre: perfilData.nombre,
         apellido: perfilData.apellido,
         rol: perfilData.rol,
-        cursos: perfilData.cursos || []
+        cursos: perfilData.cursos || [],
+        alumnos_pat: perfilData.alumnos_pat || []
     };
     // Login exitoso
     return { ok: true };

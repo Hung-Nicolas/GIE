@@ -1,50 +1,43 @@
 -- ============================================
--- SCRIPT TEMPORAL: Agregar columna cursos y recrear funciones RPC
+-- SCRIPT TEMPORAL: Migración v1.5.3 (rol PAT + alumnos_pat)
 -- Ejecutar en el SQL Editor de Supabase
 -- ============================================
 
--- 1. ASEGURAR que la columna cursos exista en public.perfiles
+-- 1. Actualizar CHECK de rol para incluir 'pat'
+ALTER TABLE public.perfiles DROP CONSTRAINT IF EXISTS perfiles_rol_check;
+ALTER TABLE public.perfiles ADD CONSTRAINT perfiles_rol_check CHECK (rol IN ('regente', 'docente', 'preceptor', 'doe', 'pat'));
+
+-- 2. Asegurar columna alumnos_pat en perfiles
 DO $$
 BEGIN
     IF NOT EXISTS (
-        SELECT 1
-        FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = 'perfiles'
-          AND column_name = 'cursos'
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'perfiles' AND column_name = 'alumnos_pat'
+    ) THEN
+        ALTER TABLE public.perfiles ADD COLUMN alumnos_pat UUID[] DEFAULT '{}'::UUID[];
+    END IF;
+END
+$$;
+
+-- 3. Asegurar columna cursos en perfiles (si no existe de migraciones previas)
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'perfiles' AND column_name = 'cursos'
     ) THEN
         ALTER TABLE public.perfiles ADD COLUMN cursos TEXT[] DEFAULT '{}'::TEXT[];
-        RAISE NOTICE 'Columna cursos agregada a public.perfiles';
-    ELSE
-        RAISE NOTICE 'Columna cursos ya existe en public.perfiles';
     END IF;
 END
 $$;
 
--- Verificar que la columna exista antes de continuar
-DO $$
-DECLARE
-    col_exists BOOLEAN;
-BEGIN
-    SELECT EXISTS (
-        SELECT 1 FROM information_schema.columns
-        WHERE table_schema = 'public'
-          AND table_name = 'perfiles'
-          AND column_name = 'cursos'
-    ) INTO col_exists;
-
-    IF NOT col_exists THEN
-        RAISE EXCEPTION 'La columna cursos NO existe en public.perfiles. Abortando.';
-    END IF;
-END
-$$;
-
--- 2. Eliminar funciones viejas (necesario porque cambió el tipo de retorno / firma)
+-- 4. Eliminar funciones viejas
 DROP FUNCTION IF EXISTS public.listar_usuarios_completos();
 DROP FUNCTION IF EXISTS public.sincronizar_perfil(UUID, TEXT, TEXT, TEXT, TEXT, BOOLEAN);
 DROP FUNCTION IF EXISTS public.sincronizar_perfil(UUID, TEXT, TEXT, TEXT, TEXT, BOOLEAN, TEXT[]);
+DROP FUNCTION IF EXISTS public.sincronizar_perfil(UUID, TEXT, TEXT, TEXT, TEXT, BOOLEAN, TEXT[], UUID[]);
 
--- 3. Recrear listar_usuarios_completos con cursos
+-- 5. Recrear listar_usuarios_completos con cursos y alumnos_pat
 CREATE OR REPLACE FUNCTION public.listar_usuarios_completos()
 RETURNS TABLE(
     id UUID,
@@ -55,6 +48,7 @@ RETURNS TABLE(
     rol TEXT,
     activo BOOLEAN,
     cursos TEXT[],
+    alumnos_pat UUID[],
     tiene_perfil BOOLEAN
 )
 LANGUAGE sql
@@ -70,6 +64,7 @@ AS $$
     COALESCE(p.rol, 'docente')::TEXT as rol,
     COALESCE(p.activo, true)::BOOLEAN as activo,
     COALESCE(p.cursos, '{}'::TEXT[]) as cursos,
+    COALESCE(p.alumnos_pat, '{}'::UUID[]) as alumnos_pat,
     (p.id IS NOT NULL)::BOOLEAN as tiene_perfil
   FROM auth.users u
   LEFT JOIN public.perfiles p ON u.id = p.id
@@ -78,7 +73,7 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.listar_usuarios_completos() TO authenticated;
 
--- 4. Recrear sincronizar_perfil con cursos
+-- 6. Recrear sincronizar_perfil con cursos y alumnos_pat
 CREATE OR REPLACE FUNCTION public.sincronizar_perfil(
     p_id UUID,
     p_email TEXT,
@@ -86,7 +81,8 @@ CREATE OR REPLACE FUNCTION public.sincronizar_perfil(
     p_apellido TEXT DEFAULT 'Nombre',
     p_rol TEXT DEFAULT 'docente',
     p_activo BOOLEAN DEFAULT true,
-    p_cursos TEXT[] DEFAULT '{}'::TEXT[]
+    p_cursos TEXT[] DEFAULT '{}'::TEXT[],
+    p_alumnos_pat UUID[] DEFAULT '{}'::UUID[]
 )
 RETURNS void
 LANGUAGE plpgsql
@@ -94,25 +90,26 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    INSERT INTO public.perfiles (id, email, nombre, apellido, rol, activo, cursos)
-    VALUES (p_id, p_email, p_nombre, p_apellido, p_rol, p_activo, p_cursos)
+    INSERT INTO public.perfiles (id, email, nombre, apellido, rol, activo, cursos, alumnos_pat)
+    VALUES (p_id, p_email, p_nombre, p_apellido, p_rol, p_activo, p_cursos, p_alumnos_pat)
     ON CONFLICT (id) DO UPDATE SET
         nombre = EXCLUDED.nombre,
         apellido = EXCLUDED.apellido,
         email = EXCLUDED.email,
         rol = EXCLUDED.rol,
         activo = EXCLUDED.activo,
-        cursos = EXCLUDED.cursos;
+        cursos = EXCLUDED.cursos,
+        alumnos_pat = EXCLUDED.alumnos_pat;
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.sincronizar_perfil(UUID, TEXT, TEXT, TEXT, TEXT, BOOLEAN, TEXT[]) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.sincronizar_perfil(UUID, TEXT, TEXT, TEXT, TEXT, BOOLEAN, TEXT[], UUID[]) TO authenticated;
 
--- 5. Actualizar trigger para inicializar cursos vacío
+-- 7. Actualizar trigger para inicializar cursos y alumnos_pat vacíos
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.perfiles (id, email, nombre, apellido, rol, activo, cursos)
+    INSERT INTO public.perfiles (id, email, nombre, apellido, rol, activo, cursos, alumnos_pat)
     VALUES (
         new.id,
         new.email,
@@ -120,28 +117,14 @@ BEGIN
         COALESCE(new.raw_user_meta_data->>'apellido', 'Nombre'),
         COALESCE(new.raw_user_meta_data->>'rol', 'docente'),
         TRUE,
-        '{}'::TEXT[]
+        '{}'::TEXT[],
+        '{}'::UUID[]
     )
     ON CONFLICT (id) DO NOTHING;
     RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- 6. Actualizar perfiles existentes: poner cursos vacíos donde sea NULL
+-- 8. Normalizar perfiles existentes
 UPDATE public.perfiles SET cursos = '{}'::TEXT[] WHERE cursos IS NULL;
-
--- 7. Datos demo actualizados (opcional - comentar si no se usan usuarios demo)
-INSERT INTO public.perfiles (id, email, nombre, apellido, rol, activo, cursos)
-VALUES
-  ('c87ec2e0-2cd2-4c57-8a6c-0ddae8816866', 'doe@gmail.com', 'test', 'DOE', 'doe', true, '{}'),
-  ('25ccc48e-bf45-48e3-94a0-c615e9f5ceee', 'preceptor@gie.com', 'test', 'preceptor', 'preceptor', true, '{}'),
-  ('e297e8e7-ecbc-4062-af24-0d7423f22109', 'docente@gie.com', 'test', 'docente', 'docente', true, ARRAY['1°2','4°4']),
-  ('c0b4da58-162c-447c-8910-cfadd840c868', 'regente@gie.com', 'test', 'regente', 'regente', true, '{}'),
-  ('b2a0c71b-bdd4-4b1d-a3e3-a9974fefb6c0', 'admin@gie.com', 'Sistema', 'Admin', 'regente', true, '{}')
-ON CONFLICT (id) DO UPDATE SET
-  email = EXCLUDED.email,
-  nombre = EXCLUDED.nombre,
-  apellido = EXCLUDED.apellido,
-  rol = EXCLUDED.rol,
-  activo = EXCLUDED.activo,
-  cursos = EXCLUDED.cursos;
+UPDATE public.perfiles SET alumnos_pat = '{}'::UUID[] WHERE alumnos_pat IS NULL;

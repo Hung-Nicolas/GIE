@@ -23,9 +23,10 @@ CREATE TABLE IF NOT EXISTS public.perfiles (
     email TEXT UNIQUE NOT NULL,
     nombre TEXT NOT NULL,
     apellido TEXT NOT NULL,
-    rol TEXT NOT NULL CHECK (rol IN ('regente', 'docente', 'preceptor', 'doe')),
+    rol TEXT NOT NULL CHECK (rol IN ('regente', 'docente', 'preceptor', 'doe', 'pat')),
     activo BOOLEAN DEFAULT TRUE,
     cursos TEXT[] DEFAULT '{}'::TEXT[],
+    alumnos_pat UUID[] DEFAULT '{}'::UUID[],
     created_at TIMESTAMPTZ DEFAULT timezone('utc'::text, now())
 );
 
@@ -207,7 +208,7 @@ CREATE POLICY "plantillas_delete_regente" ON public.plantillas FOR DELETE USING 
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO public.perfiles (id, email, nombre, apellido, rol, activo, cursos)
+    INSERT INTO public.perfiles (id, email, nombre, apellido, rol, activo, cursos, alumnos_pat)
     VALUES (
         new.id,
         new.email,
@@ -215,7 +216,8 @@ BEGIN
         COALESCE(new.raw_user_meta_data->>'apellido', 'Nombre'),
         COALESCE(new.raw_user_meta_data->>'rol', 'docente'),
         TRUE,
-        '{}'::TEXT[]
+        '{}'::TEXT[],
+        '{}'::UUID[]
     )
     ON CONFLICT (id) DO NOTHING;
     RETURN new;
@@ -236,6 +238,23 @@ BEGIN
 END
 $$;
 
+-- ============================================================
+-- MIGRACIÓN: Agregar columna alumnos_pat a perfiles (si no existe)
+-- y actualizar CHECK de rol para incluir 'pat'
+-- ============================================================
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_schema = 'public' AND table_name = 'perfiles' AND column_name = 'alumnos_pat'
+    ) THEN
+        ALTER TABLE public.perfiles ADD COLUMN alumnos_pat UUID[] DEFAULT '{}'::UUID[];
+    END IF;
+END
+$$;
+
+ALTER TABLE public.perfiles DROP CONSTRAINT IF EXISTS perfiles_rol_check;
+ALTER TABLE public.perfiles ADD CONSTRAINT perfiles_rol_check CHECK (rol IN ('regente', 'docente', 'preceptor', 'doe', 'pat'));
 -- ============================================================
 -- MIGRACIÓN: Agregar columna cursos a perfiles (si no existe)
 -- ============================================================
@@ -264,7 +283,7 @@ ALTER TABLE public.informes ADD COLUMN IF NOT EXISTS observaciones TEXT;
 
 -- Migración: actualizar CHECK de rol para permitir 'doe'
 ALTER TABLE public.perfiles DROP CONSTRAINT IF EXISTS perfiles_rol_check;
-ALTER TABLE public.perfiles ADD CONSTRAINT perfiles_rol_check CHECK (rol IN ('regente', 'docente', 'preceptor', 'doe'));
+ALTER TABLE public.perfiles ADD CONSTRAINT perfiles_rol_check CHECK (rol IN ('regente', 'docente', 'preceptor', 'doe', 'pat'));
 
 -- ============================================================
 -- DATOS DE DEMOSTRACIÓN (opcional - ejecutar después del deploy)
@@ -360,6 +379,7 @@ RETURNS TABLE(
     rol TEXT,
     activo BOOLEAN,
     cursos TEXT[],
+    alumnos_pat UUID[],
     tiene_perfil BOOLEAN
 )
 LANGUAGE sql
@@ -375,6 +395,7 @@ AS $$
     COALESCE(p.rol, 'docente')::TEXT as rol,
     COALESCE(p.activo, true)::BOOLEAN as activo,
     COALESCE(p.cursos, '{}'::TEXT[]) as cursos,
+    COALESCE(p.alumnos_pat, '{}'::UUID[]) as alumnos_pat,
     (p.id IS NOT NULL)::BOOLEAN as tiene_perfil
   FROM auth.users u
   LEFT JOIN public.perfiles p ON u.id = p.id
@@ -386,6 +407,7 @@ GRANT EXECUTE ON FUNCTION public.listar_usuarios_completos() TO authenticated;
 -- Sincronizar perfil para un usuario que no lo tiene
 DROP FUNCTION IF EXISTS public.sincronizar_perfil(UUID, TEXT, TEXT, TEXT, TEXT, BOOLEAN);
 DROP FUNCTION IF EXISTS public.sincronizar_perfil(UUID, TEXT, TEXT, TEXT, TEXT, BOOLEAN, TEXT[]);
+DROP FUNCTION IF EXISTS public.sincronizar_perfil(UUID, TEXT, TEXT, TEXT, TEXT, BOOLEAN, TEXT[], UUID[]);
 CREATE OR REPLACE FUNCTION public.sincronizar_perfil(
     p_id UUID,
     p_email TEXT,
@@ -393,7 +415,8 @@ CREATE OR REPLACE FUNCTION public.sincronizar_perfil(
     p_apellido TEXT DEFAULT 'Nombre',
     p_rol TEXT DEFAULT 'docente',
     p_activo BOOLEAN DEFAULT true,
-    p_cursos TEXT[] DEFAULT '{}'::TEXT[]
+    p_cursos TEXT[] DEFAULT '{}'::TEXT[],
+    p_alumnos_pat UUID[] DEFAULT '{}'::UUID[]
 )
 RETURNS void
 LANGUAGE plpgsql
@@ -401,19 +424,20 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
-    INSERT INTO public.perfiles (id, email, nombre, apellido, rol, activo, cursos)
-    VALUES (p_id, p_email, p_nombre, p_apellido, p_rol, p_activo, p_cursos)
+    INSERT INTO public.perfiles (id, email, nombre, apellido, rol, activo, cursos, alumnos_pat)
+    VALUES (p_id, p_email, p_nombre, p_apellido, p_rol, p_activo, p_cursos, p_alumnos_pat)
     ON CONFLICT (id) DO UPDATE SET
         nombre = EXCLUDED.nombre,
         apellido = EXCLUDED.apellido,
         email = EXCLUDED.email,
         rol = EXCLUDED.rol,
         activo = EXCLUDED.activo,
-        cursos = EXCLUDED.cursos;
+        cursos = EXCLUDED.cursos,
+        alumnos_pat = EXCLUDED.alumnos_pat;
 END;
 $$;
 
-GRANT EXECUTE ON FUNCTION public.sincronizar_perfil(UUID, TEXT, TEXT, TEXT, TEXT, BOOLEAN, TEXT[]) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.sincronizar_perfil(UUID, TEXT, TEXT, TEXT, TEXT, BOOLEAN, TEXT[], UUID[]) TO authenticated;
 
 -- Eliminar usuario completamente (auth.users + perfiles via CASCADE)
 CREATE OR REPLACE FUNCTION public.eliminar_usuario_completo(user_id UUID)

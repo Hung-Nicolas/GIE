@@ -241,10 +241,18 @@ async function iniciarApp() {
     if (btnCrearAlumno) btnCrearAlumno.classList.toggle('hidden', esDOE);
     const tabsInformes = document.getElementById('tabsInformes');
     if (tabsInformes) tabsInformes.classList.toggle('hidden', esDOE);
+    const esDocenteOPreceptor = getPerfil()?.rol === 'docente' || getPerfil()?.rol === 'preceptor';
+    const esPAT = getPerfil()?.rol === 'pat';
     const tabsAlumnos = document.getElementById('tabsAlumnos');
-    if (tabsAlumnos) tabsAlumnos.classList.toggle('hidden', !(getPerfil()?.rol === 'docente' || getPerfil()?.rol === 'preceptor'));
+    if (tabsAlumnos) tabsAlumnos.classList.toggle('hidden', !(esDocenteOPreceptor || esPAT));
+    const tabMisCursos = document.getElementById('tabAlumnosMisCursos');
+    if (tabMisCursos) tabMisCursos.classList.toggle('hidden', !esDocenteOPreceptor);
+    const tabMisAlumnos = document.getElementById('tabAlumnosMisAlumnos');
+    if (tabMisAlumnos) tabMisAlumnos.classList.toggle('hidden', !esPAT);
     const cardMisCursos = document.getElementById('cardMisCursos');
-    if (cardMisCursos) cardMisCursos.classList.toggle('hidden', !(getPerfil()?.rol === 'docente' || getPerfil()?.rol === 'preceptor'));
+    if (cardMisCursos) cardMisCursos.classList.toggle('hidden', !esDocenteOPreceptor);
+    const cardMisAlumnosPAT = document.getElementById('cardMisAlumnosPAT');
+    if (cardMisAlumnosPAT) cardMisAlumnosPAT.classList.toggle('hidden', !esPAT);
 
     await Promise.all([cargarAlumnos(), cargarInformes(), cargarPlantillas(), cargarCategorias(), cargarUsuariosSupa()]);
     initFiltros();
@@ -371,8 +379,21 @@ function setupEventListeners() {
     const newRol = document.getElementById('newRol');
     if (newRol) {
         newRol.addEventListener('change', () => {
-            const container = document.getElementById('containerCursosNuevoUsuario');
-            if (container) container.classList.toggle('hidden', !(newRol.value === 'docente' || newRol.value === 'preceptor'));
+            const containerCursos = document.getElementById('containerCursosNuevoUsuario');
+            const containerPAT = document.getElementById('containerAlumnosPATNuevoUsuario');
+            if (containerCursos) containerCursos.classList.toggle('hidden', !(newRol.value === 'docente' || newRol.value === 'preceptor'));
+            if (containerPAT) containerPAT.classList.toggle('hidden', newRol.value !== 'pat');
+        });
+    }
+
+    const editUserRolEl = document.getElementById('editUserRol');
+    if (editUserRolEl) {
+        editUserRolEl.addEventListener('change', () => {
+            const val = editUserRolEl.value;
+            const cursosContainer = document.getElementById('editUserCursoAnio')?.parentElement;
+            const patContainer = document.getElementById('editUserAlumnosPATContainer');
+            if (cursosContainer) cursosContainer.classList.toggle('hidden', !(val === 'docente' || val === 'preceptor'));
+            if (patContainer) patContainer.classList.toggle('hidden', val !== 'pat');
         });
     }
 
@@ -517,6 +538,7 @@ function showSection(sectionId) {
         mostrarSkeleton('ajustes');
         _cursosAjustes = [...(getPerfil()?.cursos || [])];
         renderizarChipsCursos('ajustesCursosLista', _cursosAjustes, 'quitarMiCurso');
+        renderizarChipsAlumnosPAT('ajustesAlumnosPATLista', getPerfil()?.alumnos_pat || [], 'quitarAlumnoPAT');
         cargarEspacioBD().then(() => ocultarSkeleton('ajustes'));
     }
     if (sectionId === 'informes') {
@@ -735,6 +757,8 @@ function filtrarAlumnos() {
     // Eliminar duplicados por ID (defensa contra datos corruptos)
     const unicos = [...new Map(alumnos.map(a => [a.id, a])).values()];
 
+    const esPAT = getPerfil()?.rol === 'pat';
+    const misAlumnosPAT = getPerfil()?.alumnos_pat || [];
     const filtrados = unicos.filter(a => {
         const matchCurso = !curso || a.curso === curso;
         const matchDivision = !division || a.division === division;
@@ -743,7 +767,8 @@ function filtrarAlumnos() {
             `${a.nombre} ${a.apellido}`.toLowerCase().includes(nombre) ||
             `${a.apellido} ${a.nombre}`.toLowerCase().includes(nombre);
         const matchMisCursos = tabAlumnosActivo !== 'mis_cursos' || misCursos.includes(`${a.curso || ''}${a.division || ''}`);
-        return matchCurso && matchDivision && matchTurno && matchNombre && matchMisCursos;
+        const matchMisAlumnos = tabAlumnosActivo !== 'mis_alumnos' || misAlumnosPAT.includes(a.id);
+        return matchCurso && matchDivision && matchTurno && matchNombre && matchMisCursos && matchMisAlumnos;
     });
 
     // Calcular cantidad de informes por alumno para ordenamiento
@@ -872,8 +897,11 @@ window.setTabAlumnos = function(tab) {
 };
 
 function actualizarTabsAlumnos() {
+    const activeId = tabAlumnosActivo === 'mis_cursos' ? 'tabAlumnosMisCursos'
+        : tabAlumnosActivo === 'mis_alumnos' ? 'tabAlumnosMisAlumnos'
+        : 'tabAlumnosTodos';
     document.querySelectorAll('.tab-alumnos').forEach(btn => {
-        const isActive = btn.id === `tabAlumnos${tabAlumnosActivo === 'mis_cursos' ? 'MisCursos' : 'Todos'}`;
+        const isActive = btn.id === activeId;
         btn.classList.toggle('bg-blue-600', isActive);
         btn.classList.toggle('text-white', isActive);
         btn.classList.toggle('bg-slate-100', !isActive);
@@ -2221,8 +2249,8 @@ function verDocente(userId) {
         else if (['archivado', 'anulado'].includes(i.estado)) stats.final++;
     });
 
-    const rolColor = { regente: 'bg-purple-100 text-purple-700', preceptor: 'bg-blue-100 text-blue-700', docente: 'bg-green-100 text-green-700', doe: 'bg-orange-100 text-orange-700' };
-    const avatarColor = { regente: 'bg-purple-500', preceptor: 'bg-blue-500', docente: 'bg-green-500', doe: 'bg-orange-500' };
+    const rolColor = { regente: 'bg-purple-100 text-purple-700', preceptor: 'bg-blue-100 text-blue-700', docente: 'bg-green-100 text-green-700', doe: 'bg-orange-100 text-orange-700', pat: 'bg-teal-100 text-teal-700' };
+    const avatarColor = { regente: 'bg-purple-500', preceptor: 'bg-blue-500', docente: 'bg-green-500', doe: 'bg-orange-500', pat: 'bg-teal-500' };
     document.getElementById('tarjetaDocente').innerHTML = `
         <div class="flex items-center gap-4">
             <div class="w-16 h-16 ${avatarColor[u.rol] || 'bg-slate-500'} rounded-full flex items-center justify-center text-white text-2xl font-bold">${(u.nombre || '?')[0]}${(u.apellido || '?')[0]}</div>
@@ -2376,7 +2404,7 @@ async function cargarUsuarios() {
         const nombreCompleto = sinPerfil ? '<span class="text-slate-400 italic">Sin perfil</span>' : `${u.apellido}, ${u.nombre}`;
         const rolBadge = sinPerfil
             ? '<span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">sin perfil</span>'
-            : `<span class="px-2 py-1 rounded-full text-xs font-medium capitalize ${u.rol === 'regente' ? 'bg-purple-100 text-purple-700' : u.rol === 'preceptor' ? 'bg-blue-100 text-blue-700' : u.rol === 'doe' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'}">${u.rol}</span>`;
+            : `<span class="px-2 py-1 rounded-full text-xs font-medium capitalize ${u.rol === 'regente' ? 'bg-purple-100 text-purple-700' : u.rol === 'preceptor' ? 'bg-blue-100 text-blue-700' : u.rol === 'doe' ? 'bg-orange-100 text-orange-700' : u.rol === 'pat' ? 'bg-teal-100 text-teal-700' : 'bg-green-100 text-green-700'}">${u.rol}</span>`;
         const activoBadge = sinPerfil
             ? '<span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">-</span>'
             : `<span class="px-2 py-1 rounded-full text-xs font-medium ${u.activo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${u.activo ? 'Activo' : 'Inactivo'}</span>`;
@@ -2468,8 +2496,8 @@ function filtrarDocentes() {
         return 0;
     });
 
-    const rolColor = { regente: 'bg-purple-100 text-purple-700', preceptor: 'bg-blue-100 text-blue-700', docente: 'bg-green-100 text-green-700', doe: 'bg-orange-100 text-orange-700' };
-    const rolLabel = { regente: 'Regente', preceptor: 'Preceptor', docente: 'Docente', doe: 'DOE' };
+    const rolColor = { regente: 'bg-purple-100 text-purple-700', preceptor: 'bg-blue-100 text-blue-700', docente: 'bg-green-100 text-green-700', doe: 'bg-orange-100 text-orange-700', pat: 'bg-teal-100 text-teal-700' };
+    const rolLabel = { regente: 'Regente', preceptor: 'Preceptor', docente: 'Docente', doe: 'DOE', pat: 'PAT' };
 
     const nombreCompleto = (u) => `${u.apellido || ''}, ${u.nombre || ''}`;
 
@@ -2559,6 +2587,7 @@ async function crearUsuario(e) {
         if (!perfilCreado) {
             // Trigger no generó perfil, creando manualmente
             const cursos = (rol === 'docente' || rol === 'preceptor') ? [..._cursosNuevoUsuario] : [];
+            const alumnos_pat = (rol === 'pat') ? [..._alumnosPATNuevoUsuario] : [];
             const { error: syncError } = await supabaseClient.rpc('sincronizar_perfil', {
                 p_id: authData.user.id,
                 p_email: email,
@@ -2566,15 +2595,20 @@ async function crearUsuario(e) {
                 p_apellido: apellido,
                 p_rol: rol,
                 p_activo: true,
-                p_cursos: cursos
+                p_cursos: cursos,
+                p_alumnos_pat: alumnos_pat
             });
             if (syncError) {
                 // Error sincronizando perfil
                 return mostrarToast('Usuario creado pero error al generar perfil', 'error');
             }
-        } else if (_cursosNuevoUsuario.length > 0 && (rol === 'docente' || rol === 'preceptor')) {
-            // Trigger generó perfil pero sin cursos, actualizamos
-            await supabaseClient.from('perfiles').update({ cursos: [..._cursosNuevoUsuario] }).eq('id', authData.user.id);
+        } else {
+            if (_cursosNuevoUsuario.length > 0 && (rol === 'docente' || rol === 'preceptor')) {
+                await supabaseClient.from('perfiles').update({ cursos: [..._cursosNuevoUsuario] }).eq('id', authData.user.id);
+            }
+            if (_alumnosPATNuevoUsuario.length > 0 && rol === 'pat') {
+                await supabaseClient.from('perfiles').update({ alumnos_pat: [..._alumnosPATNuevoUsuario] }).eq('id', authData.user.id);
+            }
         }
         mostrarToast(`Usuario ${nombre} ${apellido} creado exitosamente`);
     } else {
@@ -2583,8 +2617,12 @@ async function crearUsuario(e) {
     document.getElementById('formUsuario').reset();
     _cursosNuevoUsuario = [];
     renderizarChipsCursos('newCursosLista', _cursosNuevoUsuario, 'quitarCursoNuevoUsuario');
+    _alumnosPATNuevoUsuario = [];
+    renderizarChipsAlumnosPAT('newAlumnosPATLista', _alumnosPATNuevoUsuario, 'quitarAlumnoPATNuevoUsuario');
     const containerCursos = document.getElementById('containerCursosNuevoUsuario');
     if (containerCursos) containerCursos.classList.add('hidden');
+    const containerPAT = document.getElementById('containerAlumnosPATNuevoUsuario');
+    if (containerPAT) containerPAT.classList.add('hidden');
     await cargarUsuarios();
 }
 
@@ -2623,6 +2661,46 @@ function renderizarChipsCursos(containerId, cursos, onRemove) {
             <button onclick="${onRemove}('${c}')" class="hover:text-blue-900 ml-0.5" title="Quitar"><i class="fas fa-times"></i></button>
         </span>
     `).join('');
+}
+
+function renderizarChipsAlumnosPAT(containerId, alumnoIds, onRemove) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    if (alumnoIds.length === 0) {
+        container.innerHTML = '<span class="text-xs text-slate-400 italic">Sin alumnos asignados</span>';
+        return;
+    }
+    container.innerHTML = alumnoIds.map(id => {
+        const a = alumnos.find(x => x.id === id);
+        const label = a ? `${a.apellido}, ${a.nombre}` : id;
+        return `
+        <span class="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs font-medium px-2.5 py-1 rounded-full border border-indigo-100">
+            ${label}
+            <button onclick="${onRemove}('${id}')" class="hover:text-indigo-900 ml-0.5" title="Quitar"><i class="fas fa-times"></i></button>
+        </span>`;
+    }).join('');
+}
+
+function _buscarAlumnoGenerico(query, resultadosId, onSelectFn) {
+    const resultados = document.getElementById(resultadosId);
+    if (!query || query.length < 1) { resultados?.classList.add('hidden'); return; }
+    const filtrados = alumnos.filter(a =>
+        `${a.nombre} ${a.apellido}`.toLowerCase().includes(query.toLowerCase()) ||
+        `${a.apellido} ${a.nombre}`.toLowerCase().includes(query.toLowerCase())
+    ).slice(0, 10);
+    if (!resultados) return;
+    if (filtrados.length === 0) {
+        resultados.innerHTML = '<div class="p-3 text-sm text-slate-500">No se encontraron alumnos</div>';
+    } else {
+        resultados.innerHTML = filtrados.map(a => `
+            <div tabindex="0"
+                onclick="${onSelectFn}('${a.id}', '${a.nombre.replace(/'/g, "\\'")}', '${a.apellido.replace(/'/g, "\\'")}')"
+                class="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0 outline-none">
+                <p class="font-medium text-sm">${a.apellido}, ${a.nombre}</p>
+                <p class="text-xs text-slate-500">${a.curso} ${a.division}${a.turno ? ' · ' + a.turno : ''}</p>
+            </div>`).join('');
+    }
+    resultados.classList.remove('hidden');
 }
 
 window.agregarCursoEditar = function() {
@@ -2673,6 +2751,74 @@ window.quitarMiCurso = async function(curso) {
     }
 };
 
+// ==================== PAT - ALUMNOS ====================
+async function _persistirMisAlumnosPAT() {
+    const alumnoIds = getPerfil()?.alumnos_pat || [];
+    const id = getPerfil()?.id;
+    if (!id) return false;
+    const { error } = await supabaseClient.from('perfiles').update({ alumnos_pat: alumnoIds }).eq('id', id);
+    if (error) {
+        console.error('[GIE] Error guardando alumnos PAT:', error);
+        mostrarToast('Error guardando alumnos PAT', 'error');
+        return false;
+    }
+    return true;
+}
+
+window.buscarAlumnoPAT = function(query) {
+    _buscarAlumnoGenerico(query, 'resultadosAlumnoPAT', 'seleccionarAlumnoPAT');
+};
+
+window.seleccionarAlumnoPAT = async function(id, nombre, apellido) {
+    document.getElementById('resultadosAlumnoPAT').classList.add('hidden');
+    document.getElementById('inputBuscarAlumnoPAT').value = '';
+    const perfil = getPerfil();
+    if (!perfil) return;
+    const previo = [...(perfil.alumnos_pat || [])];
+    if (previo.includes(id)) return mostrarToast('El alumno ya está agregado', 'error');
+    const nuevos = [...previo, id];
+    setPerfil({ ...perfil, alumnos_pat: nuevos });
+    renderizarChipsAlumnosPAT('ajustesAlumnosPATLista', nuevos, 'quitarAlumnoPAT');
+    const ok = await _persistirMisAlumnosPAT();
+    if (!ok) {
+        setPerfil({ ...perfil, alumnos_pat: previo });
+        renderizarChipsAlumnosPAT('ajustesAlumnosPATLista', previo, 'quitarAlumnoPAT');
+    }
+};
+
+window.quitarAlumnoPAT = async function(id) {
+    const perfil = getPerfil();
+    if (!perfil) return;
+    const previo = [...(perfil.alumnos_pat || [])];
+    const nuevos = previo.filter(x => x !== id);
+    setPerfil({ ...perfil, alumnos_pat: nuevos });
+    renderizarChipsAlumnosPAT('ajustesAlumnosPATLista', nuevos, 'quitarAlumnoPAT');
+    const ok = await _persistirMisAlumnosPAT();
+    if (!ok) {
+        setPerfil({ ...perfil, alumnos_pat: previo });
+        renderizarChipsAlumnosPAT('ajustesAlumnosPATLista', previo, 'quitarAlumnoPAT');
+    }
+};
+
+let _alumnosPATEditando = [];
+
+window.buscarAlumnoPATModal = function(query) {
+    _buscarAlumnoGenerico(query, 'editUserResultadosAlumnoPAT', 'seleccionarAlumnoPATModal');
+};
+
+window.seleccionarAlumnoPATModal = function(id, nombre, apellido) {
+    document.getElementById('editUserResultadosAlumnoPAT').classList.add('hidden');
+    document.getElementById('editUserBuscarAlumnoPAT').value = '';
+    if (_alumnosPATEditando.includes(id)) return mostrarToast('El alumno ya está agregado', 'error');
+    _alumnosPATEditando.push(id);
+    renderizarChipsAlumnosPAT('editUserAlumnosPATLista', _alumnosPATEditando, 'quitarAlumnoPATEditar');
+};
+
+window.quitarAlumnoPATEditar = function(id) {
+    _alumnosPATEditando = _alumnosPATEditando.filter(x => x !== id);
+    renderizarChipsAlumnosPAT('editUserAlumnosPATLista', _alumnosPATEditando, 'quitarAlumnoPATEditar');
+};
+
 window.agregarCursoNuevoUsuario = function() {
     const anio = document.getElementById('newCursoAnio').value;
     const div = document.getElementById('newCursoDivision').value;
@@ -2691,6 +2837,25 @@ window.quitarCursoNuevoUsuario = function(curso) {
     renderizarChipsCursos('newCursosLista', _cursosNuevoUsuario, 'quitarCursoNuevoUsuario');
 };
 
+let _alumnosPATNuevoUsuario = [];
+
+window.buscarAlumnoPATNuevoUsuario = function(query) {
+    _buscarAlumnoGenerico(query, 'newResultadosAlumnoPAT', 'seleccionarAlumnoPATNuevoUsuario');
+};
+
+window.seleccionarAlumnoPATNuevoUsuario = function(id, nombre, apellido) {
+    document.getElementById('newResultadosAlumnoPAT').classList.add('hidden');
+    document.getElementById('newBuscarAlumnoPAT').value = '';
+    if (_alumnosPATNuevoUsuario.includes(id)) return mostrarToast('El alumno ya está agregado', 'error');
+    _alumnosPATNuevoUsuario.push(id);
+    renderizarChipsAlumnosPAT('newAlumnosPATLista', _alumnosPATNuevoUsuario, 'quitarAlumnoPATNuevoUsuario');
+};
+
+window.quitarAlumnoPATNuevoUsuario = function(id) {
+    _alumnosPATNuevoUsuario = _alumnosPATNuevoUsuario.filter(x => x !== id);
+    renderizarChipsAlumnosPAT('newAlumnosPATLista', _alumnosPATNuevoUsuario, 'quitarAlumnoPATNuevoUsuario');
+};
+
 window.editarUsuarioForm = function(id) {
     const u = usuarios.find(x => x.id === id);
     if (!u) return mostrarToast('Usuario no encontrado', 'error');
@@ -2702,6 +2867,14 @@ window.editarUsuarioForm = function(id) {
     document.getElementById('editUserActivo').checked = u.activo !== false;
     _cursosEditando = [...(u.cursos || [])];
     renderizarChipsCursos('editUserCursosLista', _cursosEditando, 'quitarCursoEditar');
+    _alumnosPATEditando = [...(u.alumnos_pat || [])];
+    renderizarChipsAlumnosPAT('editUserAlumnosPATLista', _alumnosPATEditando, 'quitarAlumnoPATEditar');
+    // Mostrar/ocultar secciones según rol
+    const val = u.rol || 'docente';
+    const cursosContainer = document.getElementById('editUserCursoAnio')?.parentElement;
+    const patContainer = document.getElementById('editUserAlumnosPATContainer');
+    if (cursosContainer) cursosContainer.classList.toggle('hidden', !(val === 'docente' || val === 'preceptor'));
+    if (patContainer) patContainer.classList.toggle('hidden', val !== 'pat');
     document.getElementById('editUserPassword').value = '';
     // Email no editable en Supabase (requiere confirmación), contraseña sí vía RPC
     const esSupa = USE_SUPABASE;
@@ -2737,7 +2910,7 @@ window.guardarEdicionUsuario = async function() {
 
     if (USE_SUPABASE) {
         // 1. Actualizar perfil
-        const updates = { nombre, apellido, rol, activo, cursos: _cursosEditando };
+        const updates = { nombre, apellido, rol, activo, cursos: _cursosEditando, alumnos_pat: _alumnosPATEditando };
         const { error } = await supabaseClient.from('perfiles').update(updates).eq('id', id);
         if (error) { return mostrarToast('Error editando usuario', 'error'); }
 
