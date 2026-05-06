@@ -919,6 +919,8 @@ function filtrarInformes() {
     const instancia = document.getElementById('filtroInstancia').value;
     const esRegente = getPerfil()?.rol === 'regente';
     const esDOE = getPerfil()?.rol === 'doe';
+    const esPAT = getPerfil()?.rol === 'pat';
+    const misAlumnosPAT = getPerfil()?.alumnos_pat || [];
     const filtrados = informes.filter(i => {
         const alumno = getAlumno(i.alumno_id);
         const matchBusqueda = !busqueda ||
@@ -930,8 +932,8 @@ function filtrarInformes() {
         const matchTurno = !turno || (alumno && alumno.turno === turno);
         const matchEstado = !estado || i.estado === estado;
         const matchInstancia = !instancia || i.instancia === instancia;
-        // Docentes solo ven sus propios informes; regentes ven todos; DOE ve derivados/archivados/anulados
-        const matchCreador = esRegente || (esDOE && ['derivado', 'archivado', 'anulado'].includes(i.estado)) || i.creado_por === getPerfil()?.id;
+        // Docentes/PAT solo ven sus propios informes (PAT también ve los de sus alumnos asignados); regentes ven todos; DOE ve derivados/archivados/anulados
+        const matchCreador = esRegente || (esDOE && ['derivado', 'archivado', 'anulado'].includes(i.estado)) || i.creado_por === getPerfil()?.id || (esPAT && misAlumnosPAT.includes(i.alumno_id));
         // Filtro rápido por tab
         const matchTab = tabInformesActivo === 'todos' ? true :
             tabInformesActivo === 'pendientes' ? i.estado === 'pendiente' :
@@ -941,7 +943,7 @@ function filtrarInformes() {
         return matchBusqueda && matchCurso && matchDivision && matchTurno && matchEstado && matchInstancia && matchCreador && matchTab;
     });
 
-    // Actualizar badges (filtrados por creador también para docentes)
+    // Actualizar badges (filtrados por creador también para docentes/PAT)
     const baseFiltrados = informes.filter(i => {
         const alumno = getAlumno(i.alumno_id);
         const matchBusqueda = !busqueda ||
@@ -953,7 +955,7 @@ function filtrarInformes() {
         const matchTurno = !turno || (alumno && alumno.turno === turno);
         const matchEstado = !estado || i.estado === estado;
         const matchInstancia = !instancia || i.instancia === instancia;
-        const matchCreador = esRegente || (esDOE && ['derivado', 'archivado', 'anulado'].includes(i.estado)) || i.creado_por === getPerfil()?.id;
+        const matchCreador = esRegente || (esDOE && ['derivado', 'archivado', 'anulado'].includes(i.estado)) || i.creado_por === getPerfil()?.id || (esPAT && misAlumnosPAT.includes(i.alumno_id));
         return matchBusqueda && matchCurso && matchDivision && matchTurno && matchEstado && matchInstancia && matchCreador;
     });
     const badgeTodos = document.getElementById('badgeTodos');
