@@ -817,7 +817,8 @@ function actualizarTabsInformes() {
         pendientes: document.getElementById('tabPendientes'),
         revisados: document.getElementById('tabRevisados'),
         derivados: document.getElementById('tabDerivados'),
-        finales: document.getElementById('tabFinales')
+        archivados: document.getElementById('tabArchivados'),
+        anulados: document.getElementById('tabAnulados')
     };
     Object.entries(tabs).forEach(([key, btn]) => {
         if (!btn) return;
@@ -888,12 +889,14 @@ function filtrarInformes() {
     const badgePendientes = document.getElementById('badgePendientes');
     const badgeRevisados = document.getElementById('badgeRevisados');
     const badgeDerivados = document.getElementById('badgeDerivados');
-    const badgeFinales = document.getElementById('badgeFinales');
+    const badgeArchivados = document.getElementById('badgeArchivados');
+    const badgeAnulados = document.getElementById('badgeAnulados');
     if (badgeTodos) badgeTodos.textContent = baseFiltrados.length;
     if (badgePendientes) badgePendientes.textContent = baseFiltrados.filter(i => i.estado === 'pendiente').length;
     if (badgeRevisados) badgeRevisados.textContent = baseFiltrados.filter(i => i.estado === 'revisado').length;
     if (badgeDerivados) badgeDerivados.textContent = baseFiltrados.filter(i => i.estado === 'derivado').length;
-    if (badgeFinales) badgeFinales.textContent = baseFiltrados.filter(i => ['archivado', 'anulado'].includes(i.estado)).length;
+    if (badgeArchivados) badgeArchivados.textContent = baseFiltrados.filter(i => i.estado === 'archivado').length;
+    if (badgeAnulados) badgeAnulados.textContent = baseFiltrados.filter(i => i.estado === 'anulado').length;
 
     renderizarInformes(filtrados);
 }
@@ -941,7 +944,8 @@ function renderizarInformes(lista) {
     const pendientes = lista.filter(i => i.estado === 'pendiente');
     const revisados = lista.filter(i => i.estado === 'revisado');
     const derivados = lista.filter(i => i.estado === 'derivado');
-    const finales = lista.filter(i => ['archivado', 'anulado'].includes(i.estado));
+    const archivados = lista.filter(i => i.estado === 'archivado');
+    const anulados = lista.filter(i => i.estado === 'anulado');
 
     // Ordenar pendientes por instancia (muy_grave > grave > leve), luego fecha
     const ordenInstancia = { consejo: -1, muy_grave: 0, grave: 1, leve: 2 };
@@ -954,7 +958,8 @@ function renderizarInformes(lista) {
     // Ordenar resto por fecha más reciente
     revisados.sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
     derivados.sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
-    finales.sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
+    archivados.sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
+    anulados.sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
 
     let html = '';
     if (pendientes.length > 0) {
@@ -981,13 +986,21 @@ function renderizarInformes(lista) {
         </div>
         <div class="space-y-3 mb-6">${derivados.map(renderCardInforme).join('')}</div>`;
     }
-    if (finales.length > 0) {
+    if (archivados.length > 0) {
         html += `
         <div class="flex items-center gap-2 mb-3">
-            <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Finales</h3>
-            <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">${finales.length}</span>
+            <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Archivados</h3>
+            <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">${archivados.length}</span>
         </div>
-        <div class="space-y-3">${finales.map(renderCardInforme).join('')}</div>`;
+        <div class="space-y-3 mb-6">${archivados.map(renderCardInforme).join('')}</div>`;
+    }
+    if (anulados.length > 0) {
+        html += `
+        <div class="flex items-center gap-2 mb-3">
+            <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Anulados</h3>
+            <span class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold">${anulados.length}</span>
+        </div>
+        <div class="space-y-3">${anulados.map(renderCardInforme).join('')}</div>`;
     }
     contenedor.innerHTML = html;
     contenedor.querySelectorAll('.card-scroll').forEach(card => cardObserver.observe(card));
