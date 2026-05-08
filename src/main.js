@@ -1,5 +1,5 @@
 import Chart from 'chart.js/auto';
-import html2pdf from 'html2pdf.js';
+import html2pdf from 'html2pdf.js/dist/html2pdf.bundle.min.js';
 import { USE_SUPABASE, supabaseClient } from './config.js';
 import { getPerfil, esRegente, setPerfilCursos, showLogin, showApp, restoreSession, doLogout, updateAuthUI, setupLoginForm, setupLoginBanner } from './auth.js';
 import './styles.css';
@@ -18,6 +18,7 @@ let tabInformesActivo = 'todos'; // 'todos' | 'pendientes' | 'resueltos'
 let tabAlumnosActivo = 'todos'; // 'todos' | 'mis_cursos'
 let periodoTendenciaDias = 30;
 let _guardandoInforme = false;
+let _generandoPDF = false;
 
 // IntersectionObserver para animar cards al hacer scroll (repite al subir/bajar)
 const cardObserver = new IntersectionObserver((entries) => {
@@ -3197,8 +3198,12 @@ window.eliminarPlantilla = async function(id) {
 
 // ==================== EXPORTAR PDF ====================
 async function exportarPDF(id) {
+    if (_generandoPDF) return;
+    if (typeof html2pdf !== 'function') return mostrarToast('Error: librería PDF no disponible', 'error');
+    _generandoPDF = true;
+    mostrarToast('Generando PDF...');
     const informe = getInforme(id);
-    if (!informe) return;
+    if (!informe) { _generandoPDF = false; return; }
     const alumno = getAlumno(informe.alumno_id);
     const creador = getNombreUsuario(informe.creado_por);
     const chk = (val) => informe.instancia === val ? '☑' : '☐';
@@ -3287,11 +3292,21 @@ async function exportarPDF(id) {
         </div>
     `;
     document.body.appendChild(container);
-    await html2pdf().set({ margin: [8,8,8,8], filename: `informe_${alumno ? alumno.apellido : 'doc'}_${informe.fecha_creacion.split('T')[0]}.pdf`, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(container).save();
+    try {
+        await html2pdf().set({ margin: [8,8,8,8], filename: `informe_${alumno ? alumno.apellido : 'doc'}_${informe.fecha_creacion.split('T')[0]}.pdf`, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(container).save();
+    } catch (e) {
+        console.error('[GIE] Error generando PDF:', e);
+        mostrarToast('Error generando PDF', 'error');
+    }
     document.body.removeChild(container);
+    _generandoPDF = false;
 }
 
 async function exportarPDFEnBlanco() {
+    if (_generandoPDF) return;
+    if (typeof html2pdf !== 'function') return mostrarToast('Error: librería PDF no disponible', 'error');
+    _generandoPDF = true;
+    mostrarToast('Generando PDF...');
     // Cargar logo como base64
     let logoSrc = '';
     try {
@@ -3376,8 +3391,14 @@ async function exportarPDFEnBlanco() {
         </div>
     `;
     document.body.appendChild(container);
-    await html2pdf().set({ margin: [8,8,8,8], filename: `informe_en_blanco_${new Date().toISOString().split('T')[0]}.pdf`, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(container).save();
+    try {
+        await html2pdf().set({ margin: [8,8,8,8], filename: `informe_en_blanco_${new Date().toISOString().split('T')[0]}.pdf`, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(container).save();
+    } catch (e) {
+        console.error('[GIE] Error generando PDF:', e);
+        mostrarToast('Error generando PDF', 'error');
+    }
     document.body.removeChild(container);
+    _generandoPDF = false;
 }
 
 function mostrarDrillDownAnio(anio, data) {
@@ -3478,12 +3499,9 @@ window.verAlumno = verAlumno;
 window.verDocente = verDocente;
 window.editarInforme = editarInforme;
 window.cambiarEstado = cambiarEstado;
-window.mostrarRechazo = mostrarRechazo;
 window.cerrarModal = cerrarModal;
 window.cerrarModalGrupo = cerrarModalGrupo;
 window.abrirModalGrupoInformes = abrirModalGrupoInformes;
-window.cerrarModalRechazo = cerrarModalRechazo;
-window.confirmarRechazo = confirmarRechazo;
 window.exportarPDF = exportarPDF;
 window.exportarPDFEnBlanco = exportarPDFEnBlanco;
 window.limpiarAlumno = limpiarAlumno;
