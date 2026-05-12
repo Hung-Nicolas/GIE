@@ -329,7 +329,7 @@
                 <h1 class="text-2xl font-bold text-slate-800">Informes</h1>
                 <div class="flex gap-2">
                 <button onclick="exportarPDFEnBlanco()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm" title="Imprimir informe en blanco">
-                    <i class="fas fa-print"></i><span class="hidden sm:inline">Imprimir en blanco</span>
+                    <i class="fas fa-print"></i><span class="sm:hidden">Imprimir</span><span class="hidden sm:inline">Imprimir en blanco</span>
                 </button>
                 <button id="btn-nuevo-informe" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm">
                     <i class="fas fa-plus"></i><span>Nuevo Informe</span>
@@ -369,23 +369,23 @@
                     </select>
                 </div>
             </div>
-            <div id="tabsInformes" class="flex gap-2 mb-4 overflow-x-auto animate-enter animate-delay-200">
-                <button id="tabTodos" onclick="setTabInformes('todos')" class="tab-informes px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white">
+            <div id="tabsInformes" class="grid grid-cols-3 gap-2 mb-4 sm:flex sm:overflow-x-auto animate-enter animate-delay-200">
+                <button id="tabTodos" onclick="setTabInformes('todos')" class="tab-informes w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white flex flex-col items-center sm:flex-row gap-1 sm:gap-2">
                     Todos <span id="badgeTodos" class="ml-1 text-xs bg-white/20 px-1.5 py-0.5 rounded-full">0</span>
                 </button>
-                <button id="tabPendientes" onclick="setTabInformes('pendientes')" class="tab-informes px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200">
+                <button id="tabPendientes" onclick="setTabInformes('pendientes')" class="tab-informes w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200 flex flex-col items-center sm:flex-row gap-1 sm:gap-2">
                     Pendientes <span id="badgePendientes" class="ml-1 text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded-full">0</span>
                 </button>
-                <button id="tabRevisados" onclick="setTabInformes('revisados')" class="tab-informes px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200">
+                <button id="tabRevisados" onclick="setTabInformes('revisados')" class="tab-informes w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200 flex flex-col items-center sm:flex-row gap-1 sm:gap-2">
                     Revisados <span id="badgeRevisados" class="ml-1 text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">0</span>
                 </button>
-                <button id="tabDerivados" onclick="setTabInformes('derivados')" class="tab-informes px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200">
+                <button id="tabDerivados" onclick="setTabInformes('derivados')" class="tab-informes w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200 flex flex-col items-center sm:flex-row gap-1 sm:gap-2">
                     Derivados <span id="badgeDerivados" class="ml-1 text-xs bg-green-100 text-green-700 px-1.5 py-0.5 rounded-full">0</span>
                 </button>
-                <button id="tabArchivados" onclick="setTabInformes('archivados')" class="tab-informes px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200">
+                <button id="tabArchivados" onclick="setTabInformes('archivados')" class="tab-informes w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200 flex flex-col items-center sm:flex-row gap-1 sm:gap-2">
                     Archivados <span id="badgeArchivados" class="ml-1 text-xs bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded-full">0</span>
                 </button>
-                <button id="tabAnulados" onclick="setTabInformes('anulados')" class="tab-informes px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200">
+                <button id="tabAnulados" onclick="setTabInformes('anulados')" class="tab-informes w-full sm:w-auto px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200 flex flex-col items-center sm:flex-row gap-1 sm:gap-2">
                     Anulados <span id="badgeAnulados" class="ml-1 text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded-full">0</span>
                 </button>
             </div>
@@ -520,7 +520,7 @@
                     Mis cursos
                 </button>
                 <button id="tabAlumnosMisAlumnos" onclick="setTabAlumnos('mis_alumnos')" class="tab-alumnos hidden px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200">
-                    Mis alumnos
+                    Alumnos PAT
                 </button>
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
@@ -997,7 +997,7 @@
                         <li>Marquez Cristhian</li>
                         <li>Enrique Santino</li>
                     </ul>
-                    <p class="pt-2 text-slate-500">Versión <span class="font-mono font-medium text-slate-700">v1.5.4</span></p>
+                    <p class="pt-2 text-slate-500">Versión <span class="font-mono font-medium text-slate-700">v1.5.5</span></p>
                     <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
                         <p class="text-sm text-amber-800"><i class="fas fa-bug mr-2"></i><strong>¿Encontraste un error?</strong></p>
                         <p class="text-sm text-amber-700 mt-1">En caso de errores o fallas, notificar a <a href="mailto:nicohung0302@gmail.com" class="underline hover:text-amber-900 font-medium">nicohung0302@gmail.com</a></p>

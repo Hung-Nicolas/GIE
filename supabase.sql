@@ -170,6 +170,12 @@ CREATE POLICY "informes_update"
     USING (
         public.perfil_rol() = 'regente'
         OR (creado_por = auth.uid() AND estado = 'pendiente' AND public.perfil_rol() != 'doe')
+        OR (public.perfil_rol() = 'doe' AND estado = 'derivado')
+    )
+    WITH CHECK (
+        public.perfil_rol() = 'regente'
+        OR (creado_por = auth.uid() AND public.perfil_rol() != 'doe')
+        OR (public.perfil_rol() = 'doe')
     );
 
 -- 4. TABLA PLANTILLAS (plantillas de informes predefinidas)
@@ -497,6 +503,27 @@ $$;
 
 GRANT EXECUTE ON FUNCTION public.obtener_espacio_bd() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.obtener_espacio_bd() TO anon;
+
+-- ============================================================
+-- FUNCION RPC: DOE devuelve informe derivado a pendiente
+-- ============================================================
+DROP FUNCTION IF EXISTS public.devolver_informe_a_pendiente(UUID);
+CREATE OR REPLACE FUNCTION public.devolver_informe_a_pendiente(p_informe_id UUID)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+    UPDATE public.informes
+    SET estado = 'pendiente',
+        revisado_por = auth.uid(),
+        fecha_revision = NOW()
+    WHERE id = p_informe_id AND estado = 'derivado';
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.devolver_informe_a_pendiente(UUID) TO authenticated;
 
 -- ============================================================
 -- 11. TABLA HISTORIAL DE INFORMES

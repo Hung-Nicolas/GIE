@@ -240,7 +240,7 @@ async function iniciarApp() {
     const btnNuevoInformeHeader = document.getElementById('btn-nuevo-informe');
     if (btnNuevoInformeHeader) btnNuevoInformeHeader.classList.toggle('hidden', esDOE);
     const btnCrearAlumno = document.getElementById('btn-crear-alumno');
-    if (btnCrearAlumno) btnCrearAlumno.classList.toggle('hidden', esDOE);
+    if (btnCrearAlumno) btnCrearAlumno.classList.toggle('hidden', !esRegente);
     const tabsInformes = document.getElementById('tabsInformes');
     if (tabsInformes) tabsInformes.classList.toggle('hidden', esDOE);
     const esDocenteOPreceptor = getPerfil()?.rol === 'docente' || getPerfil()?.rol === 'preceptor';
@@ -585,6 +585,15 @@ function showSection(sectionId) {
                     const savedOrden = sessionStorage.getItem('gie_orden_alumnos');
                     if (savedOrden !== null && ordenEl.value !== savedOrden) ordenEl.value = savedOrden;
                 }
+                const savedTabAlumnos = sessionStorage.getItem('gie_tab_alumnos');
+                const esDocenteOPreceptor = getPerfil()?.rol === 'docente' || getPerfil()?.rol === 'preceptor';
+                const esPAT = getPerfil()?.rol === 'pat';
+                if (savedTabAlumnos) {
+                    tabAlumnosActivo = savedTabAlumnos;
+                } else if (esDocenteOPreceptor || esPAT) {
+                    tabAlumnosActivo = 'mis_cursos';
+                    sessionStorage.setItem('gie_tab_alumnos', 'mis_cursos');
+                }
                 actualizarTabsAlumnos();
                 filtrarAlumnos();
                 ocultarSkeleton('alumnos');
@@ -707,9 +716,10 @@ function buscarAlumno(query) {
         `${a.apellido} ${a.nombre}`.toLowerCase().includes(query.toLowerCase())
     ).slice(0, 10);
     const btnCrear = document.getElementById('btn-crear-alumno-inline');
+    const esRegente = getPerfil()?.rol === 'regente';
     if (filtrados.length === 0) {
         resultados.innerHTML = '<div class="p-3 text-sm text-slate-500">No se encontraron alumnos</div>';
-        if (btnCrear) btnCrear.classList.remove('hidden');
+        if (btnCrear) btnCrear.classList.toggle('hidden', !esRegente);
     } else {
         resultados.innerHTML = filtrados.map(a => `
             <div tabindex="0"
@@ -1412,38 +1422,52 @@ function verDetalle(id) {
     if ((esRegente || esDOE) && informe.estado === 'derivado') {
         acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'pendiente')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-undo mr-2"></i>Volver a pendiente</button>`;
     }
-    acciones.innerHTML += `<button onclick="exportarPDF('${informe.id}')" class="min-w-[120px] bg-slate-600 hover:bg-slate-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-file-pdf mr-2"></i>PDF</button>`;
+    acciones.innerHTML += `<button onclick="exportarPDF('${informe.id}')" class="min-w-[120px] bg-slate-600 hover:bg-slate-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-file-pdf mr-2"></i><span class="sm:hidden">Imprimir</span><span class="hidden sm:inline">PDF</span></button>`;
     modal.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
 }
 
+let _guardandoObservacion = false;
 async function agregarObservacion(informeId) {
+    if (_guardandoObservacion) return;
     const textarea = document.getElementById('nuevaObservacionTexto');
     const texto = textarea?.value.trim();
     if (!texto) return mostrarToast('Ingrese una observación', 'error');
-    await registrarHistorial(informeId, 'observaciones', texto);
-    const historial = await cargarHistorial(informeId);
-    const container = document.getElementById('historialInforme');
-    if (container) container.innerHTML = renderizarHistorial(historial);
-    textarea.value = '';
-    mostrarToast('Observación agregada');
+    _guardandoObservacion = true;
+    try {
+        await registrarHistorial(informeId, 'observaciones', texto);
+        const historial = await cargarHistorial(informeId);
+        const container = document.getElementById('historialInforme');
+        if (container) container.innerHTML = renderizarHistorial(historial);
+        textarea.value = '';
+        mostrarToast('Observación agregada');
+    } finally {
+        _guardandoObservacion = false;
+    }
 }
 window.agregarObservacion = agregarObservacion;
 
+let _guardandoAccion = false;
 async function agregarAccion(informeId) {
+    if (_guardandoAccion) return;
     const tipoInput = document.getElementById('nuevaAccionTipo');
     const detalleText = document.getElementById('nuevaAccionDetalle');
     const tipo = tipoInput?.value.trim();
     const detalle = detalleText?.value.trim();
     if (!tipo) return mostrarToast('Ingrese el tipo de acción', 'error');
     if (!detalle) return mostrarToast('Ingrese el detalle de la acción', 'error');
-    await registrarHistorial(informeId, tipo, detalle);
-    const historial = await cargarHistorial(informeId);
-    const container = document.getElementById('historialInforme');
-    if (container) container.innerHTML = renderizarHistorial(historial);
-    tipoInput.value = '';
-    detalleText.value = '';
-    mostrarToast('Acción registrada');
+    _guardandoAccion = true;
+    try {
+        await registrarHistorial(informeId, tipo, detalle);
+        const historial = await cargarHistorial(informeId);
+        const container = document.getElementById('historialInforme');
+        if (container) container.innerHTML = renderizarHistorial(historial);
+        tipoInput.value = '';
+        detalleText.value = '';
+        mostrarToast('Acción registrada');
+    } finally {
+        _guardandoAccion = false;
+    }
 }
 window.agregarAccion = agregarAccion;
 
@@ -1491,6 +1515,7 @@ async function cambiarEstado(id, nuevoEstado, options = {}) {
     const { silent = false, cerrarModal: debeCerrarModal = true, recargarLista = true, fecha_reunion } = options;
     const esDOE = getPerfil()?.rol === 'doe';
     const esRegente = getPerfil()?.rol === 'regente';
+    const perfil = getPerfil();
     const informe = getInforme(id);
     
     // DOE solo puede devolver de derivado a pendiente
@@ -1502,14 +1527,24 @@ async function cambiarEstado(id, nuevoEstado, options = {}) {
     
     const updates = {
         estado: nuevoEstado,
-        revisado_por: getPerfil().id,
+        revisado_por: perfil?.id,
         fecha_revision: new Date().toISOString()
     };
     if (nuevoEstado !== 'anulado') updates.motivo_rechazo = null;
     if (fecha_reunion !== undefined) updates.fecha_reunion = fecha_reunion;
 
-    const { error } = await supabaseClient.from('informes').update(updates).eq('id', id);
-    if (error) { return mostrarToast('Error actualizando estado', 'error'); }
+    let error = null;
+    if (esDOE && informe?.estado === 'derivado' && nuevoEstado === 'pendiente') {
+        const { error: rpcError } = await supabaseClient.rpc('devolver_informe_a_pendiente', { p_informe_id: id });
+        error = rpcError;
+    } else {
+        const { error: updError } = await supabaseClient.from('informes').update(updates).eq('id', id);
+        error = updError;
+    }
+    
+    if (error) {
+        return mostrarToast(`Error actualizando estado: ${error?.message || error?.code || 'desconocido'}`, 'error');
+    }
     
     const labelMap = {
         pendiente: 'devuelto a pendiente',
@@ -1605,9 +1640,11 @@ async function confirmarAnulacion() {
 }
 
 function editarInforme(id) {
-    if (getPerfil()?.rol === 'doe') return mostrarToast('No tiene permiso para editar informes', 'error');
     const informe = getInforme(id);
     if (!informe) return;
+    const esRegente = getPerfil()?.rol === 'regente';
+    if (!esRegente && informe.creado_por !== getPerfil()?.id) return mostrarToast('No tiene permiso para editar este informe', 'error');
+    if (['archivado', 'anulado'].includes(informe.estado)) return mostrarToast('No se puede editar un informe finalizado', 'error');
     const alumno = getAlumno(informe.alumno_id);
     document.getElementById('editId').value = informe.id;
     document.getElementById('alumnoId').value = informe.alumno_id;
@@ -3211,7 +3248,7 @@ async function exportarPDF(id) {
     // Cargar logo como base64
     let logoSrc = '';
     try {
-        const res = await fetch('./GIE_logo.png');
+        const res = await fetch('./logo-informe.png');
         const blob = await res.blob();
         logoSrc = await new Promise((resolve) => {
             const reader = new FileReader();
@@ -3310,7 +3347,7 @@ async function exportarPDFEnBlanco() {
     // Cargar logo como base64
     let logoSrc = '';
     try {
-        const res = await fetch('./GIE_logo.png');
+        const res = await fetch('./logo-informe.png');
         const blob = await res.blob();
         logoSrc = await new Promise((resolve) => {
             const reader = new FileReader();
@@ -3531,7 +3568,7 @@ window.cerrarModalCrearAlumno = function() {
     document.body.classList.remove('overflow-hidden');
 };
 window.guardarNuevoAlumno = async function() {
-    if (getPerfil()?.rol === 'doe') return mostrarToast('No tiene permiso para crear alumnos', 'error');
+    if (getPerfil()?.rol !== 'regente') return mostrarToast('Solo el regente puede crear alumnos', 'error');
     const nombre = document.getElementById('newAlumnoNombre').value.trim();
     const apellido = document.getElementById('newAlumnoApellido').value.trim();
     const curso = document.getElementById('newAlumnoCurso').value;
