@@ -3257,6 +3257,8 @@ async function exportarPDF(id) {
         });
     } catch (e) { /* sin logo */ }
 
+    const scrollY = window.scrollY;
+    window.scrollTo(0, 0);
     const container = document.createElement('div');
     container.style.cssText = 'padding:12px 24px; font-family:Arial,Helvetica,sans-serif; color:#000; max-width:800px; margin:0 auto; background:#fff; font-size:11px; line-height:1.4;';
     container.innerHTML = `
@@ -3330,12 +3332,13 @@ async function exportarPDF(id) {
     `;
     document.body.appendChild(container);
     try {
-        await html2pdf().set({ margin: [8,8,8,8], filename: `informe_${alumno ? alumno.apellido : 'doc'}_${informe.fecha_creacion.split('T')[0]}.pdf`, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(container).save();
+        await html2pdf().set({ margin: [8,8,8,8], filename: `informe_${alumno ? alumno.apellido : 'doc'}_${informe.fecha_creacion.split('T')[0]}.pdf`, html2canvas: { scale: 2, scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(container).save();
     } catch (e) {
         console.error('[GIE] Error generando PDF:', e);
         mostrarToast('Error generando PDF', 'error');
     }
     document.body.removeChild(container);
+    window.scrollTo(0, scrollY);
     _generandoPDF = false;
 }
 
@@ -3356,6 +3359,8 @@ async function exportarPDFEnBlanco() {
         });
     } catch (e) { /* sin logo */ }
 
+    const scrollY = window.scrollY;
+    window.scrollTo(0, 0);
     const container = document.createElement('div');
     container.style.cssText = 'padding:12px 24px; font-family:Arial,Helvetica,sans-serif; color:#000; max-width:800px; margin:0 auto; background:#fff; font-size:11px; line-height:1.4;';
     container.innerHTML = `
@@ -3429,12 +3434,13 @@ async function exportarPDFEnBlanco() {
     `;
     document.body.appendChild(container);
     try {
-        await html2pdf().set({ margin: [8,8,8,8], filename: `informe_en_blanco_${new Date().toISOString().split('T')[0]}.pdf`, html2canvas: { scale: 2 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(container).save();
+        await html2pdf().set({ margin: [8,8,8,8], filename: `informe_en_blanco_${new Date().toISOString().split('T')[0]}.pdf`, html2canvas: { scale: 2, scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(container).save();
     } catch (e) {
         console.error('[GIE] Error generando PDF:', e);
         mostrarToast('Error generando PDF', 'error');
     }
     document.body.removeChild(container);
+    window.scrollTo(0, scrollY);
     _generandoPDF = false;
 }
 
