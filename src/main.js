@@ -995,7 +995,7 @@ function renderCardInforme(i) {
     const estadoVisual = i.estado;
     const accionesRapidas = (esRegente && i.estado === 'pendiente') ? `
         <div class="flex gap-2 mt-3 pt-3 border-t border-slate-100">
-            <button onclick="event.stopPropagation(); accionRapidaRevisar('${i.id}', this)" class="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1">
+            <button onclick="event.stopPropagation(); verDetalle('${i.id}')" class="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1">
                 <i class="fas fa-eye"></i> Revisar
             </button>
             <button onclick="event.stopPropagation(); accionRapidaAnular('${i.id}', this)" class="flex-1 bg-red-50 hover:bg-red-100 text-red-700 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1">
@@ -1093,18 +1093,6 @@ function renderizarInformes(lista) {
     contenedor.innerHTML = html;
     contenedor.querySelectorAll('.card-scroll').forEach(card => cardObserver.observe(card));
 }
-
-window.accionRapidaRevisar = async function(id, btn) {
-    const item = document.getElementById('item-' + id);
-    if (!item) return;
-    btn.innerHTML = '<span class="btn-spinner"></span>';
-    btn.disabled = true;
-    await new Promise(r => setTimeout(r, 300));
-    item.classList.add('animate-slide-out');
-    await new Promise(r => setTimeout(r, 400));
-    item.remove();
-    await cambiarEstado(id, 'revisado', { cerrarModal: false, recargarLista: false });
-};
 
 window.accionRapidaAnular = function(id, btn) {
     const item = document.getElementById('item-' + id);
@@ -1803,8 +1791,8 @@ function actualizarDashboard() {
         : pendientesLista.map(i => {
             const alumno = getAlumno(i.alumno_id);
             return `
-            <div id="dash-item-${i.id}" class="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100 card-scroll">
-                <div class="flex items-center gap-3 flex-1 min-w-0 cursor-pointer" onclick="verDetalle('${i.id}')">
+            <div id="dash-item-${i.id}" class="flex flex-col sm:flex-row sm:items-center gap-2 p-3 bg-slate-50 rounded-lg border border-slate-100 card-scroll cursor-pointer" onclick="if(event.target.closest('button')) return; verDetalle('${i.id}')">
+                <div class="flex items-center gap-3 flex-1 min-w-0">
                     <div class="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-xs font-bold text-white shrink-0">${alumno ? alumno.nombre[0] + alumno.apellido[0] : '?'}</div>
                     <div class="min-w-0">
                         <p class="text-sm font-medium text-slate-800 truncate">${i.titulo}</p>
@@ -1812,7 +1800,7 @@ function actualizarDashboard() {
                     </div>
                 </div>
                 <div class="flex gap-2 shrink-0">
-                    <button onclick="event.stopPropagation(); revisarDesdeDashboard('${i.id}', this)" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors"><i class="fas fa-eye mr-1"></i>Revisar</button>
+                    <button onclick="event.stopPropagation(); verDetalle('${i.id}')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors"><i class="fas fa-eye mr-1"></i>Revisar</button>
                     <button onclick="event.stopPropagation(); anularDesdeDashboard('${i.id}', this)" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg transition-colors"><i class="fas fa-ban mr-1"></i>Anular</button>
                 </div>
             </div>`;
