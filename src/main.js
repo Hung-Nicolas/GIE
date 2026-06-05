@@ -986,6 +986,14 @@ function filtrarInformes() {
     if (badgeArchivados) badgeArchivados.textContent = baseFiltrados.filter(i => i.estado === 'archivado').length;
     if (badgeAnulados) badgeAnulados.textContent = baseFiltrados.filter(i => i.estado === 'anulado').length;
 
+    // Ordenar según pestaña activa: en revisados/derivados/finalizados usar fecha_revision (más reciente primero)
+    filtrados.sort((a, b) => {
+        const usarFechaRevision = ['revisados', 'derivados', 'finalizados'].includes(tabInformesActivo);
+        const fechaA = new Date(usarFechaRevision ? (a.fecha_revision || a.fecha_creacion) : a.fecha_creacion);
+        const fechaB = new Date(usarFechaRevision ? (b.fecha_revision || b.fecha_creacion) : b.fecha_creacion);
+        return fechaB - fechaA;
+    });
+
     renderizarInformes(filtrados);
 }
 
@@ -1398,7 +1406,7 @@ function verDetalle(id) {
     if (esRegente) {
         if (informe.estado === 'pendiente') {
             acciones.innerHTML += `
-                <button id="btn-modal-revisar-${informe.id}" onclick="revisarConAnimacion('${informe.id}', this)" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-eye mr-2"></i>Revisar</button>
+                <button id="btn-modal-revisar-${informe.id}" onclick="revisarConAnimacion('${informe.id}', this)" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-eye mr-2"></i>Revisado</button>
                 <button onclick="mostrarAnulacion('${informe.id}')" class="flex-1 min-w-[120px] bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-ban mr-2"></i>Anular</button>`;
         }
         if (informe.estado === 'revisado') {
