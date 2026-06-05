@@ -46,3 +46,8 @@ coverage/
 
 # Misc
 *.log
+
+# Project docs / SQL scripts
+AGENTS.md
+PLANTILLA_AGENTE.md
+*.sql
