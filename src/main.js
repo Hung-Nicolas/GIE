@@ -19,6 +19,7 @@ let tabAlumnosActivo = 'todos'; // 'todos' | 'mis_cursos'
 let periodoTendenciaDias = 30;
 let _guardandoInforme = false;
 let _generandoPDF = false;
+let mostrarTodosRecientes = false;
 
 // IntersectionObserver para animar cards al hacer scroll (repite al subir/bajar)
 const cardObserver = new IntersectionObserver((entries) => {
@@ -899,8 +900,14 @@ function actualizarTabsInformes() {
 
 window.setTabInformes = function(tab) {
     tabInformesActivo = tab;
+    mostrarTodosRecientes = false;
     sessionStorage.setItem('gie_tab_informes', tab);
     actualizarTabsInformes();
+    filtrarInformes();
+};
+
+window.toggleMostrarMasRecientes = function() {
+    mostrarTodosRecientes = !mostrarTodosRecientes;
     filtrarInformes();
 };
 
@@ -954,7 +961,9 @@ function filtrarInformes() {
             tabInformesActivo === 'pendientes' ? i.estado === 'pendiente' :
             tabInformesActivo === 'revisados' ? i.estado === 'revisado' :
             tabInformesActivo === 'derivados' ? i.estado === 'derivado' :
-            ['archivado', 'anulado'].includes(i.estado);
+            tabInformesActivo === 'archivados' ? i.estado === 'archivado' :
+            tabInformesActivo === 'anulados' ? i.estado === 'anulado' :
+            false;
         return matchBusqueda && matchCurso && matchDivision && matchTurno && matchEstado && matchInstancia && matchCreador && matchTab;
     });
 
@@ -1037,67 +1046,51 @@ function renderizarInformes(lista) {
     if (lista.length === 0) { contenedor.innerHTML = ''; sinResultados.classList.remove('hidden'); return; }
     sinResultados.classList.add('hidden');
 
-    const pendientes = lista.filter(i => i.estado === 'pendiente');
-    const revisados = lista.filter(i => i.estado === 'revisado');
-    const derivados = lista.filter(i => i.estado === 'derivado');
-    const archivados = lista.filter(i => i.estado === 'archivado');
-    const anulados = lista.filter(i => i.estado === 'anulado');
-
-    // Ordenar pendientes por instancia (muy_grave > grave > leve), luego fecha
-    const ordenInstancia = { consejo: -1, muy_grave: 0, grave: 1, leve: 2 };
-    pendientes.sort((a, b) => {
-        const ordA = ordenInstancia[a.instancia] ?? 3;
-        const ordB = ordenInstancia[b.instancia] ?? 3;
-        if (ordA !== ordB) return ordA - ordB;
-        return new Date(b.fecha_creacion) - new Date(a.fecha_creacion);
+    // Ordenar por fecha más reciente (revisión o creación)
+    const ordenados = lista.slice().sort((a, b) => {
+        const fechaA = new Date(a.fecha_revision || a.fecha_creacion);
+        const fechaB = new Date(b.fecha_revision || b.fecha_creacion);
+        return fechaB - fechaA;
     });
-    // Ordenar resto por fecha más reciente
-    revisados.sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
-    derivados.sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
-    archivados.sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
-    anulados.sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
+
+    // Recientes: máx 3 o todos si se expandió
+    const limiteRecientes = mostrarTodosRecientes ? ordenados.length : 3;
+    const recientes = ordenados.slice(0, limiteRecientes);
+
+    // Título y estilo según tab activo
+    const tituloTabMap = {
+        todos: { titulo: 'Todos', clase: 'bg-slate-100 text-slate-600' },
+        pendientes: { titulo: 'Pendientes', clase: 'bg-amber-100 text-amber-700' },
+        revisados: { titulo: 'Revisados', clase: 'bg-blue-100 text-blue-700' },
+        derivados: { titulo: 'Derivados', clase: 'bg-green-100 text-green-700' },
+        archivados: { titulo: 'Archivados', clase: 'bg-slate-100 text-slate-600' },
+        anulados: { titulo: 'Anulados', clase: 'bg-red-100 text-red-700' }
+    };
+    const tabInfo = tituloTabMap[tabInformesActivo] || tituloTabMap.todos;
 
     let html = '';
-    if (pendientes.length > 0) {
+
+    // Sección RECIENTES
+    if (recientes.length > 0) {
         html += `
-        <div class="flex items-center gap-2 mb-3">
-            <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Pendientes</h3>
-            <span class="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">${pendientes.length}</span>
+        <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2">
+                <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Recientes</h3>
+                <span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold">${recientes.length}</span>
+            </div>
+            ${lista.length > 3 ? `<button onclick="toggleMostrarMasRecientes()" class="text-xs text-blue-600 hover:text-blue-800 font-medium">${mostrarTodosRecientes ? 'Mostrar menos' : 'Mostrar más'}</button>` : ''}
         </div>
-        <div class="space-y-3 mb-6">${pendientes.map(renderCardInforme).join('')}</div>`;
+        <div class="space-y-3 mb-6">${recientes.map(renderCardInforme).join('')}</div>`;
     }
-    if (revisados.length > 0) {
-        html += `
-        <div class="flex items-center gap-2 mb-3">
-            <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Revisados</h3>
-            <span class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-semibold">${revisados.length}</span>
-        </div>
-        <div class="space-y-3 mb-6">${revisados.map(renderCardInforme).join('')}</div>`;
-    }
-    if (derivados.length > 0) {
-        html += `
-        <div class="flex items-center gap-2 mb-3">
-            <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Derivados</h3>
-            <span class="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">${derivados.length}</span>
-        </div>
-        <div class="space-y-3 mb-6">${derivados.map(renderCardInforme).join('')}</div>`;
-    }
-    if (archivados.length > 0) {
-        html += `
-        <div class="flex items-center gap-2 mb-3">
-            <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Archivados</h3>
-            <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-semibold">${archivados.length}</span>
-        </div>
-        <div class="space-y-3 mb-6">${archivados.map(renderCardInforme).join('')}</div>`;
-    }
-    if (anulados.length > 0) {
-        html += `
-        <div class="flex items-center gap-2 mb-3">
-            <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Anulados</h3>
-            <span class="text-xs bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold">${anulados.length}</span>
-        </div>
-        <div class="space-y-3">${anulados.map(renderCardInforme).join('')}</div>`;
-    }
+
+    // Sección del estado/tab elegido (todos los informes filtrados)
+    html += `
+    <div class="flex items-center gap-2 mb-3">
+        <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wide">${tabInfo.titulo}</h3>
+        <span class="text-xs ${tabInfo.clase} px-2 py-0.5 rounded-full font-semibold">${ordenados.length}</span>
+    </div>
+    <div class="space-y-3">${ordenados.map(renderCardInforme).join('')}</div>`;
+
     contenedor.innerHTML = html;
     contenedor.querySelectorAll('.card-scroll').forEach(card => cardObserver.observe(card));
 }
@@ -1413,6 +1406,12 @@ function verDetalle(id) {
             acciones.innerHTML += `
                 <button onclick="cambiarEstado('${informe.id}', 'archivado')" class="flex-1 min-w-[120px] bg-slate-600 hover:bg-slate-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-archive mr-2"></i>Archivar</button>
                 <button onclick="cambiarEstado('${informe.id}', 'derivado')" class="flex-1 min-w-[120px] bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-share mr-2"></i>Derivar</button>`;
+        }
+        if (informe.estado === 'archivado') {
+            acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'revisado')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-undo mr-2"></i>Guardar en revisados</button>`;
+        }
+        if (informe.estado === 'anulado') {
+            acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'revisado')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-undo mr-2"></i>Guardar en revisados</button>`;
         }
     }
     if ((esRegente || esDOE) && informe.estado === 'derivado') {
