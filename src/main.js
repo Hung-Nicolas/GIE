@@ -1,7 +1,7 @@
 import Chart from 'chart.js/auto';
 import html2pdf from 'html2pdf.js/dist/html2pdf.bundle.min.js';
 import { USE_SUPABASE, supabaseClient } from './config.js';
-import { getPerfil, esRegente, setPerfilCursos, showLogin, showApp, restoreSession, doLogout, updateAuthUI, setupLoginForm, setupLoginBanner } from './auth.js';
+import { getPerfil, setPerfil, esRegente, setPerfilCursos, showLogin, showApp, restoreSession, doLogout, updateAuthUI, setupLoginForm, setupLoginBanner } from './auth.js';
 import './styles.css';
 
 // ==================== ESTADO GLOBAL ====================
@@ -2847,14 +2847,20 @@ function renderizarChipsCursos(containerId, cursos, onRemove) {
     `).join('');
 }
 
+function _normalizarArrayUUIDs(arr) {
+    if (!Array.isArray(arr)) return [];
+    return arr.filter(x => x != null).map(x => String(x).trim()).filter(x => x.length > 0);
+}
+
 function renderizarChipsAlumnosPAT(containerId, alumnoIds, onRemove) {
     const container = document.getElementById(containerId);
     if (!container) return;
-    if (alumnoIds.length === 0) {
+    const ids = _normalizarArrayUUIDs(alumnoIds);
+    if (ids.length === 0) {
         container.innerHTML = '<span class="text-xs text-slate-400 italic">Sin alumnos asignados</span>';
         return;
     }
-    container.innerHTML = alumnoIds.map(id => {
+    container.innerHTML = ids.map(id => {
         const a = alumnos.find(x => x.id === id);
         const label = a ? `${a.apellido}, ${a.nombre}` : id;
         return `
@@ -2937,16 +2943,27 @@ window.quitarMiCurso = async function(curso) {
 
 // ==================== PAT - ALUMNOS ====================
 async function _persistirMisAlumnosPAT() {
-    const alumnoIds = getPerfil()?.alumnos_pat || [];
+    const raw = getPerfil()?.alumnos_pat;
+    const alumnoIds = _normalizarArrayUUIDs(raw);
     const id = getPerfil()?.id;
-    if (!id) return false;
-    const { error } = await supabaseClient.from('perfiles').update({ alumnos_pat: alumnoIds }).eq('id', id);
-    if (error) {
-        console.error('[GIE] Error guardando alumnos PAT:', error);
-        mostrarToast('Error guardando alumnos PAT', 'error');
+    if (!id) {
+        console.error('[GIE] _persistirMisAlumnosPAT: sin perfil');
         return false;
     }
-    return true;
+    console.log('[GIE] Persistiendo alumnos PAT:', alumnoIds.length, alumnoIds);
+    try {
+        const { error } = await supabaseClient.from('perfiles').update({ alumnos_pat: alumnoIds }).eq('id', id);
+        if (error) {
+            console.error('[GIE] Error guardando alumnos PAT:', error);
+            mostrarToast('Error guardando alumnos PAT: ' + error.message, 'error');
+            return false;
+        }
+        return true;
+    } catch (err) {
+        console.error('[GIE] Excepción guardando alumnos PAT:', err);
+        mostrarToast('Error inesperado guardando alumnos PAT', 'error');
+        return false;
+    }
 }
 
 window.buscarAlumnoPAT = function(query) {
@@ -2958,9 +2975,11 @@ window.seleccionarAlumnoPAT = async function(id, nombre, apellido) {
     document.getElementById('inputBuscarAlumnoPAT').value = '';
     const perfil = getPerfil();
     if (!perfil) return;
-    const previo = [...(perfil.alumnos_pat || [])];
-    if (previo.includes(id)) return mostrarToast('El alumno ya está agregado', 'error');
-    const nuevos = [...previo, id];
+    const previo = _normalizarArrayUUIDs(perfil.alumnos_pat);
+    const idStr = String(id).trim();
+    if (previo.includes(idStr)) return mostrarToast('El alumno ya está agregado', 'error');
+    const nuevos = [...previo, idStr];
+    console.log('[GIE] Agregando alumno PAT:', idStr, 'Total:', nuevos.length);
     setPerfil({ ...perfil, alumnos_pat: nuevos });
     renderizarChipsAlumnosPAT('ajustesAlumnosPATLista', nuevos, 'quitarAlumnoPAT');
     const ok = await _persistirMisAlumnosPAT();
@@ -2973,8 +2992,9 @@ window.seleccionarAlumnoPAT = async function(id, nombre, apellido) {
 window.quitarAlumnoPAT = async function(id) {
     const perfil = getPerfil();
     if (!perfil) return;
-    const previo = [...(perfil.alumnos_pat || [])];
-    const nuevos = previo.filter(x => x !== id);
+    const previo = _normalizarArrayUUIDs(perfil.alumnos_pat);
+    const idStr = String(id).trim();
+    const nuevos = previo.filter(x => x !== idStr);
     setPerfil({ ...perfil, alumnos_pat: nuevos });
     renderizarChipsAlumnosPAT('ajustesAlumnosPATLista', nuevos, 'quitarAlumnoPAT');
     const ok = await _persistirMisAlumnosPAT();
