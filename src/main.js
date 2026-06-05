@@ -11,6 +11,7 @@ let usuarios = [];
 let categorias = [];
 let charts = {};
 let anulacionId = null;
+let derivacionId = null;
 let calCurrentDate = new Date();
 let calSelectedDate = null;
 let plantillas = [];
@@ -422,6 +423,19 @@ function setupEventListeners() {
     if (modalAnulacion) {
         modalAnulacion.addEventListener('click', (e) => {
             if (e.target.id === 'modalAnulacion') cerrarModalAnulacion();
+        });
+    }
+
+    const btnCerrarDerivacion = document.getElementById('btn-cerrar-derivacion');
+    if (btnCerrarDerivacion) btnCerrarDerivacion.addEventListener('click', cerrarModalDerivacion);
+
+    const btnConfirmarDerivacion = document.getElementById('btn-confirmar-derivacion');
+    if (btnConfirmarDerivacion) btnConfirmarDerivacion.addEventListener('click', confirmarDerivacion);
+
+    const modalDerivacion = document.getElementById('modalDerivacion');
+    if (modalDerivacion) {
+        modalDerivacion.addEventListener('click', (e) => {
+            if (e.target.id === 'modalDerivacion') cerrarModalDerivacion();
         });
     }
 
@@ -954,8 +968,15 @@ function filtrarInformes() {
         const matchTurno = !turno || (alumno && alumno.turno === turno);
         const matchEstado = !estado || i.estado === estado;
         const matchInstancia = !instancia || i.instancia === instancia;
-        // Docentes/PAT solo ven sus propios informes (PAT también ve los de sus alumnos asignados); regentes ven todos; DOE ve derivados/archivados/anulados
-        const matchCreador = esRegente || (esDOE && i.estado === 'derivado') || i.creado_por === getPerfil()?.id || (esPAT && misAlumnosPAT.includes(i.alumno_id));
+        // Regente ve todo; DOE ve derivados a él + archivados + anulados; Doc/Precep ve suyos + derivados a él; PAT ve sus alumnos + suyos + derivados a él
+        const perfilId = getPerfil()?.id;
+        const rol = getPerfil()?.rol;
+        const esDestinatario = i.derivado_a === perfilId;
+        const matchCreador = esRegente
+            || (rol === 'doe' && (esDestinatario || i.estado === 'archivado' || i.estado === 'anulado'))
+            || (rol === 'docente' && (i.creado_por === perfilId || esDestinatario))
+            || (rol === 'preceptor' && (i.creado_por === perfilId || esDestinatario))
+            || (rol === 'pat' && (i.creado_por === perfilId || esDestinatario || misAlumnosPAT.includes(i.alumno_id)));
         // Filtro rápido por tab
         const matchTab = tabInformesActivo === 'todos' ? true :
             tabInformesActivo === 'pendientes' ? i.estado === 'pendiente' :
@@ -979,7 +1000,14 @@ function filtrarInformes() {
         const matchTurno = !turno || (alumno && alumno.turno === turno);
         const matchEstado = !estado || i.estado === estado;
         const matchInstancia = !instancia || i.instancia === instancia;
-        const matchCreador = esRegente || (esDOE && i.estado === 'derivado') || i.creado_por === getPerfil()?.id || (esPAT && misAlumnosPAT.includes(i.alumno_id));
+        const perfilId = getPerfil()?.id;
+        const rol = getPerfil()?.rol;
+        const esDestinatario = i.derivado_a === perfilId;
+        const matchCreador = esRegente
+            || (rol === 'doe' && (esDestinatario || i.estado === 'archivado' || i.estado === 'anulado'))
+            || (rol === 'docente' && (i.creado_por === perfilId || esDestinatario))
+            || (rol === 'preceptor' && (i.creado_por === perfilId || esDestinatario))
+            || (rol === 'pat' && (i.creado_por === perfilId || esDestinatario || misAlumnosPAT.includes(i.alumno_id)));
         return matchBusqueda && matchCurso && matchDivision && matchTurno && matchEstado && matchInstancia && matchCreador;
     });
     const badgeTodos = document.getElementById('badgeTodos');
@@ -1029,6 +1057,7 @@ function renderCardInforme(i) {
                 </div>
                 <h3 class="font-semibold text-slate-800 mb-1">${i.titulo}</h3>
                 <p class="text-sm text-slate-600 mb-2"><i class="fas fa-user mr-1"></i>${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'} • ${alumno ? `${alumno.curso} ${alumno.division}${alumno.turno ? ' · ' + alumno.turno : ''}` : ''}</p>
+                ${i.estado === 'derivado' && i.derivado_a ? `<p class="text-sm text-green-600 mb-2"><i class="fas fa-share mr-1"></i>Derivado a ${getNombreUsuario(i.derivado_a)}</p>` : ''}
                 <p class="text-sm text-slate-500 line-clamp-2">${i.resumen}</p>
             </div>
             <div class="flex items-center gap-2">
@@ -1250,62 +1279,67 @@ function renderizarHistorial(historial) {
     if (!historial.length) {
         return '<p class="text-xs text-slate-400 italic">Sin registros de historial.</p>';
     }
-    const iconoAccion = {
-        creacion: '<i class="fas fa-file-alt text-blue-500"></i>',
-        edicion: '<i class="fas fa-edit text-amber-500"></i>',
-        aprobacion: '<i class="fas fa-check-circle text-green-500"></i>',
-        rechazo: '<i class="fas fa-times-circle text-red-500"></i>',
-        revision: '<i class="fas fa-search text-indigo-500"></i>',
-        observaciones: '<i class="fas fa-comment-dots text-blue-400"></i>',
-        reunion: '<i class="fas fa-calendar-check text-teal-500"></i>',
-        reunion_pospuesta: '<i class="fas fa-calendar-plus text-teal-500"></i>',
-        reunion_eliminada: '<i class="fas fa-calendar-times text-slate-500"></i>',
-        suspension: '<i class="fas fa-user-slash text-red-600"></i>',
-        llamado_padres: '<i class="fas fa-phone-alt text-orange-500"></i>',
-        entrevista: '<i class="fas fa-comments text-purple-500"></i>',
-        derivacion: '<i class="fas fa-hands-helping text-pink-500"></i>',
-        amonestacion: '<i class="fas fa-exclamation-triangle text-yellow-600"></i>',
-        notificacion: '<i class="fas fa-bell text-cyan-500"></i>',
-        tarea_reparacion: '<i class="fas fa-tools text-slate-600"></i>',
-        otra_accion: '<i class="fas fa-ellipsis-h text-slate-400"></i>'
+    const badgeAccion = {
+        creacion: { label: 'CREACIÓN', clase: 'bg-blue-100 text-blue-700 border-blue-200' },
+        edicion: { label: 'EDICIÓN', clase: 'bg-amber-100 text-amber-700 border-amber-200' },
+        anulado: { label: 'ANULADO', clase: 'bg-red-100 text-red-700 border-red-200' },
+        desanulacion: { label: 'DESANULADO', clase: 'bg-blue-100 text-blue-700 border-blue-200' },
+        archivado: { label: 'ARCHIVADO', clase: 'bg-slate-100 text-slate-700 border-slate-200' },
+        desarchivado: { label: 'DESARCHIVADO', clase: 'bg-blue-100 text-blue-700 border-blue-200' },
+        revision: { label: 'REVISIÓN', clase: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+        derivacion: { label: 'DERIVACIÓN', clase: 'bg-green-100 text-green-700 border-green-200' },
+        observaciones: { label: 'OBSERVACIÓN', clase: 'bg-cyan-100 text-cyan-700 border-cyan-200' },
+        reunion: { label: 'REUNIÓN', clase: 'bg-teal-100 text-teal-700 border-teal-200' },
+        reunion_pospuesta: { label: 'REUNIÓN POSPUESTA', clase: 'bg-teal-100 text-teal-700 border-teal-200' },
+        reunion_eliminada: { label: 'REUNIÓN ELIMINADA', clase: 'bg-slate-100 text-slate-700 border-slate-200' },
+        suspension: { label: 'SUSPENSIÓN', clase: 'bg-red-100 text-red-700 border-red-200' },
+        llamado_padres: { label: 'LLAMADO A PADRES', clase: 'bg-orange-100 text-orange-700 border-orange-200' },
+        entrevista: { label: 'ENTREVISTA', clase: 'bg-purple-100 text-purple-700 border-purple-200' },
+        amonestacion: { label: 'AMONESTACIÓN', clase: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
+        notificacion: { label: 'NOTIFICACIÓN', clase: 'bg-cyan-100 text-cyan-700 border-cyan-200' },
+        tarea_reparacion: { label: 'TAREA DE REPARACIÓN', clase: 'bg-slate-100 text-slate-700 border-slate-200' },
+        otra_accion: { label: 'OTRA ACCIÓN', clase: 'bg-slate-100 text-slate-700 border-slate-200' }
     };
-    const labelAccion = {
-        creacion: 'Creación',
-        edicion: 'Edición',
-        aprobacion: 'Aprobación',
-        rechazo: 'Rechazo',
-        revision: 'Revisión',
-        observaciones: 'Observación',
-        reunion: 'Reunión',
-        reunion_pospuesta: 'Reunión pospuesta',
-        reunion_eliminada: 'Reunión eliminada',
-        suspension: 'Suspensión',
-        llamado_padres: 'Llamado a padres',
-        entrevista: 'Entrevista',
-        derivacion: 'Derivación',
-        amonestacion: 'Amonestación',
-        notificacion: 'Notificación',
-        tarea_reparacion: 'Tarea de reparación',
-        otra_accion: 'Otra acción'
+    const verboAccion = {
+        creacion: 'creado',
+        edicion: 'editado',
+        anulado: 'anulado',
+        desanulacion: 'desanulado',
+        archivado: 'archivado',
+        desarchivado: 'desarchivado',
+        revision: 'revisado',
+        derivacion: 'derivado',
+        observaciones: 'observado',
+        reunion: 'reunión actualizada',
+        reunion_pospuesta: 'reunión pospuesta',
+        reunion_eliminada: 'reunión eliminada',
+        suspension: 'suspensión aplicada',
+        llamado_padres: 'llamado a padres realizado',
+        entrevista: 'entrevista registrada',
+        amonestacion: 'amonestación aplicada',
+        notificacion: 'notificación enviada',
+        tarea_reparacion: 'tarea de reparación asignada',
+        otra_accion: 'acción registrada'
     };
     return `
-    <div class="relative pl-4 border-l-2 border-slate-200 space-y-4">
+    <div class="relative pl-4 border-l-2 border-slate-200 space-y-5">
         ${historial.map((h, idx) => {
             const esUltimo = idx === historial.length - 1;
             const nombre = getNombreUsuario(h.usuario_id) || 'Sistema';
             const fecha = formatearFecha(h.fecha);
             const hora = new Date(h.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
-            const tipo = labelAccion[h.accion] || (h.accion ? h.accion.charAt(0).toUpperCase() + h.accion.slice(1) : 'Acción');
+            const badge = badgeAccion[h.accion] || { label: (h.accion || 'ACCIÓN').toUpperCase(), clase: 'bg-slate-100 text-slate-700 border-slate-200' };
+            const verbo = verboAccion[h.accion] || 'registrado';
             return `
             <div class="relative">
-                <div class="absolute -left-[21px] top-0 w-3 h-3 rounded-full bg-white border-2 border-blue-400 flex items-center justify-center text-[8px]"></div>
-                <div class="flex items-start gap-2">
-                    <span class="mt-0.5 text-sm">${iconoAccion[h.accion] || '<i class="fas fa-sticky-note text-slate-400"></i>'}</span>
-                    <div class="flex-1 min-w-0">
-                        <p class="text-xs text-slate-500">${fecha} · ${hora} · <span class="font-medium text-slate-600">${nombre}</span></p>
-                        <p class="text-xs font-semibold text-blue-600 uppercase tracking-wide">${tipo}</p>
-                        <p class="text-sm text-slate-600">${h.detalle || ''}</p>
+                <div class="absolute -left-[21px] top-1.5 w-3 h-3 rounded-full bg-white border-2 border-blue-400"></div>
+                <div class="flex flex-col gap-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded border ${badge.clase}">${badge.label}</span>
+                        <span class="text-xs text-slate-400">${fecha} · ${hora}</span>
                     </div>
+                    <p class="text-xs text-slate-500 font-medium">${verbo} por <span class="text-slate-700">${nombre}</span></p>
+                    ${h.detalle ? `<p class="text-sm text-slate-600 bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">${h.detalle}</p>` : ''}
                 </div>
             </div>`;
         }).join('')}
@@ -1317,7 +1351,8 @@ window.renderizarHistorial = renderizarHistorial;
 function verDetalle(id) {
     const informe = getInforme(id);
     if (!informe) return;
-    if (getPerfil()?.rol === 'doe' && informe.estado !== 'derivado') {
+    const esDestinatario = informe.derivado_a === getPerfil()?.id;
+    if (getPerfil()?.rol === 'doe' && !esDestinatario) {
         return mostrarToast('No tiene permiso para ver este informe', 'error');
     }
     const alumno = getAlumno(informe.alumno_id);
@@ -1353,6 +1388,7 @@ function verDetalle(id) {
                 </div>
                 <div><p class="text-sm font-medium text-slate-700 mb-1">Creado por</p><p class="text-slate-600">${getNombreUsuario(informe.creado_por)}</p></div>
             </div>
+            ${informe.estado === 'derivado' && informe.derivado_a ? `<div class="p-3 bg-green-50 border border-green-200 rounded-lg"><p class="text-sm font-medium text-green-800 mb-1">Derivado a</p><p class="text-green-700">${getNombreUsuario(informe.derivado_a)}</p></div>` : ''}
             <div><p class="text-sm font-medium text-slate-700 mb-1">Descripción de la problemática</p><p class="text-slate-600 whitespace-pre-wrap">${informe.resumen}</p></div>
 
             ${informe.observaciones ? `<div class="p-3 bg-blue-50 border border-blue-200 rounded-lg"><p class="text-sm font-medium text-blue-800 mb-1">Observaciones previas</p><p class="text-blue-700 whitespace-pre-wrap">${informe.observaciones}</p></div>` : ''}
@@ -1405,7 +1441,7 @@ function verDetalle(id) {
         if (informe.estado === 'revisado') {
             acciones.innerHTML += `
                 <button onclick="cambiarEstado('${informe.id}', 'archivado')" class="flex-1 min-w-[120px] bg-slate-600 hover:bg-slate-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-archive mr-2"></i>Archivar</button>
-                <button onclick="cambiarEstado('${informe.id}', 'derivado')" class="flex-1 min-w-[120px] bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-share mr-2"></i>Derivar</button>`;
+                <button onclick="mostrarDerivacion('${informe.id}')" class="flex-1 min-w-[120px] bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-share mr-2"></i>Derivar</button>`;
         }
         if (informe.estado === 'archivado') {
             acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'revisado')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-undo mr-2"></i>Guardar en revisados</button>`;
@@ -1414,7 +1450,7 @@ function verDetalle(id) {
             acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'revisado')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-undo mr-2"></i>Guardar en revisados</button>`;
         }
     }
-    if ((esRegente || esDOE) && informe.estado === 'derivado') {
+    if ((esRegente || esDestinatario) && informe.estado === 'derivado') {
         acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'pendiente')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-undo mr-2"></i>Volver a pendiente</button>`;
     }
     acciones.innerHTML += `<button onclick="exportarPDF('${informe.id}')" class="min-w-[120px] bg-slate-600 hover:bg-slate-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-file-pdf mr-2"></i><span class="sm:hidden">Imprimir</span><span class="hidden sm:inline">PDF</span></button>`;
@@ -1513,12 +1549,13 @@ async function cambiarEstado(id, nuevoEstado, options = {}) {
     const perfil = getPerfil();
     const informe = getInforme(id);
     
-    // DOE solo puede devolver de derivado a pendiente
-    if (esDOE && !(informe?.estado === 'derivado' && nuevoEstado === 'pendiente')) {
+    const esDestinatario = informe?.derivado_a === perfil?.id;
+    // Destinatario solo puede devolver de derivado a pendiente
+    if (!esRegente && esDestinatario && !(informe?.estado === 'derivado' && nuevoEstado === 'pendiente')) {
         return mostrarToast('No tiene permiso para cambiar este estado', 'error');
     }
     // Solo regente puede cambiar otros estados
-    if (!esDOE && !esRegente) return mostrarToast('No tiene permiso para cambiar estados', 'error');
+    if (!esRegente && !esDestinatario) return mostrarToast('No tiene permiso para cambiar estados', 'error');
     
     const updates = {
         estado: nuevoEstado,
@@ -1526,10 +1563,11 @@ async function cambiarEstado(id, nuevoEstado, options = {}) {
         fecha_revision: new Date().toISOString()
     };
     if (nuevoEstado !== 'anulado') updates.motivo_rechazo = null;
+    if (nuevoEstado !== 'derivado') updates.derivado_a = null;
     if (fecha_reunion !== undefined) updates.fecha_reunion = fecha_reunion;
 
     let error = null;
-    if (esDOE && informe?.estado === 'derivado' && nuevoEstado === 'pendiente') {
+    if (!esRegente && informe?.estado === 'derivado' && nuevoEstado === 'pendiente') {
         const { error: rpcError } = await supabaseClient.rpc('devolver_informe_a_pendiente', { p_informe_id: id });
         error = rpcError;
     } else {
@@ -1643,6 +1681,69 @@ async function confirmarAnulacion() {
     // Restaurar botón
     if (btnConfirmar) {
         btnConfirmar.innerHTML = btnConfirmar.dataset.originalText || 'Rechazar';
+        btnConfirmar.disabled = false;
+    }
+}
+
+function mostrarDerivacion(id) {
+    derivacionId = id;
+    document.getElementById('modalDerivacion').classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+    document.getElementById('motivoDerivacion').value = '';
+    const select = document.getElementById('selectDerivacionDestinatario');
+    const perfilActual = getPerfil();
+    const activos = usuarios.filter(u => u.activo !== false && u.id !== perfilActual?.id).sort((a, b) => `${a.apellido} ${a.nombre}`.localeCompare(`${b.apellido} ${b.nombre}`));
+    select.innerHTML = '<option value="">Seleccione un usuario...</option>' + activos.map(u => `<option value="${u.id}">${u.apellido}, ${u.nombre} (${u.rol})</option>`).join('');
+    const modalContent = document.getElementById('modalDerivacion').querySelector('.bg-white');
+    if (modalContent) {
+        modalContent.classList.remove('animate-fade-in');
+        void modalContent.offsetWidth;
+        modalContent.classList.add('animate-fade-in');
+    }
+}
+function cerrarModalDerivacion() {
+    document.getElementById('modalDerivacion').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+    derivacionId = null;
+}
+async function confirmarDerivacion() {
+    const destinatarioId = document.getElementById('selectDerivacionDestinatario').value;
+    const observaciones = document.getElementById('motivoDerivacion').value.trim();
+    if (!destinatarioId) {
+        const select = document.getElementById('selectDerivacionDestinatario');
+        select.classList.add('animate-shake');
+        setTimeout(() => select.classList.remove('animate-shake'), 400);
+        return mostrarToast('Debe seleccionar un destinatario', 'error');
+    }
+    const btnConfirmar = document.getElementById('btn-confirmar-derivacion');
+    if (btnConfirmar) {
+        btnConfirmar.dataset.originalText = btnConfirmar.innerHTML;
+        btnConfirmar.innerHTML = '<span class="btn-spinner mr-2"></span> Derivando...';
+        btnConfirmar.disabled = true;
+    }
+    const { error } = await supabaseClient.from('informes').update({
+        estado: 'derivado',
+        derivado_a: destinatarioId,
+        revisado_por: getPerfil().id,
+        fecha_revision: new Date().toISOString()
+    }).eq('id', derivacionId);
+    if (error) {
+        if (btnConfirmar) {
+            btnConfirmar.innerHTML = btnConfirmar.dataset.originalText || 'Derivar';
+            btnConfirmar.disabled = false;
+        }
+        return mostrarToast('Error derivando informe', 'error');
+    }
+    const destinatario = usuarios.find(u => u.id === destinatarioId);
+    const destLabel = destinatario ? `${destinatario.apellido}, ${destinatario.nombre}` : destinatarioId;
+    await registrarHistorial(derivacionId, 'derivacion', `Informe derivado a ${destLabel} por ${getNombreUsuario(getPerfil().id)}${observaciones ? '. ' + observaciones : ''}`);
+    await cargarInformes();
+    mostrarToast('Informe derivado correctamente');
+    cerrarModalDerivacion();
+    filtrarInformes();
+    actualizarDashboard();
+    if (btnConfirmar) {
+        btnConfirmar.innerHTML = btnConfirmar.dataset.originalText || 'Derivar';
         btnConfirmar.disabled = false;
     }
 }
@@ -3663,6 +3764,9 @@ window.eliminarCategoria = eliminarCategoria;
 window.mostrarModalEliminar = mostrarModalEliminar;
 window.cerrarModalEliminar = cerrarModalEliminar;
 window.confirmarEliminarUsuario = confirmarEliminarUsuario;
+window.mostrarDerivacion = mostrarDerivacion;
+window.cerrarModalDerivacion = cerrarModalDerivacion;
+window.confirmarDerivacion = confirmarDerivacion;
 
 // ==================== CREAR ALUMNO INLINE ====================
 window.mostrarModalCrearAlumno = function() {
