@@ -1078,7 +1078,7 @@ function renderizarInformes(lista) {
                 <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wide">Recientes</h3>
                 <span class="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full font-semibold">${recientes.length}</span>
             </div>
-            ${lista.length > 3 ? `<button onclick="toggleMostrarMasRecientes()" class="text-xs text-blue-600 hover:text-blue-800 font-medium">${mostrarTodosRecientes ? 'Mostrar menos' : 'Mostrar más'}</button>` : ''}
+            ${lista.length > 3 ? `<button onclick="toggleMostrarMasRecientes()" class="text-xs text-blue-600 hover:text-blue-800 font-medium">${mostrarTodosRecientes ? 'Mostrar menos recientes' : 'Mostrar más recientes'}</button>` : ''}
         </div>
         <div class="space-y-3 mb-6">${recientes.map(renderCardInforme).join('')}</div>`;
     }
@@ -1555,11 +1555,24 @@ async function cambiarEstado(id, nuevoEstado, options = {}) {
         archivado: 'archivado',
         derivado: 'derivacion'
     };
-    const accionHistorial = accionMap[nuevoEstado] || 'revision';
-    const detalleHistorial = `Informe ${labelMap[nuevoEstado] || nuevoEstado} por ${getNombreUsuario(getPerfil().id)}`;
+
+    // Detectar desanulación / desarchivado para historial diferenciado
+    let accionHistorial = accionMap[nuevoEstado] || 'revision';
+    let detalleHistorial = `Informe ${labelMap[nuevoEstado] || nuevoEstado} por ${getNombreUsuario(getPerfil().id)}`;
+    let toastLabel = labelMap[nuevoEstado] || nuevoEstado;
+    if (informe?.estado === 'anulado' && nuevoEstado === 'revisado') {
+        accionHistorial = 'desanulacion';
+        detalleHistorial = `Informe desanulado por ${getNombreUsuario(getPerfil().id)}`;
+        toastLabel = 'desanulado';
+    } else if (informe?.estado === 'archivado' && nuevoEstado === 'revisado') {
+        accionHistorial = 'desarchivado';
+        detalleHistorial = `Informe desarchivado por ${getNombreUsuario(getPerfil().id)}`;
+        toastLabel = 'desarchivado';
+    }
+
     await registrarHistorial(id, accionHistorial, detalleHistorial);
     await cargarInformes();
-    if (!silent) mostrarToast(`Informe ${labelMap[nuevoEstado] || nuevoEstado} correctamente`);
+    if (!silent) mostrarToast(`Informe ${toastLabel} correctamente`);
     if (debeCerrarModal) cerrarModal();
     if (recargarLista) filtrarInformes();
     actualizarDashboard();
@@ -2277,14 +2290,21 @@ function verAlumno(alumnoId) {
     });
 
     document.getElementById('historialAlumno').innerHTML = lista.map(i => `
-        <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 instancia-${i.instancia}">
-            <div class="flex items-center gap-2 mb-1 flex-wrap">
-                <span class="status-${i.estado} px-2 py-0.5 rounded-full text-xs font-medium capitalize">${i.estado.replace('_', ' ')}</span>
-                <span class="text-xs text-slate-500">${formatearFechaCorta(i.fecha_creacion)}</span>
+        <div onclick="verDetalle('${i.id}')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 instancia-${i.instancia} cursor-pointer hover:shadow-md transition-all">
+            <div class="flex flex-col sm:flex-row justify-between items-start gap-3">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 mb-1 flex-wrap">
+                        <span class="status-${i.estado} px-2 py-0.5 rounded-full text-xs font-medium capitalize">${i.estado.replace('_', ' ')}</span>
+                        <span class="text-xs text-slate-500">${formatearFechaCorta(i.fecha_creacion)}</span>
+                    </div>
+                    <h4 class="font-semibold text-slate-800">${i.titulo}</h4>
+                    <p class="text-sm text-slate-600 line-clamp-2">${i.resumen}</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    ${i.instancia === 'muy_grave' ? '<i class="fas fa-exclamation-triangle text-red-500" title="Muy Grave"></i>' : ''}
+                    <i class="fas fa-chevron-right text-slate-400"></i>
+                </div>
             </div>
-            <h4 class="font-semibold text-slate-800">${i.titulo}</h4>
-            <p class="text-sm text-slate-600 line-clamp-2">${i.resumen}</p>
-            <button onclick="verDetalle('${i.id}')" class="text-sm text-blue-600 hover:text-blue-700 mt-2">Ver detalle <i class="fas fa-arrow-right text-xs"></i></button>
         </div>
     `).join('');
 
