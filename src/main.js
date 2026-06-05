@@ -3138,6 +3138,92 @@ function renderizarSelectCategorias() {
     }
 }
 
+window.abrirModalCategorias = function() {
+    document.getElementById('modalCategorias').classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+    renderizarListaCategorias();
+};
+window.cerrarModalCategorias = function() {
+    document.getElementById('modalCategorias').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+};
+
+function renderizarListaCategorias() {
+    const container = document.getElementById('listaCategorias');
+    if (!container) return;
+    if (categorias.length === 0) {
+        container.innerHTML = '<p class="text-sm text-slate-400 italic">No hay categorías.</p>';
+        return;
+    }
+    const puedeEliminar = esRegente() || getPerfil()?.email === 'admin@gie.com';
+    const sorted = categorias.slice().sort((a, b) => a.nombre.localeCompare(b.nombre));
+    container.innerHTML = sorted.map(c => `
+        <div id="cat-card-${c.id}" class="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
+            <div class="min-w-0 flex items-center gap-3">
+                <span class="inline-block w-4 h-4 rounded-full border border-slate-200" style="background-color:${c.color || '#3b82f6'}"></span>
+                <p class="text-sm font-medium text-slate-700 truncate">${c.nombre}</p>
+            </div>
+            ${puedeEliminar ? `<button onclick="eliminarCategoria('${c.id}')" class="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 text-xs font-medium rounded-md transition-colors border border-red-200" title="Eliminar categoría">
+                <i class="fas fa-trash"></i> Eliminar
+            </button>` : ''}
+        </div>
+    `).join('');
+}
+
+window.crearCategoria = async function() {
+    const nombre = document.getElementById('newCategoriaNombre').value.trim();
+    const color = document.getElementById('newCategoriaColor').value;
+    if (!nombre) return mostrarToast('Ingresa un nombre para la categoría', 'error');
+    if (nombre.length > 100) return mostrarToast('El nombre no puede exceder 100 caracteres', 'error');
+    if (categorias.some(c => c.nombre.toLowerCase() === nombre.toLowerCase())) {
+        return mostrarToast('Ya existe una categoría con ese nombre', 'error');
+    }
+    if (USE_SUPABASE) {
+        const { error } = await supabaseClient.from('categorias').insert({
+            nombre, color, activo: true
+        });
+        if (error) { return mostrarToast('Error creando categoría', 'error'); }
+    } else {
+        return mostrarToast('Servicio de autenticación no disponible', 'error');
+    }
+    mostrarToast('Categoría creada');
+    document.getElementById('newCategoriaNombre').value = '';
+    document.getElementById('newCategoriaColor').value = '#3b82f6';
+    await cargarCategorias();
+    renderizarListaCategorias();
+};
+
+window.eliminarCategoria = async function(id) {
+    const c = categorias.find(x => x.id === id);
+    if (!c) return;
+    const puedeEliminar = esRegente() || getPerfil()?.email === 'admin@gie.com';
+    if (!puedeEliminar) {
+        return mostrarToast('No tiene permiso para eliminar categorías', 'error');
+    }
+    const enUso = informes.some(i => i.categoria_id === id);
+    if (enUso) {
+        return mostrarToast(`No se puede eliminar la categoría "${c.nombre}" porque tiene informes asociados`, 'error');
+    }
+    if (!confirm(`¿Eliminar la categoría "${c.nombre}"?`)) return;
+    const el = document.getElementById(`cat-card-${id}`);
+    if (el) el.classList.add('animate-slide-out');
+    await new Promise(r => setTimeout(r, 400));
+    const { error } = await supabaseClient.from('categorias').delete().eq('id', id);
+    if (error) {
+        if (el) el.classList.remove('animate-slide-out');
+        return mostrarToast('Error eliminando categoría', 'error');
+    }
+    // Recargar desde el servidor para confirmar que realmente se eliminó
+    await cargarCategorias();
+    const sigueExistente = categorias.some(x => x.id === id);
+    if (sigueExistente) {
+        if (el) el.classList.remove('animate-slide-out');
+        return mostrarToast('No se pudo eliminar la categoría. Verifique que tenga permisos.', 'error');
+    }
+    mostrarToast('Categoría eliminada');
+    renderizarListaCategorias();
+};
+
 window.abrirModalPlantillas = function() {
     document.getElementById('modalPlantillas').classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
@@ -3551,6 +3637,10 @@ window.abrirModalPlantillas = abrirModalPlantillas;
 window.cerrarModalPlantillas = cerrarModalPlantillas;
 window.crearPlantilla = crearPlantilla;
 window.eliminarPlantilla = eliminarPlantilla;
+window.abrirModalCategorias = abrirModalCategorias;
+window.cerrarModalCategorias = cerrarModalCategorias;
+window.crearCategoria = crearCategoria;
+window.eliminarCategoria = eliminarCategoria;
 window.mostrarModalEliminar = mostrarModalEliminar;
 window.cerrarModalEliminar = cerrarModalEliminar;
 window.confirmarEliminarUsuario = confirmarEliminarUsuario;

@@ -458,7 +458,10 @@
                         placeholder="Observaciones adicionales (opcional)..."></textarea>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-2">Categoría *</label>
+                    <div class="flex justify-between items-center mb-2">
+                        <label class="text-sm font-medium text-slate-700">Categoría *</label>
+                        <button type="button" onclick="abrirModalCategorias()" class="text-xs text-blue-600 hover:text-blue-800 font-medium"><i class="fas fa-cog mr-1"></i>Gestionar</button>
+                    </div>
                     <select id="categoriaInforme" required class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
                         <option value="">Seleccione...</option>
                     </select>
@@ -1308,6 +1311,31 @@
                 <div>
                     <h4 class="text-sm font-semibold text-slate-700 mb-2">Mis plantillas</h4>
                     <div id="listaPlantillas" class="space-y-2 max-h-64 overflow-y-auto"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Gestionar Categorías -->
+    <div id="modalCategorias" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-fade-in">
+            <div class="p-6 border-b border-slate-200 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-800">Gestionar Categorías</h3>
+                <button onclick="cerrarModalCategorias()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <div class="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-3">
+                    <h4 class="text-sm font-semibold text-slate-700">Nueva categoría</h4>
+                    <input type="text" id="newCategoriaNombre" placeholder="Nombre de la categoría" maxlength="100" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    <div class="flex items-center gap-3">
+                        <label class="text-sm text-slate-600">Color:</label>
+                        <input type="color" id="newCategoriaColor" value="#3b82f6" class="w-12 h-8 px-1 py-1 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm cursor-pointer">
+                    </div>
+                    <button onclick="crearCategoria()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors"><i class="fas fa-plus mr-1"></i> Agregar categoría</button>
+                </div>
+                <div>
+                    <h4 class="text-sm font-semibold text-slate-700 mb-2">Categorías existentes</h4>
+                    <div id="listaCategorias" class="space-y-2 max-h-64 overflow-y-auto"></div>
                 </div>
             </div>
         </div>
