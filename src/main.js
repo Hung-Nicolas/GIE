@@ -21,6 +21,9 @@ let periodoTendenciaDias = 30;
 let _guardandoInforme = false;
 let _generandoPDF = false;
 let mostrarTodosRecientes = false;
+let observacionesAlumnos = [];
+let tiposObservacion = [];
+let alumnoActualId = null;
 
 // IntersectionObserver para animar cards al hacer scroll (repite al subir/bajar)
 const cardObserver = new IntersectionObserver((entries) => {
@@ -153,6 +156,28 @@ async function cargarInformes() {
     // Informes cargados
 }
 
+async function cargarTiposObservacion() {
+    if (!USE_SUPABASE) return;
+    const { data, error } = await supabaseClient
+        .from('tipos_observacion_alumno')
+        .select('*')
+        .eq('activo', true)
+        .order('nombre');
+    if (error) { console.error('[GIE] Error cargando tipos de observación:', error); return; }
+    tiposObservacion = data || [];
+    renderizarSelectTiposObservacion();
+}
+
+async function cargarObservacionesAlumnos() {
+    if (!USE_SUPABASE) return;
+    const { data, error } = await supabaseClient
+        .from('observaciones_alumno')
+        .select('*, creador:perfiles(nombre, apellido)')
+        .order('fecha_creacion', { ascending: false });
+    if (error) { console.error('[GIE] Error cargando observaciones:', error); return; }
+    observacionesAlumnos = data || [];
+}
+
 async function cargarUsuariosSupa() {
     if (!USE_SUPABASE) return;
     
@@ -259,7 +284,7 @@ async function iniciarApp() {
     const cardMisAlumnosPAT = document.getElementById('cardMisAlumnosPAT');
     if (cardMisAlumnosPAT) cardMisAlumnosPAT.classList.toggle('hidden', !esPAT);
 
-    await Promise.all([cargarAlumnos(), cargarInformes(), cargarPlantillas(), cargarCategorias(), cargarUsuariosSupa()]);
+    await Promise.all([cargarAlumnos(), cargarInformes(), cargarPlantillas(), cargarCategorias(), cargarUsuariosSupa(), cargarTiposObservacion(), cargarObservacionesAlumnos()]);
     initFiltros();
 
     if (esRegente) {
@@ -2217,6 +2242,7 @@ function cambiarPeriodoTendencia(dias) {
 // ==================== VISTA ALUMNO ====================
 function verAlumno(alumnoId) {
     mostrarSkeleton('vistaAlumno');
+    alumnoActualId = alumnoId;
     const alumno = getAlumno(alumnoId);
     if (!alumno) { ocultarSkeleton('vistaAlumno'); return; }
     const lista = informes.filter(i => i.alumno_id === alumnoId).sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
@@ -2419,9 +2445,190 @@ function verAlumno(alumnoId) {
         </div>
     `).join('');
 
+    renderizarObservacionesAlumno(alumnoId);
+    const esDocentePreceptorRegente = ['regente','docente','preceptor'].includes(getPerfil()?.rol);
+    const btnToggle = document.getElementById('btnToggleFormObs');
+    if (btnToggle) btnToggle.classList.toggle('hidden', !esDocentePreceptorRegente);
+    document.getElementById('obsDescripcion').value = '';
+    document.getElementById('obsFechaEvento').value = '';
+    document.getElementById('obsTipo').value = 'observacion';
+    document.getElementById('formObservacionAlumno').classList.add('hidden');
+
     cerrarModal();
     showSection('vistaAlumno');
     ocultarSkeleton('vistaAlumno');
+}
+
+function renderizarObservacionesAlumno(alumnoId) {
+    const container = document.getElementById('listaObservacionesAlumno');
+    if (!container) return;
+    const lista = observacionesAlumnos.filter(o => o.alumno_id === alumnoId).sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
+    if (lista.length === 0) {
+        container.innerHTML = '<p class="text-sm text-slate-400 italic">No hay observaciones ni acciones registradas.</p>';
+        return;
+    }
+    const esRegente = getPerfil()?.rol === 'regente';
+    container.innerHTML = lista.map(o => {
+        const creador = o.creador ? `${o.creador.apellido}, ${o.creador.nombre}` : getNombreUsuario(o.creado_por);
+        const puedeEliminar = esRegente || o.creado_por === getPerfil()?.id;
+        const tipoInfo = getTipoObservacionInfo(o.tipo);
+        return `
+        <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
+            <div class="flex items-start justify-between gap-2 flex-wrap mb-2">
+                <div class="flex items-center gap-2 flex-wrap">
+                    <span class="px-2 py-0.5 rounded-full text-xs font-medium capitalize" style="background-color:${tipoInfo.color}26;color:${tipoInfo.color}">${tipoInfo.label}</span>
+                    <span class="text-xs text-slate-500">${formatearFechaCorta(o.fecha_creacion)}</span>
+                    ${o.fecha_evento ? `<span class="text-xs text-slate-500"><i class="far fa-calendar-alt mr-1"></i>${formatearFechaCorta(o.fecha_evento + 'T00:00:00')}</span>` : ''}
+                </div>
+                ${puedeEliminar ? `<button onclick="eliminarObservacionAlumno('${o.id}')" class="text-xs text-red-500 hover:text-red-700" title="Eliminar"><i class="fas fa-trash"></i></button>` : ''}
+            </div>
+            <p class="text-sm text-slate-700 whitespace-pre-wrap">${o.descripcion}</p>
+            <p class="text-xs text-slate-400 mt-2">Por: ${creador}</p>
+        </div>`;
+    }).join('');
+}
+
+function toggleFormObservacion() {
+    const form = document.getElementById('formObservacionAlumno');
+    if (form) form.classList.toggle('hidden');
+}
+
+async function guardarObservacionAlumno() {
+    if (!USE_SUPABASE || !alumnoActualId) return;
+    let tipo = document.getElementById('obsTipo').value;
+    const descripcion = document.getElementById('obsDescripcion').value.trim();
+    const fechaEvento = document.getElementById('obsFechaEvento').value || null;
+    if (tipo === 'otro') {
+        tipo = document.getElementById('obsTipoOtro').value.trim();
+        if (!tipo) return mostrarToast('El tipo personalizado es obligatorio', 'error');
+    }
+    if (!descripcion) return mostrarToast('La descripción es obligatoria', 'error');
+    if (descripcion.length > 1000) return mostrarToast('La descripción no puede superar los 1000 caracteres', 'error');
+
+    const { error } = await supabaseClient.from('observaciones_alumno').insert({
+        alumno_id: alumnoActualId,
+        creado_por: getPerfil()?.id,
+        tipo,
+        descripcion,
+        fecha_evento: fechaEvento
+    });
+    if (error) { console.error('[GIE] Error guardando observación:', error); return mostrarToast('Error guardando observación', 'error'); }
+    mostrarToast('Observación guardada correctamente');
+    document.getElementById('obsDescripcion').value = '';
+    document.getElementById('obsFechaEvento').value = '';
+    document.getElementById('obsTipo').value = 'observacion';
+    document.getElementById('obsTipoOtro').value = '';
+    document.getElementById('obsTipoOtro').classList.add('hidden');
+    toggleFormObservacion();
+    await cargarObservacionesAlumnos();
+    renderizarObservacionesAlumno(alumnoActualId);
+}
+
+function onChangeObsTipo(valor) {
+    const otro = document.getElementById('obsTipoOtro');
+    if (!otro) return;
+    if (valor === 'otro') {
+        otro.classList.remove('hidden');
+        otro.focus();
+    } else {
+        otro.classList.add('hidden');
+    }
+}
+
+async function eliminarObservacionAlumno(id) {
+    if (!USE_SUPABASE || !confirm('¿Eliminar esta observación?')) return;
+    const { error } = await supabaseClient.from('observaciones_alumno').delete().eq('id', id);
+    if (error) { console.error('[GIE] Error eliminando observación:', error); return mostrarToast('Error eliminando observación', 'error'); }
+    mostrarToast('Observación eliminada');
+    await cargarObservacionesAlumnos();
+    if (alumnoActualId) renderizarObservacionesAlumno(alumnoActualId);
+}
+
+function renderizarSelectTiposObservacion() {
+    const select = document.getElementById('obsTipo');
+    if (!select) return;
+    const tiposPersonalizados = tiposObservacion.map(t => `<option value="${t.nombre}">${t.nombre}</option>`).join('');
+    const tiposDefault = [
+        { value: 'observacion', label: 'Observación' },
+        { value: 'accion', label: 'Acción' },
+        { value: 'seguimiento', label: 'Seguimiento' },
+        { value: 'llamado_padres', label: 'Llamado a padres' },
+        { value: 'entrevista', label: 'Entrevista' },
+        { value: 'notificacion', label: 'Notificación' },
+        { value: 'derivacion', label: 'Derivación' },
+        { value: 'suspension', label: 'Suspensión' }
+    ];
+    const defaultOptions = tiposDefault.map(t => `<option value="${t.value}">${t.label}</option>`).join('');
+    select.innerHTML = defaultOptions + (tiposPersonalizados ? '<optgroup label="Personalizados">' + tiposPersonalizados + '</optgroup>' : '');
+}
+
+function getTipoObservacionInfo(tipoNombre) {
+    const encontrado = tiposObservacion.find(t => t.nombre.toLowerCase() === (tipoNombre || '').toLowerCase());
+    if (encontrado) return { label: encontrado.nombre, color: encontrado.color };
+    const defaults = {
+        observacion: { label: 'Observación', color: '#64748b' },
+        accion: { label: 'Acción', color: '#3b82f6' },
+        seguimiento: { label: 'Seguimiento', color: '#6366f1' },
+        llamado_padres: { label: 'Llamado a padres', color: '#f59e0b' },
+        entrevista: { label: 'Entrevista', color: '#22c55e' },
+        notificacion: { label: 'Notificación', color: '#06b6d4' },
+        derivacion: { label: 'Derivación', color: '#f97316' },
+        suspension: { label: 'Suspensión', color: '#ef4444' }
+    };
+    return defaults[tipoNombre] || { label: tipoNombre, color: '#64748b' };
+}
+
+function abrirModalTiposObservacion() {
+    document.getElementById('modalTiposObservacion').classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+    renderizarListaTiposObservacion();
+}
+
+function cerrarModalTiposObservacion() {
+    document.getElementById('modalTiposObservacion').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+}
+
+async function crearTipoObservacion() {
+    if (!USE_SUPABASE) return;
+    const nombre = document.getElementById('newTipoObsNombre').value.trim();
+    const color = document.getElementById('newTipoObsColor').value;
+    if (!nombre) return mostrarToast('El nombre es obligatorio', 'error');
+    if (tiposObservacion.some(t => t.nombre.toLowerCase() === nombre.toLowerCase())) return mostrarToast('Ya existe un tipo con ese nombre', 'error');
+
+    const { error } = await supabaseClient.from('tipos_observacion_alumno').insert({ nombre, color });
+    if (error) { console.error('[GIE] Error creando tipo:', error); return mostrarToast('Error creando tipo', 'error'); }
+    mostrarToast('Tipo creado correctamente');
+    document.getElementById('newTipoObsNombre').value = '';
+    await cargarTiposObservacion();
+    renderizarListaTiposObservacion();
+}
+
+async function eliminarTipoObservacion(id) {
+    if (!USE_SUPABASE || !confirm('¿Eliminar este tipo de observación?')) return;
+    const { error } = await supabaseClient.from('tipos_observacion_alumno').update({ activo: false }).eq('id', id);
+    if (error) { console.error('[GIE] Error eliminando tipo:', error); return mostrarToast('Error eliminando tipo', 'error'); }
+    mostrarToast('Tipo eliminado');
+    await cargarTiposObservacion();
+    renderizarListaTiposObservacion();
+}
+
+function renderizarListaTiposObservacion() {
+    const container = document.getElementById('listaTiposObservacion');
+    if (!container) return;
+    if (tiposObservacion.length === 0) {
+        container.innerHTML = '<p class="text-sm text-slate-400 italic">No hay tipos personalizados.</p>';
+        return;
+    }
+    container.innerHTML = tiposObservacion.map(t => `
+        <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
+            <div class="flex items-center gap-3">
+                <span class="w-4 h-4 rounded-full inline-block" style="background-color:${t.color};"></span>
+                <span class="text-sm font-medium text-slate-700">${t.nombre}</span>
+            </div>
+            <button onclick="eliminarTipoObservacion('${t.id}')" class="text-xs text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
+        </div>
+    `).join('');
 }
 
 function verDocente(userId) {
@@ -3803,6 +4010,14 @@ window.confirmarEliminarUsuario = confirmarEliminarUsuario;
 window.mostrarDerivacion = mostrarDerivacion;
 window.cerrarModalDerivacion = cerrarModalDerivacion;
 window.confirmarDerivacion = confirmarDerivacion;
+window.toggleFormObservacion = toggleFormObservacion;
+window.guardarObservacionAlumno = guardarObservacionAlumno;
+window.eliminarObservacionAlumno = eliminarObservacionAlumno;
+window.onChangeObsTipo = onChangeObsTipo;
+window.abrirModalTiposObservacion = abrirModalTiposObservacion;
+window.cerrarModalTiposObservacion = cerrarModalTiposObservacion;
+window.crearTipoObservacion = crearTipoObservacion;
+window.eliminarTipoObservacion = eliminarTipoObservacion;
 
 // ==================== CREAR ALUMNO INLINE ====================
 window.mostrarModalCrearAlumno = function() {
