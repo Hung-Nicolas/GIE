@@ -1439,14 +1439,12 @@ function verDetalle(id) {
                 <button onclick="agregarObservacion('${informe.id}')" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-sm rounded-lg transition-colors">Agregar observación</button>
             </div>
             
-            ${!esDOE ? `
             <div class="p-3 bg-slate-50 rounded-lg space-y-2">
                 <label class="text-xs font-medium text-slate-600">Acción tomada</label>
                 <input type="text" id="nuevaAccionTipo" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm" placeholder="Ej: Suspensión, Llamado a padres, Entrevista...">
                 <textarea id="nuevaAccionDetalle" rows="2" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none text-sm" placeholder="Detalle de la acción..."></textarea>
                 <button onclick="agregarAccion('${informe.id}')" class="px-4 py-1.5 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors">Agregar acción</button>
             </div>
-            ` : ''}
         </div>
         ` : ''}
     `;
@@ -1771,6 +1769,7 @@ async function confirmarDerivacion() {
     await cargarInformes();
     mostrarToast('Informe derivado correctamente');
     cerrarModalDerivacion();
+    cerrarModal();
     filtrarInformes();
     actualizarDashboard();
     if (btnConfirmar) {
@@ -3013,7 +3012,9 @@ async function crearUsuario(e) {
         });
         if (authError) {
             // Error creando usuario
-            return mostrarToast('Error: ' + authError.message, 'error');
+            console.error('[GIE] Error signUp:', authError);
+            const detalle = authError.code ? ` (${authError.code})` : '';
+            return mostrarToast(`Error creando usuario: ${authError.message}${detalle}. Revisá la consola para más detalles.`, 'error');
         }
         if (!authData.user) {
             return mostrarToast('No se pudo crear el usuario', 'error');
