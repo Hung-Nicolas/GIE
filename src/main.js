@@ -144,11 +144,12 @@ async function cargarAlumnos() {
 async function cargarInformes() {
     if (!USE_SUPABASE) return;
     let query = supabaseClient.from('informes')
-        .select('*, alumno:alumnos(nombre, apellido, curso, division), creador:perfiles!informes_creado_por_fkey(nombre, apellido), revisor:perfiles!informes_revisado_por_fkey(nombre, apellido), fecha_reunion')
+        .select('*, numero, alumno:alumnos(nombre, apellido, curso, division), creador:perfiles!informes_creado_por_fkey(nombre, apellido), revisor:perfiles!informes_revisado_por_fkey(nombre, apellido), fecha_reunion')
         .order('fecha_creacion', { ascending: false });
     const { data, error } = await query;
     if (error) { mostrarToast('Error cargando informes', 'error'); return; }
     informes = data || [];
+    console.log('[GIE] Informes cargados:', informes.length, 'Primer informe numero:', informes[0]?.numero);
     // Informes cargados
 }
 
@@ -1054,8 +1055,9 @@ function renderCardInforme(i) {
                 <div class="flex items-center gap-2 mb-1 flex-wrap">
                     <span class="status-${estadoVisual} px-2 py-0.5 rounded-full text-xs font-medium capitalize">${estadoVisual.replace('_', ' ')}</span>
                     <span class="text-xs text-slate-500">${formatearFechaCorta(i.fecha_creacion)}</span>
+                    ${i.numero !== null && i.numero !== undefined ? `<span class="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">Informe N° ${i.numero}</span>` : `<span class="text-xs text-red-500 italic">Sin numerar</span>`}
                 </div>
-                <h3 class="font-semibold text-slate-800 mb-1">${i.titulo}</h3>
+                <h3 class="font-semibold text-slate-800 mb-1">${i.numero !== null && i.numero !== undefined ? `<span class="font-mono text-slate-500 mr-1">Informe N° ${i.numero}</span>` : `<span class="text-xs text-red-500 italic mr-1">Sin numerar</span>`}${i.titulo}</h3>
                 <p class="text-sm text-slate-600 mb-2"><i class="fas fa-user mr-1"></i>${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'} • ${alumno ? `${alumno.curso} ${alumno.division}${alumno.turno ? ' · ' + alumno.turno : ''}` : ''}</p>
                 ${i.estado === 'derivado' && i.derivado_a ? `<p class="text-sm text-green-600 mb-2"><i class="fas fa-share mr-1"></i>Derivado a ${getNombreUsuario(i.derivado_a)}</p>` : ''}
                 <p class="text-sm text-slate-500 line-clamp-2">${i.resumen}</p>
@@ -1367,6 +1369,7 @@ function verDetalle(id) {
         <div class="flex items-center gap-3 mb-4 flex-wrap">
             <span class="status-${informe.estado} px-3 py-1 rounded-full text-sm font-medium capitalize">${informe.estado.replace('_', ' ')}</span>
             <span class="text-sm text-slate-500">${formatearFecha(informe.fecha_creacion)}</span>
+            ${informe.numero !== null && informe.numero !== undefined ? `<span class="text-lg font-mono font-bold text-slate-800 bg-slate-100 px-3 py-1 rounded border border-slate-200">Informe N° ${informe.numero}</span>` : `<span class="text-sm text-red-500 italic">Sin numerar</span>`}
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div class="p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors" onclick="verAlumno('${alumno?.id}')">
@@ -1522,10 +1525,13 @@ function abrirModalGrupoInformes(informesGrupo, timestampDia, mostrarAlumno = fa
         return `
         <div data-informe-id="${i.id}" class="cursor-pointer bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg p-4 transition-colors">
             <div class="flex items-center justify-between gap-2 mb-1 flex-wrap">
-                <span class="status-${i.estado} px-2 py-0.5 rounded-full text-xs font-medium capitalize">${i.estado.replace('_', ' ')}</span>
+                <div class="flex items-center gap-2">
+                    <span class="status-${i.estado} px-2 py-0.5 rounded-full text-xs font-medium capitalize">${i.estado.replace('_', ' ')}</span>
+                    ${i.numero !== null && i.numero !== undefined ? `<span class="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">Informe N° ${i.numero}</span>` : `<span class="text-xs text-red-500 italic">Sin numerar</span>`}
+                </div>
                 <span class="text-xs ${colorInstancia[i.instancia] ?? 'text-blue-600'} font-semibold capitalize">${labelInstancia[i.instancia] ?? i.instancia}</span>
             </div>
-            <p class="font-medium text-slate-800 text-sm">${i.titulo}</p>
+            <p class="font-medium text-slate-800 text-sm">${i.numero !== null && i.numero !== undefined ? `<span class="font-mono text-slate-500 mr-1">Informe N° ${i.numero}</span>` : `<span class="text-xs text-red-500 italic mr-1">Sin numerar</span>`}${i.titulo}</p>
             ${alumno ? `<p class="text-xs text-slate-500 mt-0.5">${alumno.apellido}, ${alumno.nombre} • ${alumno.curso} ${alumno.division}${alumno.turno ? ' · ' + alumno.turno : ''}</p>` : ''}
             <p class="text-xs text-slate-500 mt-1 line-clamp-2">${i.resumen}</p>
         </div>
@@ -1876,7 +1882,7 @@ function renderReunionesDiaSeleccionado() {
         <div class="flex items-start gap-2 p-2 hover:bg-slate-50 rounded-lg transition-colors">
             <div class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${estadoClase}">${alumno ? alumno.nombre[0] + alumno.apellido[0] : '?'}</div>
             <div class="flex-1 min-w-0 cursor-pointer" onclick="verDetalle('${i.id}')">
-                <p class="text-sm font-medium text-slate-800 truncate">${i.titulo}</p>
+                <p class="text-sm font-medium text-slate-800 truncate">${i.numero !== null && i.numero !== undefined ? `<span class="font-mono text-slate-500 mr-1">Informe N° ${i.numero}</span>` : `<span class="text-xs text-red-500 italic mr-1">Sin numerar</span>`}${i.titulo}</p>
                 <p class="text-xs text-slate-500">${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'} • ${formatearFechaCorta(i.fecha_reunion)}</p>
             </div>
             <div class="flex gap-1">
@@ -1917,7 +1923,7 @@ function actualizarDashboard() {
                     <div class="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center text-xs font-bold text-white shrink-0">${alumno ? alumno.nombre[0] + alumno.apellido[0] : '?'}</div>
                     <div class="min-w-0">
                         <p class="text-sm font-medium text-slate-800 truncate">${i.titulo}</p>
-                        <p class="text-xs text-slate-500">${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'} • ${formatearFechaCorta(i.fecha_creacion)}</p>
+                        <p class="text-xs text-slate-500">${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'} • ${formatearFechaCorta(i.fecha_creacion)}${i.numero !== null && i.numero !== undefined ? ` • <span class="font-mono font-bold">Informe N° ${i.numero}</span>` : ` • <span class="text-xs text-red-500 italic">Sin numerar</span>`}</p>
                     </div>
                 </div>
                 <div class="flex gap-2 shrink-0">
@@ -1944,7 +1950,7 @@ function actualizarDashboard() {
                 <div class="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${colorEstado[i.estado] || 'bg-slate-500'}">${alumno ? alumno.nombre[0] + alumno.apellido[0] : '?'}</div>
                 <div class="flex-1 min-w-0">
                     <p class="text-sm font-medium text-slate-800 truncate">${i.titulo}</p>
-                    <p class="text-xs text-slate-500">${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'} • ${formatearFechaCorta(i.fecha_revision || i.fecha_creacion)}</p>
+                    <p class="text-xs text-slate-500">${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'} • ${formatearFechaCorta(i.fecha_revision || i.fecha_creacion)}${i.numero !== null && i.numero !== undefined ? ` • <span class="font-mono font-bold">Informe N° ${i.numero}</span>` : ` • <span class="text-xs text-red-500 italic">Sin numerar</span>`}</p>
                 </div>
                 <span class="status-${i.estado} px-2 py-0.5 rounded text-xs capitalize">${i.estado.replace('_', ' ')}</span>
             </div>`;
@@ -2361,7 +2367,7 @@ function verAlumno(alumnoId) {
                         label: (item) => {
                             const g = item.raw.informes;
                             if (g.length === 1) {
-                                return `${labelInstancia[g[0].instancia] ?? g[0].instancia} • ${g[0].titulo}`;
+                                return `Informe N° ${g[0].numero} • ${labelInstancia[g[0].instancia] ?? g[0].instancia} • ${g[0].titulo}`;
                             }
                             return `${g.length} informes ${labelInstancia[g[0].instancia] ?? g[0].instancia}`;
                         }
@@ -2400,6 +2406,7 @@ function verAlumno(alumnoId) {
                     <div class="flex items-center gap-2 mb-1 flex-wrap">
                         <span class="status-${i.estado} px-2 py-0.5 rounded-full text-xs font-medium capitalize">${i.estado.replace('_', ' ')}</span>
                         <span class="text-xs text-slate-500">${formatearFechaCorta(i.fecha_creacion)}</span>
+                        ${i.numero !== null && i.numero !== undefined ? `<span class="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">Informe N° ${i.numero}</span>` : `<span class="text-xs text-red-500 italic">Sin numerar</span>`}
                     </div>
                     <h4 class="font-semibold text-slate-800">${i.titulo}</h4>
                     <p class="text-sm text-slate-600 line-clamp-2">${i.resumen}</p>
@@ -2552,7 +2559,7 @@ function verDocente(userId) {
                         title: (items) => formatearFechaCorta(new Date(items[0].raw.x)),
                         label: (item) => {
                             const g = item.raw.informes;
-                            if (g.length === 1) return `${labelInstancia[g[0].instancia] ?? g[0].instancia} • ${g[0].titulo}`;
+                            if (g.length === 1) return `Informe N° ${g[0].numero} • ${labelInstancia[g[0].instancia] ?? g[0].instancia} • ${g[0].titulo}`;
                             return `${g.length} informes ${labelInstancia[g[0].instancia] ?? g[0].instancia}`;
                         }
                     }
@@ -2572,6 +2579,7 @@ function verDocente(userId) {
             <div class="flex items-center gap-2 mb-1 flex-wrap">
                 <span class="status-${i.estado} px-2 py-0.5 rounded-full text-xs font-medium capitalize">${i.estado.replace('_', ' ')}</span>
                 <span class="text-xs text-slate-500">${formatearFechaCorta(i.fecha_creacion)}</span>
+                ${i.numero !== null && i.numero !== undefined ? `<span class="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">Informe N° ${i.numero}</span>` : `<span class="text-xs text-red-500 italic">Sin numerar</span>`}
             </div>
             <h4 class="font-semibold text-slate-800">${i.titulo}</h4>
             <p class="text-sm text-slate-600 line-clamp-2">${i.resumen}</p>
@@ -3493,6 +3501,7 @@ async function exportarPDF(id) {
             <div style="font-size:10px; font-weight:bold;">MINISTERIO DE EDUCACIÓN</div>
             <div style="font-size:10px; font-weight:bold; margin-top:2px;">E.T. N°35 D.E. 18, "Ing. Eduardo Latzina"</div>
             <div style="font-size:12px; font-weight:bold; margin-top:4px; text-decoration:underline;">INFORME DE CONVIVENCIA ESCOLAR</div>
+            ${informe.numero !== null && informe.numero !== undefined ? `<div style="font-size:11px; font-weight:bold; margin-top:2px;">Informe N° ${informe.numero}</div>` : `<div style="font-size:11px; color:#ef4444; margin-top:2px;">Sin numerar</div>`}
         </div>
 
         <div style="margin-bottom:6px;">
