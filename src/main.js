@@ -1057,13 +1057,13 @@ function renderCardInforme(i) {
                     <span class="text-xs text-slate-500">${formatearFechaCorta(i.fecha_creacion)}</span>
                     ${i.numero !== null && i.numero !== undefined ? `<span class="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">Informe N° ${i.numero}</span>` : `<span class="text-xs text-red-500 italic">Sin numerar</span>`}
                 </div>
-                <h3 class="font-semibold text-slate-800 mb-1">${i.numero !== null && i.numero !== undefined ? `<span class="font-mono text-slate-500 mr-1">Informe N° ${i.numero}</span>` : `<span class="text-xs text-red-500 italic mr-1">Sin numerar</span>`}${i.titulo}</h3>
+                <h3 class="font-semibold text-slate-800 mb-1">${i.titulo}</h3>
                 <p class="text-sm text-slate-600 mb-2"><i class="fas fa-user mr-1"></i>${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'} • ${alumno ? `${alumno.curso} ${alumno.division}${alumno.turno ? ' · ' + alumno.turno : ''}` : ''}</p>
                 ${i.estado === 'derivado' && i.derivado_a ? `<p class="text-sm text-green-600 mb-2"><i class="fas fa-share mr-1"></i>Derivado a ${getNombreUsuario(i.derivado_a)}</p>` : ''}
                 <p class="text-sm text-slate-500 line-clamp-2">${i.resumen}</p>
             </div>
             <div class="flex items-center gap-2">
-                ${['muy_grave','consejo_aula'].includes(i.instancia) ? `<i class="fas fa-exclamation-triangle ${i.instancia === 'muy_grave' ? 'text-red-500' : 'text-pink-600'}" title="${i.instancia === 'muy_grave' ? 'Muy Grave' : 'Consejo de Aula'}"></i>` : ''}
+                ${['muy_grave','consejo_aula','consejo'].includes(i.instancia) ? `<i class="fas fa-exclamation-triangle ${i.instancia === 'muy_grave' ? 'text-red-500' : i.instancia === 'consejo_aula' ? 'text-pink-600' : 'text-purple-600'}" title="${i.instancia === 'muy_grave' ? 'Muy Grave' : i.instancia === 'consejo_aula' ? 'Consejo de Aula' : 'Consejo Escolar'}"></i>` : ''}
                 <i class="fas fa-chevron-right text-slate-400"></i>
             </div>
         </div>
@@ -2412,7 +2412,7 @@ function verAlumno(alumnoId) {
                     <p class="text-sm text-slate-600 line-clamp-2">${i.resumen}</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    ${['muy_grave','consejo_aula'].includes(i.instancia) ? `<i class="fas fa-exclamation-triangle ${i.instancia === 'muy_grave' ? 'text-red-500' : 'text-pink-600'}" title="${i.instancia === 'muy_grave' ? 'Muy Grave' : 'Consejo de Aula'}"></i>` : ''}
+                    ${['muy_grave','consejo_aula','consejo'].includes(i.instancia) ? `<i class="fas fa-exclamation-triangle ${i.instancia === 'muy_grave' ? 'text-red-500' : i.instancia === 'consejo_aula' ? 'text-pink-600' : 'text-purple-600'}" title="${i.instancia === 'muy_grave' ? 'Muy Grave' : i.instancia === 'consejo_aula' ? 'Consejo de Aula' : 'Consejo Escolar'}"></i>` : ''}
                     <i class="fas fa-chevron-right text-slate-400"></i>
                 </div>
             </div>
