@@ -2192,6 +2192,40 @@ function cargarEstadisticas() {
         }
     });
 
+    // Tabla: Informes por Curso (curso + división)
+    const porCursoTabla = {};
+    informes.forEach(i => {
+        const alumno = getAlumno(i.alumno_id);
+        if (!alumno) return;
+        const key = `${alumno.curso} ${alumno.division}`;
+        if (!porCursoTabla[key]) porCursoTabla[key] = { total: 0, leve: 0, grave: 0, muy_grave: 0, consejo_aula: 0, consejo: 0, curso: alumno.curso, division: alumno.division };
+        porCursoTabla[key].total++;
+        if (['leve','grave','muy_grave','consejo_aula','consejo'].includes(i.instancia)) porCursoTabla[key][i.instancia]++;
+    });
+    const filasCurso = Object.entries(porCursoTabla).sort((a, b) => {
+        const na = parseInt(a[1].curso.replace('°', '')) || 0;
+        const nb = parseInt(b[1].curso.replace('°', '')) || 0;
+        if (na !== nb) return na - nb;
+        return (a[1].division || '').localeCompare(b[1].division || '');
+    });
+    const tbodyCurso = document.getElementById('bodyInformesPorCurso');
+    if (tbodyCurso) {
+        tbodyCurso.innerHTML = filasCurso.length === 0
+            ? '<tr><td colspan="8" class="px-4 py-6 text-center text-sm text-slate-400 italic">No hay informes registrados por curso.</td></tr>'
+            : filasCurso.map(([cursoCompleto, stats], index) => `
+                <tr class="hover:bg-slate-50">
+                    <td class="px-4 py-3 text-center text-slate-400 font-medium">${index + 1}</td>
+                    <td class="px-4 py-3 font-medium">${cursoCompleto}</td>
+                    <td class="px-4 py-3 text-center font-bold">${stats.total}</td>
+                    <td class="px-4 py-3 text-center text-amber-600">${stats.leve}</td>
+                    <td class="px-4 py-3 text-center text-orange-600">${stats.grave}</td>
+                    <td class="px-4 py-3 text-center text-red-600">${stats.muy_grave}</td>
+                    <td class="px-4 py-3 text-center text-pink-600">${stats.consejo_aula}</td>
+                    <td class="px-4 py-3 text-center text-purple-600">${stats.consejo}</td>
+                </tr>
+            `).join('');
+    }
+
     const porAlumno = {};
     informes.forEach(i => {
         const alumno = getAlumno(i.alumno_id);
