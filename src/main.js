@@ -1061,7 +1061,7 @@ function renderCardInforme(i) {
                 <p class="text-sm text-slate-500 line-clamp-2">${i.resumen}</p>
             </div>
             <div class="flex items-center gap-2">
-                ${i.instancia === 'muy_grave' ? '<i class="fas fa-exclamation-triangle text-red-500" title="Muy Grave"></i>' : ''}
+                ${['muy_grave','consejo_aula'].includes(i.instancia) ? `<i class="fas fa-exclamation-triangle ${i.instancia === 'muy_grave' ? 'text-red-500' : 'text-pink-600'}" title="${i.instancia === 'muy_grave' ? 'Muy Grave' : 'Consejo de Aula'}"></i>` : ''}
                 <i class="fas fa-chevron-right text-slate-400"></i>
             </div>
         </div>
@@ -1384,7 +1384,7 @@ function verDetalle(id) {
             <div><p class="text-sm font-medium text-slate-700 mb-1">Título</p><p class="text-slate-600">${informe.titulo}</p></div>
             <div class="grid grid-cols-2 gap-4">
                 <div><p class="text-sm font-medium text-slate-700 mb-1">Instancia</p>
-                    <p class="text-slate-600 capitalize font-medium ${informe.instancia === 'muy_grave' ? 'text-red-600' : informe.instancia === 'grave' ? 'text-orange-600' : informe.instancia === 'leve' ? 'text-amber-600' : informe.instancia === 'consejo' ? 'text-purple-600' : 'text-blue-600'}">${informe.instancia.replace('_', ' ')}</p>
+                    <p class="text-slate-600 capitalize font-medium ${informe.instancia === 'muy_grave' ? 'text-red-600' : informe.instancia === 'grave' ? 'text-orange-600' : informe.instancia === 'leve' ? 'text-amber-600' : informe.instancia === 'consejo_aula' ? 'text-pink-600' : informe.instancia === 'consejo' ? 'text-purple-600' : 'text-blue-600'}">${informe.instancia.replace('_', ' ')}</p>
                 </div>
                 <div><p class="text-sm font-medium text-slate-700 mb-1">Creado por</p><p class="text-slate-600">${getNombreUsuario(informe.creado_por)}</p></div>
             </div>
@@ -1511,8 +1511,8 @@ function abrirModalGrupoInformes(informesGrupo, timestampDia, mostrarAlumno = fa
     const titulo = document.getElementById('tituloModalGrupo');
     const contenido = document.getElementById('contenidoModalGrupo');
     const instancia = informesGrupo[0].instancia;
-    const labelInstancia = { leve: 'Leve', grave: 'Grave', muy_grave: 'Muy Grave', consejo: 'Consejo Escolar de Convivencia' };
-    const colorInstancia = { leve: 'text-amber-600', grave: 'text-orange-600', muy_grave: 'text-red-600', consejo: 'text-purple-600' };
+    const labelInstancia = { leve: 'Leve', grave: 'Grave', muy_grave: 'Muy Grave', consejo_aula: 'Consejo de Aula', consejo: 'Consejo Escolar de Convivencia' };
+    const colorInstancia = { leve: 'text-amber-600', grave: 'text-orange-600', muy_grave: 'text-red-600', consejo_aula: 'text-pink-600', consejo: 'text-purple-600' };
 
     const fechaHtml = timestampDia ? `<span class="text-sm text-slate-500 font-normal block">${formatearFechaCorta(new Date(timestampDia))}</span>` : '';
     titulo.innerHTML = `${fechaHtml}${informesGrupo.length} informes ${labelInstancia[instancia] ?? instancia}`;
@@ -1888,7 +1888,7 @@ function renderReunionesDiaSeleccionado() {
 
 function actualizarDashboard() {
     const estados = { pendiente: 0, revisado: 0, derivado: 0, archivado: 0, anulado: 0 };
-    const instancias = { leve: 0, grave: 0, muy_grave: 0, consejo: 0 };
+    const instancias = { leve: 0, grave: 0, muy_grave: 0, consejo_aula: 0, consejo: 0 };
     informes.forEach(i => {
         if (estados[i.estado] !== undefined) estados[i.estado]++;
         if (instancias[i.instancia] !== undefined) instancias[i.instancia]++;
@@ -1955,15 +1955,15 @@ function actualizarDashboard() {
     // ── 4. Gráfico de gravedad (bugfix: aspectRatio fijo + contenedor h-64) ──
     const ctx = document.getElementById('dashChart').getContext('2d');
     if (charts.dash) charts.dash.destroy();
-    const dashLabels = ['Leve', 'Grave', 'Muy Grave', 'Consejo Escolar'];
-    const dashInstanciaPorLabel = { 'Leve': 'leve', 'Grave': 'grave', 'Muy Grave': 'muy_grave', 'Consejo Escolar': 'consejo' };
+    const dashLabels = ['Leve', 'Grave', 'Muy Grave', 'Consejo de Aula', 'Consejo Escolar'];
+    const dashInstanciaPorLabel = { 'Leve': 'leve', 'Grave': 'grave', 'Muy Grave': 'muy_grave', 'Consejo de Aula': 'consejo_aula', 'Consejo Escolar': 'consejo' };
     charts.dash = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: dashLabels,
             datasets: [{
-                data: [instancias.leve, instancias.grave, instancias.muy_grave, instancias.consejo],
-                backgroundColor: ['#fbbf24', '#f97316', '#ef4444', '#7c3aed'],
+                data: [instancias.leve, instancias.grave, instancias.muy_grave, instancias.consejo_aula, instancias.consejo],
+                backgroundColor: ['#fbbf24', '#f97316', '#ef4444', '#db2777', '#7c3aed'],
                 borderWidth: 0,
                 hoverOffset: 4
             }]
@@ -2166,14 +2166,15 @@ function cargarEstadisticas() {
         const alumno = getAlumno(i.alumno_id);
         if (!alumno) return;
         const key = `${alumno.apellido}, ${alumno.nombre}`;
-        if (!porAlumno[key]) porAlumno[key] = { total: 0, leve: 0, grave: 0, muy_grave: 0, consejo: 0, curso: `${alumno.curso} ${alumno.division}`, id: alumno.id };
+        if (!porAlumno[key]) porAlumno[key] = { total: 0, leve: 0, grave: 0, muy_grave: 0, consejo_aula: 0, consejo: 0, curso: `${alumno.curso} ${alumno.division}`, id: alumno.id };
         porAlumno[key].total++;
-        if (['leve','grave','muy_grave','consejo'].includes(i.instancia)) porAlumno[key][i.instancia]++;
+        if (['leve','grave','muy_grave','consejo_aula','consejo'].includes(i.instancia)) porAlumno[key][i.instancia]++;
     });
     const topAlumnos = Object.entries(porAlumno).sort((a, b) => {
         const sa = a[1], sb = b[1];
         if (sb.total !== sa.total) return sb.total - sa.total;
         if (sb.consejo !== sa.consejo) return sb.consejo - sa.consejo;
+        if (sb.consejo_aula !== sa.consejo_aula) return sb.consejo_aula - sa.consejo_aula;
         if (sb.muy_grave !== sa.muy_grave) return sb.muy_grave - sa.muy_grave;
         if (sb.grave !== sa.grave) return sb.grave - sa.grave;
         return sb.leve - sa.leve;
@@ -2187,6 +2188,7 @@ function cargarEstadisticas() {
             <td class="px-4 py-3 text-center text-amber-600">${stats.leve}</td>
             <td class="px-4 py-3 text-center text-orange-600">${stats.grave}</td>
             <td class="px-4 py-3 text-center text-red-600">${stats.muy_grave}</td>
+            <td class="px-4 py-3 text-center text-pink-600">${stats.consejo_aula}</td>
             <td class="px-4 py-3 text-center text-purple-600">${stats.consejo}</td>
         </tr>
     `).join('');
@@ -2212,7 +2214,7 @@ function verAlumno(alumnoId) {
     const alumno = getAlumno(alumnoId);
     if (!alumno) { ocultarSkeleton('vistaAlumno'); return; }
     const lista = informes.filter(i => i.alumno_id === alumnoId).sort((a, b) => new Date(b.fecha_creacion) - new Date(a.fecha_creacion));
-    const stats = { total: lista.length, leve: 0, grave: 0, muy_grave: 0, consejo: 0 };
+    const stats = { total: lista.length, leve: 0, grave: 0, muy_grave: 0, consejo_aula: 0, consejo: 0 };
     lista.forEach(i => { if (stats[i.instancia] !== undefined) stats[i.instancia]++; });
 
     const turnoColorDetalle = alumno.turno === 'Mañana' ? 'bg-amber-100 text-amber-700' : alumno.turno === 'Tarde' ? 'bg-orange-100 text-orange-700' : 'bg-indigo-100 text-indigo-700';
@@ -2228,20 +2230,21 @@ function verAlumno(alumnoId) {
                 <p class="text-sm text-slate-400 mt-1">${stats.total} informe${stats.total !== 1 ? 's' : ''} registrado${stats.total !== 1 ? 's' : ''}</p>
             </div>
         </div>
-        <div class="grid grid-cols-4 gap-4 mt-6">
+        <div class="grid grid-cols-5 gap-4 mt-6">
             <div class="text-center p-3 bg-amber-50 rounded-lg"><p class="text-2xl font-bold text-amber-600">${stats.leve}</p><p class="text-xs text-amber-700">Leves</p></div>
             <div class="text-center p-3 bg-orange-50 rounded-lg"><p class="text-2xl font-bold text-orange-600">${stats.grave}</p><p class="text-xs text-orange-700">Graves</p></div>
             <div class="text-center p-3 bg-red-50 rounded-lg"><p class="text-2xl font-bold text-red-600">${stats.muy_grave}</p><p class="text-xs text-red-700">Muy Graves</p></div>
+            <div class="text-center p-3 bg-pink-50 rounded-lg"><p class="text-2xl font-bold text-pink-600">${stats.consejo_aula}</p><p class="text-xs text-pink-700">Consejo de Aula</p></div>
             <div class="text-center p-3 bg-purple-50 rounded-lg"><p class="text-2xl font-bold text-purple-600">${stats.consejo}</p><p class="text-xs text-purple-700">Consejo</p></div>
         </div>
     `;
 
     const ctx = document.getElementById('chartAlumno').getContext('2d');
     if (charts.alumno) charts.alumno.destroy();
-    const chartLabels = ['Leve', 'Grave', 'Muy Grave', 'Consejo Escolar'];
-    const chartData = [stats.leve, stats.grave, stats.muy_grave, stats.consejo];
-    const chartColors = ['#fbbf24', '#f97316', '#ef4444', '#7c3aed'];
-    const instanciaPorLabel = { 'Leve': 'leve', 'Grave': 'grave', 'Muy Grave': 'muy_grave', 'Consejo Escolar': 'consejo' };
+    const chartLabels = ['Leve', 'Grave', 'Muy Grave', 'Consejo de Aula', 'Consejo Escolar'];
+    const chartData = [stats.leve, stats.grave, stats.muy_grave, stats.consejo_aula, stats.consejo];
+    const chartColors = ['#fbbf24', '#f97316', '#ef4444', '#db2777', '#7c3aed'];
+    const instanciaPorLabel = { 'Leve': 'leve', 'Grave': 'grave', 'Muy Grave': 'muy_grave', 'Consejo de Aula': 'consejo_aula', 'Consejo Escolar': 'consejo' };
     charts.alumno = new Chart(ctx, {
         type: 'doughnut',
         data: { labels: chartLabels, datasets: [{ data: chartData, backgroundColor: chartColors, borderWidth: 0 }] },
@@ -2263,9 +2266,9 @@ function verAlumno(alumnoId) {
     // ── Timeline: instancia vs tiempo ──
     const ctxTimeline = document.getElementById('chartAlumnoTimeline').getContext('2d');
     if (charts.alumnoTimeline) charts.alumnoTimeline.destroy();
-    const nivelInstancia = { leve: 1, grave: 2, muy_grave: 3, consejo: 4 };
-    const colorInstancia = { leve: '#fbbf24', grave: '#f97316', muy_grave: '#ef4444', consejo: '#7c3aed' };
-    const labelInstancia = { leve: 'Leve', grave: 'Grave', muy_grave: 'Muy Grave', consejo: 'Consejo Escolar de Convivencia' };
+    const nivelInstancia = { leve: 1, grave: 2, muy_grave: 3, consejo_aula: 4, consejo: 5 };
+    const colorInstancia = { leve: '#fbbf24', grave: '#f97316', muy_grave: '#ef4444', consejo_aula: '#db2777', consejo: '#7c3aed' };
+    const labelInstancia = { leve: 'Leve', grave: 'Grave', muy_grave: 'Muy Grave', consejo_aula: 'Consejo de Aula', consejo: 'Consejo Escolar de Convivencia' };
 
     const diaKey = (fecha) => {
         const d = new Date(fecha);
@@ -2402,7 +2405,7 @@ function verAlumno(alumnoId) {
                     <p class="text-sm text-slate-600 line-clamp-2">${i.resumen}</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    ${i.instancia === 'muy_grave' ? '<i class="fas fa-exclamation-triangle text-red-500" title="Muy Grave"></i>' : ''}
+                    ${['muy_grave','consejo_aula'].includes(i.instancia) ? `<i class="fas fa-exclamation-triangle ${i.instancia === 'muy_grave' ? 'text-red-500' : 'text-pink-600'}" title="${i.instancia === 'muy_grave' ? 'Muy Grave' : 'Consejo de Aula'}"></i>` : ''}
                     <i class="fas fa-chevron-right text-slate-400"></i>
                 </div>
             </div>
@@ -2478,9 +2481,9 @@ function verDocente(userId) {
 
     const ctxTimeline = document.getElementById('chartDocenteTimeline').getContext('2d');
     if (charts.docenteTimeline) charts.docenteTimeline.destroy();
-    const nivelInstancia = { leve: 1, grave: 2, muy_grave: 3, consejo: 4 };
-    const colorInstancia = { leve: '#fbbf24', grave: '#f97316', muy_grave: '#ef4444', consejo: '#7c3aed' };
-    const labelInstancia = { leve: 'Leve', grave: 'Grave', muy_grave: 'Muy Grave', consejo: 'Consejo Escolar de Convivencia' };
+    const nivelInstancia = { leve: 1, grave: 2, muy_grave: 3, consejo_aula: 4, consejo: 5 };
+    const colorInstancia = { leve: '#fbbf24', grave: '#f97316', muy_grave: '#ef4444', consejo_aula: '#db2777', consejo: '#7c3aed' };
+    const labelInstancia = { leve: 'Leve', grave: 'Grave', muy_grave: 'Muy Grave', consejo_aula: 'Consejo de Aula', consejo: 'Consejo Escolar de Convivencia' };
 
     const diaKey = (fecha) => {
         const d = new Date(fecha);
@@ -3539,6 +3542,8 @@ async function exportarPDF(id) {
                 <span>${chk('leve')}&nbsp;&nbsp;1° Instancia — LEVE</span>
                 <span>${chk('grave')}&nbsp;&nbsp;2° Instancia — GRAVE</span>
                 <span>${chk('muy_grave')}&nbsp;&nbsp;3° Instancia — MUY GRAVE</span>
+                <span>${chk('consejo_aula')}&nbsp;&nbsp;4° Instancia — CONSEJO DE AULA</span>
+                <span>${chk('consejo')}&nbsp;&nbsp;5° Instancia — CONSEJO ESCOLAR</span>
             </div>
             <div style="margin-top:4px;">
                 <div style="margin-bottom:6px;">Otra consideración:</div>
@@ -3641,6 +3646,8 @@ async function exportarPDFEnBlanco() {
                 <span>☐&nbsp;&nbsp;1° Instancia — LEVE</span>
                 <span>☐&nbsp;&nbsp;2° Instancia — GRAVE</span>
                 <span>☐&nbsp;&nbsp;3° Instancia — MUY GRAVE</span>
+                <span>☐&nbsp;&nbsp;4° Instancia — CONSEJO DE AULA</span>
+                <span>☐&nbsp;&nbsp;5° Instancia — CONSEJO ESCOLAR</span>
             </div>
             <div style="margin-top:4px;">
                 <div style="margin-bottom:6px;">Otra consideración:</div>
