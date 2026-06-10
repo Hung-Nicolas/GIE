@@ -94,11 +94,11 @@ export async function sincronizarAlumnosDesdeNexus() {
             }
         }
 
-        // Ejecutar inserts
+        // Ejecutar upserts (inserta si no existe, actualiza si hay conflicto de nombre/apellido)
         if (upserts.length > 0) {
             const { error: errInsert } = await supabaseClient
                 .from('alumnos')
-                .insert(upserts);
+                .upsert(upserts, { onConflict: 'dni' });
             if (errInsert) {
                 console.error('[Nexus] Error insertando alumnos:', errInsert);
             } else {
@@ -163,4 +163,99 @@ export async function forzarSincronizacionNexus() {
     }
 
     return resultado;
+}
+
+/**
+ * Sincroniza un informe de GIE hacia Nexus.
+ * Se llama después de crear o actualizar un informe.
+ */
+export async function sincronizarInformeEnNexus(informeId) {
+    if (!NEXUS_ENABLED || !nexusClient) {
+        console.warn('[Nexus] Cliente no configurado. Saltando sincronización de informe.');
+        return { ok: false, error: 'Nexus no configurado' };
+    }
+
+    try {
+        // 1. Leer informe completo desde GIE
+        const { data: informe, error: errInf } = await supabaseClient
+            .from('informes')
+            .select('*')
+            .eq('id', informeId)
+            .single();
+
+        if (errInf || !informe) {
+            console.error('[Nexus] No se pudo leer el informe:', errInf);
+            return { ok: false, error: 'Informe no encontrado' };
+        }
+
+        // 2. Obtener DNI del alumno desde GIE
+        const { data: alumno, error: errAlumno } = await supabaseClient
+            .from('alumnos')
+            .select('dni')
+            .eq('id', informe.alumno_id)
+            .single();
+
+        if (errAlumno || !alumno?.dni) {
+            console.error('[Nexus] No se pudo obtener DNI del alumno:', errAlumno);
+            return { ok: false, error: 'DNI no disponible' };
+        }
+
+        // 3. Obtener nombre de la categoría desde GIE
+        let categoriaNombre = 'Otros';
+        if (informe.categoria_id) {
+            const { data: cat, error: errCat } = await supabaseClient
+                .from('categorias')
+                .select('nombre')
+                .eq('id', informe.categoria_id)
+                .single();
+            if (!errCat && cat?.nombre) {
+                categoriaNombre = cat.nombre;
+            }
+        }
+
+        // 4. Preparar parámetros para la RPC de Nexus
+        const params = {
+            p_gie_id: informe.id,
+            p_dni_alumno: alumno.dni,
+            p_categoria_nombre: categoriaNombre,
+            p_tipo_falta: informe.tipo_falta || 'Otra',
+            p_titulo: informe.titulo,
+            p_instancia: informe.instancia,
+            p_resumen: informe.resumen,
+            p_descargo: informe.descargo || null,
+            p_estado: informe.estado,
+            p_motivo_rechazo: informe.motivo_rechazo || null,
+            p_fecha_reunion: informe.fecha_reunion || null,
+            p_observaciones: informe.observaciones || null,
+            p_fecha_creacion: informe.fecha_creacion,
+            p_fecha_revision: informe.fecha_revision || null,
+            p_numero: informe.numero || null,
+            p_gie_creado_por: informe.creado_por || null
+        };
+
+        // 5. Llamar a la función RPC de Nexus
+        const { error: rpcError } = await nexusClient.rpc('sync_informe_gie', params);
+
+        if (rpcError) {
+            console.error('[Nexus] Error sincronizando informe en Nexus:', rpcError);
+            return { ok: false, error: rpcError.message };
+        }
+
+        // 6. Marcar como sincronizado en GIE
+        const ahora = new Date().toISOString();
+        const { error: updError } = await supabaseClient
+            .from('informes')
+            .update({ nexus_synced_at: ahora })
+            .eq('id', informe.id);
+
+        if (updError) {
+            console.error('[Nexus] Error actualizando nexus_synced_at:', updError);
+        }
+
+        console.log('[Nexus] Informe sincronizado:', informe.id);
+        return { ok: true, nexus_synced_at: ahora };
+    } catch (err) {
+        console.error('[Nexus] Error inesperado sincronizando informe:', err);
+        return { ok: false, error: err.message };
+    }
 }
