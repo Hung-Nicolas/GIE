@@ -2,7 +2,7 @@
 
 Aplicación web para la gestión de informes disciplinarios y académicos escolares. Permite a docentes y preceptores crear informes sobre conducta de alumnos, a los regentes revisar, aprobar, rechazar o derivar dichos informes, al Departamento de Orientación Escolar (DOE) intervenir en informes derivados, y a los PAT (Profesores de Acompañamiento Tutorial) realizar seguimiento de sus alumnos asignados.
 
-**Versión actual:** 1.6.1
+**Versión actual:** 1.6.2
 
 ## Tecnologías
 
@@ -93,6 +93,11 @@ Aplicación web para la gestión de informes disciplinarios y académicos escola
 ├── supabase/                    # Configuración de Supabase CLI
 └── AGENTS.md                    # Documentación técnica para desarrolladores
 ```
+
+## 🔗 Integración con Nexus (Base de Datos Escolar Maestra)
+
+GIE puede sincronizar sus alumnos desde **Nexus**, la BD escolar centralizada.
+
 
 ## Licencia
 

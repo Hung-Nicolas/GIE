@@ -2,6 +2,7 @@ import Chart from 'chart.js/auto';
 import html2pdf from 'html2pdf.js/dist/html2pdf.bundle.min.js';
 import { USE_SUPABASE, supabaseClient } from './config.js';
 import { getPerfil, setPerfil, esRegente, setPerfilCursos, showLogin, showApp, restoreSession, doLogout, updateAuthUI, setupLoginForm, setupLoginBanner } from './auth.js';
+import { sincronizarAlumnosDesdeNexus } from './sync-nexus.js';
 import './styles.css';
 
 // ==================== ESTADO GLOBAL ====================
@@ -111,6 +112,8 @@ async function cargarCategorias() {
 
 async function cargarAlumnos() {
     if (!USE_SUPABASE) return;
+    // Sincronizar alumnos desde Nexus antes de cargar
+    await sincronizarAlumnosDesdeNexus();
     const { data, error } = await supabaseClient.from('alumnos').select('*').eq('activo', true).order('apellido');
     if (error) { mostrarToast('Error cargando alumnos', 'error'); return; }
     alumnos = data || [];
