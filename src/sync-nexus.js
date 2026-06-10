@@ -32,7 +32,7 @@ export async function sincronizarAlumnosDesdeNexus() {
         return { ok: true, sincronizados: 0 };
     }
 
-    // 2. Leer alumnos actuales de GIE con su DNI para hacer match
+    // 2. Leer alumnos actuales de GIE para hacer match por nombre+apellido
     const { data: gieAlumnos, error: errorGie } = await supabaseClient
         .from('alumnos')
         .select('id, dni, nombre, apellido, curso, division, turno, origen');
@@ -42,7 +42,8 @@ export async function sincronizarAlumnosDesdeNexus() {
         return { ok: false, error: errorGie.message, sincronizados: 0 };
     }
 
-    const giePorDni = new Map((gieAlumnos || []).map(a => [a.dni, a]));
+    // Mapear por nombre+apellido (la constraint única de GIE)
+    const giePorNombre = new Map((gieAlumnos || []).map(a => [`${a.nombre}|${a.apellido}`, a]));
     let insertados = 0;
     let actualizados = 0;
     const ahora = new Date().toISOString();
@@ -58,17 +59,17 @@ export async function sincronizarAlumnosDesdeNexus() {
             if (!na.dni) continue;
 
             // Mapear campos de Nexus → GIE
-            // Nexus: cursos(anio, division) o campos directos en alumno
             const cursoNexus = na.cursos?.anio
                 ? `${na.cursos.anio}°`
                 : na.division || '';
             const divisionNexus = na.cursos?.division || na.division || '';
             const turnoNexus = na.cursos?.turno || na.turno || 'Mañana';
 
-            const existente = giePorDni.get(na.dni);
+            const clave = `${na.nombre}|${na.apellido}`;
+            const existente = giePorNombre.get(clave);
 
             if (existente) {
-                // Actualizar alumno existente (manteniendo su UUID)
+                // Actualizar alumno existente (manteniendo su UUID, agregando DNI si no lo tiene)
                 updates.push({
                     id: existente.id,
                     nombre: na.nombre,
@@ -76,6 +77,7 @@ export async function sincronizarAlumnosDesdeNexus() {
                     curso: cursoNexus,
                     division: divisionNexus,
                     turno: turnoNexus,
+                    dni: na.dni,
                     nexus_synced_at: ahora,
                     origen: 'nexus'
                 });
@@ -94,11 +96,11 @@ export async function sincronizarAlumnosDesdeNexus() {
             }
         }
 
-        // Ejecutar upserts (inserta si no existe, actualiza si hay conflicto de nombre/apellido)
+        // Ejecutar inserts de alumnos nuevos
         if (upserts.length > 0) {
             const { error: errInsert } = await supabaseClient
                 .from('alumnos')
-                .upsert(upserts, { onConflict: 'dni' });
+                .insert(upserts);
             if (errInsert) {
                 console.error('[Nexus] Error insertando alumnos:', errInsert);
             } else {
@@ -106,7 +108,7 @@ export async function sincronizarAlumnosDesdeNexus() {
             }
         }
 
-        // Ejecutar updates (uno por uno para no complicar con upsert sin PK conocida)
+        // Ejecutar updates de alumnos existentes
         for (const upd of updates) {
             const { error: errUpdate } = await supabaseClient
                 .from('alumnos')
