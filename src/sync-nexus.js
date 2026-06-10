@@ -8,10 +8,21 @@ import { supabaseClient } from './config.js';
  * - Mantiene el UUID interno de GIE para no romper FKs
  * - Marca origen='nexus' para distinguir de alumnos manuales
  */
-export async function sincronizarAlumnosDesdeNexus() {
+// Frecuencia mínima entre sincronizaciones (5 minutos)
+const MIN_SYNC_INTERVAL_MS = 5 * 60 * 1000;
+let _lastAlumnosSync = 0;
+
+export async function sincronizarAlumnosDesdeNexus(forzar = false) {
     if (!NEXUS_ENABLED || !nexusClient) {
         console.warn('[Nexus] Cliente no configurado. Saltando sincronización.');
         return { ok: false, error: 'Nexus no configurado', sincronizados: 0 };
+    }
+
+    // Evitar sincronizaciones muy frecuentes (a menos que sea forzado)
+    const ahora = Date.now();
+    if (!forzar && (ahora - _lastAlumnosSync) < MIN_SYNC_INTERVAL_MS) {
+        console.log('[Nexus] Sincronización reciente. Saltando.');
+        return { ok: true, sincronizados: 0 };
     }
 
     if (typeof mostrarToast === 'function') mostrarToast('Sincronizando alumnos con Nexus...', 'info');
@@ -30,6 +41,7 @@ export async function sincronizarAlumnosDesdeNexus() {
 
     if (!nexusAlumnos || nexusAlumnos.length === 0) {
         console.log('[Nexus] No hay alumnos para sincronizar.');
+        _lastAlumnosSync = ahora;
         return { ok: true, sincronizados: 0 };
     }
 
@@ -47,14 +59,13 @@ export async function sincronizarAlumnosDesdeNexus() {
     const giePorNombre = new Map((gieAlumnos || []).map(a => [`${a.nombre}|${a.apellido}`, a]));
     let insertados = 0;
     let actualizados = 0;
-    const ahora = new Date().toISOString();
+    const syncTime = new Date().toISOString();
 
     // 3. Procesar cada alumno de Nexus
-    const batchSize = 50;
+    const batchSize = 100;
     for (let i = 0; i < nexusAlumnos.length; i += batchSize) {
         const batch = nexusAlumnos.slice(i, i + batchSize);
         const upserts = [];
-        const updates = [];
 
         for (const na of batch) {
             if (!na.dni) continue;
@@ -70,8 +81,8 @@ export async function sincronizarAlumnosDesdeNexus() {
             const existente = giePorNombre.get(clave);
 
             if (existente) {
-                // Actualizar alumno existente (manteniendo su UUID, agregando DNI si no lo tiene)
-                updates.push({
+                // Actualizar alumno existente (manteniendo su UUID)
+                upserts.push({
                     id: existente.id,
                     nombre: na.nombre,
                     apellido: na.apellido,
@@ -79,11 +90,11 @@ export async function sincronizarAlumnosDesdeNexus() {
                     division: divisionNexus,
                     turno: turnoNexus,
                     dni: na.dni,
-                    nexus_synced_at: ahora,
+                    nexus_synced_at: syncTime,
                     origen: 'nexus'
                 });
             } else {
-                // Crear nuevo alumno en GIE
+                // Crear nuevo alumno en GIE (sin ID para que genere UUID)
                 upserts.push({
                     nombre: na.nombre,
                     apellido: na.apellido,
@@ -91,40 +102,30 @@ export async function sincronizarAlumnosDesdeNexus() {
                     division: divisionNexus,
                     turno: turnoNexus,
                     dni: na.dni,
-                    nexus_synced_at: ahora,
+                    nexus_synced_at: syncTime,
                     origen: 'nexus'
                 });
             }
         }
 
-        // Ejecutar inserts de alumnos nuevos
+        // Ejecutar upsert batch (inserta nuevos, actualiza existentes por ID)
         if (upserts.length > 0) {
-            const { error: errInsert } = await supabaseClient
+            const nuevos = upserts.filter(u => !u.id).length;
+            const existentes = upserts.filter(u => !!u.id).length;
+            const { error: errUpsert } = await supabaseClient
                 .from('alumnos')
-                .insert(upserts);
-            if (errInsert) {
-                console.error('[Nexus] Error insertando alumnos:', errInsert);
-            } else {
-                insertados += upserts.length;
-            }
-        }
+                .upsert(upserts, { onConflict: 'id', ignoreDuplicates: false });
 
-        // Ejecutar updates de alumnos existentes
-        for (const upd of updates) {
-            const { error: errUpdate } = await supabaseClient
-                .from('alumnos')
-                .update(upd)
-                .eq('id', upd.id);
-            if (errUpdate) {
-                console.error('[Nexus] Error actualizando alumno', upd.id, errUpdate);
+            if (errUpsert) {
+                console.error('[Nexus] Error en batch upsert:', errUpsert);
             } else {
-                actualizados++;
+                insertados += nuevos;
+                actualizados += existentes;
             }
         }
     }
 
     // 4. Opcional: desactivar alumnos de GIE que ya no están activos en Nexus
-    // (solo si tienen origen='nexus' para no afectar manuales)
     const nexusDnIs = new Set(nexusAlumnos.map(a => a.dni).filter(Boolean));
     const paraDesactivar = (gieAlumnos || []).filter(
         a => a.origen === 'nexus' && a.dni && !nexusDnIs.has(a.dni)
@@ -143,6 +144,7 @@ export async function sincronizarAlumnosDesdeNexus() {
         }
     }
 
+    _lastAlumnosSync = ahora;
     const total = insertados + actualizados;
     console.log(`[Nexus] Sincronización completa: ${insertados} insertados, ${actualizados} actualizados.`);
     return { ok: true, insertados, actualizados, sincronizados: total };
@@ -158,7 +160,7 @@ export async function forzarSincronizacionNexus() {
         btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Sincronizando...';
     }
 
-    const resultado = await sincronizarAlumnosDesdeNexus();
+    const resultado = await sincronizarAlumnosDesdeNexus(true);
 
     if (btn) {
         btn.disabled = false;

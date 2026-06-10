@@ -112,8 +112,6 @@ async function cargarCategorias() {
 
 async function cargarAlumnos() {
     if (!USE_SUPABASE) return;
-    // Sincronizar alumnos desde Nexus antes de cargar
-    await sincronizarAlumnosDesdeNexus();
     const { data, error } = await supabaseClient.from('alumnos').select('*').eq('activo', true).order('apellido');
     if (error) { mostrarToast('Error cargando alumnos', 'error'); return; }
     alumnos = data || [];
@@ -288,6 +286,9 @@ async function iniciarApp() {
 
     await Promise.all([cargarAlumnos(), cargarInformes(), cargarPlantillas(), cargarCategorias(), cargarUsuariosSupa(), cargarTiposObservacion(), cargarObservacionesAlumnos()]);
     initFiltros();
+
+    // Sincronizar alumnos desde Nexus en segundo plano (no bloquea la UI)
+    sincronizarAlumnosDesdeNexus().catch(() => {});
 
     if (esRegente) {
         showSection('dashboard');
