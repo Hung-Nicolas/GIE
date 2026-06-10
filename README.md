@@ -70,35 +70,8 @@ Aplicación web para la gestión de informes disciplinarios y académicos escola
 - Gestión de tipos de observación personalizados (colores, activación/desactivación).
 - Modal de novedades con historial de versiones.
 
-## Estructura del proyecto
-
-```
-.
-├── index.html                   # Punto de entrada de la SPA
-├── src/
-│   ├── main.js                  # Lógica principal de la aplicación (~3000 líneas)
-│   ├── config.js                # Cliente Supabase y flag USE_SUPABASE
-│   ├── auth.js                  # Autenticación (login, logout, sesión)
-│   └── styles.css               # Tailwind + estilos custom (animaciones, skeletons, badges)
-├── supabase.sql                 # Schema completo de la base de datos
-├── seed.sql                     # Datos de demostración (~40 alumnos, 113 informes, 437 historiales, 42 observaciones)
-├── migracion_categorias.sql     # Migración: tabla categorías
-├── migracion_tipos_observacion.sql  # Migración: tipos de observación personalizados
-├── temp.sql                     # Fix: trigger handle_new_user + política RLS
-├── fix_duplicados_alumnos.sql   # Corrección: elimina alumnos duplicados
-├── fix_duplicados_informes.sql  # Corrección: elimina informes duplicados
-├── fix_grado_7_a_6.sql          # Corrección: migra alumnos de 7° a 6°
-├── reset-pass.js                # Script Node.js para reseteo de contraseñas (admin)
-├── .github/workflows/           # CI/CD para GitHub Pages
-├── supabase/                    # Configuración de Supabase CLI
-└── AGENTS.md                    # Documentación técnica para desarrolladores
-```
-
 ## 🔗 Integración con Nexus (Base de Datos Escolar Maestra)
 
 GIE puede sincronizar sus alumnos desde **Nexus**, la BD escolar centralizada.
 
 
-## Licencia
-
-Este proyecto es de uso interno y educativo.

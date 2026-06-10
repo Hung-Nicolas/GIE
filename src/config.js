@@ -19,7 +19,7 @@ if (USE_SUPABASE) {
                 persistSession: true,
                 autoRefreshToken: true,
                 detectSessionInUrl: false,
-                storage: window.sessionStorage
+                storage: window.localStorage
             }
         });
         window.supabaseClient = supabaseClient;

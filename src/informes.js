@@ -1,6 +1,7 @@
 import { getInforme, getDB, saveDB, cargarInformes, perfil } from './db.js';
 import { USE_SUPABASE, supabaseClient } from './config.js';
 import { mostrarToast, limpiarAlumno, showSection, generarId } from './app.js';
+import { sincronizarInformeEnNexus } from './sync-nexus.js';
 
 export async function guardarInforme(e) {
     e.preventDefault();
@@ -24,9 +25,14 @@ export async function guardarInforme(e) {
 
         if (USE_SUPABASE) {
             const { error } = await supabaseClient.from('informes').update(datos).eq('id', editId);
-            if (error) { 
-            
+            if (error) {
+                console.error('[GIE] Error actualizando informe:', error);
+                mostrarToast('Error al actualizar informe', 'error');
+                return;
+            }
             await cargarInformes();
+            // Sincronizar con Nexus en segundo plano
+            sincronizarInformeEnNexus(editId).catch(err => console.error('[GIE] Sync Nexus failed:', err));
         } else {
             const db = getDB();
             const idx = db.informes.findIndex(i => i.id === editId);
@@ -47,10 +53,16 @@ export async function guardarInforme(e) {
             motivo_rechazo: null
         };
         if (USE_SUPABASE) {
-            const { error } = await supabaseClient.from('informes').insert(nuevo);
-            if (error) { 
-            
+            const { data: insertData, error } = await supabaseClient.from('informes').insert(nuevo).select('id');
+            if (error) {
+                console.error('[GIE] Error creando informe:', error);
+                mostrarToast('Error al crear informe', 'error');
+                return;
+            }
             await cargarInformes();
+            // Sincronizar con Nexus en segundo plano
+            const nuevoId = insertData?.[0]?.id || nuevo.id;
+            sincronizarInformeEnNexus(nuevoId).catch(err => console.error('[GIE] Sync Nexus failed:', err));
         } else {
             const db = getDB();
             db.informes.push(nuevo);
