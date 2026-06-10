@@ -415,9 +415,6 @@
                             <div id="resultadosAlumno" class="absolute z-10 w-full bg-white border border-slate-200 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto hidden"></div>
                             <input type="hidden" id="alumnoId" required>
                         </div>
-                        <button type="button" id="btn-crear-alumno-inline" onclick="mostrarModalCrearAlumno()" class="hidden mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
-                            <i class="fas fa-plus-circle"></i> Crear nuevo alumno
-                        </button>
                     </div>
                     <div id="alumnoSeleccionado" class="hidden mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
                         <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold"><i class="fas fa-user"></i></div>
@@ -513,9 +510,10 @@
             <div id="content-alumnos" class="section-content hidden">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
                 <h1 class="text-2xl font-bold text-slate-800">Alumnos</h1>
-                <button id="btn-crear-alumno" onclick="mostrarModalCrearAlumno()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm">
-                    <i class="fas fa-plus"></i><span class="hidden sm:inline">Crear alumno</span>
-                </button>
+            </div>
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 flex items-center gap-2 text-sm text-blue-700">
+                <i class="fas fa-sync-alt text-blue-500"></i>
+                <span>Los alumnos se sincronizan automáticamente desde <strong>Nexus</strong>. Para crear o modificar un alumno, usá el sistema Nexus.</span>
             </div>
             <div id="tabsAlumnos" class="flex gap-2 mb-4 overflow-x-auto hidden">
                 <button id="tabAlumnosTodos" onclick="setTabAlumnos('todos')" class="tab-alumnos px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white">
@@ -1520,70 +1518,6 @@
                     <h4 class="text-sm font-semibold text-slate-700 mb-2">Tipos existentes</h4>
                     <div id="listaTiposObservacion" class="space-y-2 max-h-64 overflow-y-auto"></div>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Crear Alumno (inline desde Nuevo Informe) -->
-    <div id="modalCrearAlumno" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full animate-fade-in">
-            <div class="p-6 border-b border-slate-200 flex justify-between items-center">
-                <h3 class="text-lg font-bold text-slate-800">Crear Nuevo Alumno</h3>
-                <button onclick="cerrarModalCrearAlumno()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
-            </div>
-            <div class="p-6 space-y-4">
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Nombre *</label>
-                        <input type="text" id="newAlumnoNombre" maxlength="100" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Apellido *</label>
-                        <input type="text" id="newAlumnoApellido" maxlength="100" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
-                    </div>
-                </div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Año *</label>
-                        <select id="newAlumnoCurso" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
-                            <option value="">Seleccione...</option>
-                            <option value="1°">1°</option>
-                            <option value="2°">2°</option>
-                            <option value="3°">3°</option>
-                            <option value="4°">4°</option>
-                            <option value="5°">5°</option>
-                            <option value="6°">6°</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">División *</label>
-                        <select id="newAlumnoDivision" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
-                            <option value="">Seleccione...</option>
-                            <option value="1">1</option>
-                            <option value="2">2</option>
-                            <option value="3">3</option>
-                            <option value="4">4</option>
-                            <option value="5">5</option>
-                            <option value="6">6</option>
-                            <option value="7">7</option>
-                            <option value="8">8</option>
-                            <option value="9">9</option>
-                        </select>
-                    </div>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Turno *</label>
-                    <select id="newAlumnoTurno" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
-                        <option value="">Seleccione...</option>
-                        <option value="Mañana">Mañana</option>
-                        <option value="Tarde">Tarde</option>
-                        <option value="Noche">Noche</option>
-                    </select>
-                </div>
-            </div>
-            <div class="p-6 border-t border-slate-200 bg-slate-50 flex gap-3">
-                <button onclick="guardarNuevoAlumno()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors">Crear alumno</button>
-                <button onclick="cerrarModalCrearAlumno()" class="px-6 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors">Cancelar</button>
             </div>
         </div>
     </div>

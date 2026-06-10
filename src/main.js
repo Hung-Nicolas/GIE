@@ -2,7 +2,7 @@ import Chart from 'chart.js/auto';
 import html2pdf from 'html2pdf.js/dist/html2pdf.bundle.min.js';
 import { USE_SUPABASE, supabaseClient } from './config.js';
 import { getPerfil, setPerfil, esRegente, setPerfilCursos, showLogin, showApp, restoreSession, doLogout, updateAuthUI, setupLoginForm, setupLoginBanner } from './auth.js';
-import { sincronizarAlumnosDesdeNexus } from './sync-nexus.js';
+import { sincronizarAlumnosDesdeNexus, sincronizarInformeEnNexus } from './sync-nexus.js';
 import './styles.css';
 
 // ==================== ESTADO GLOBAL ====================
@@ -270,8 +270,7 @@ async function iniciarApp() {
     // Ocultar botones de creación y tabs de filtros para DOE
     const btnNuevoInformeHeader = document.getElementById('btn-nuevo-informe');
     if (btnNuevoInformeHeader) btnNuevoInformeHeader.classList.toggle('hidden', esDOE);
-    const btnCrearAlumno = document.getElementById('btn-crear-alumno');
-    if (btnCrearAlumno) btnCrearAlumno.classList.toggle('hidden', !esRegente);
+
     const tabsInformes = document.getElementById('tabsInformes');
     if (tabsInformes) tabsInformes.classList.toggle('hidden', esDOE);
     const esDocenteOPreceptor = getPerfil()?.rol === 'docente' || getPerfil()?.rol === 'preceptor';
@@ -742,7 +741,12 @@ function mostrarToast(mensaje, tipo = 'success') {
     const icon = document.getElementById('toastIcon');
     const msg = document.getElementById('toastMsg');
     msg.textContent = mensaje;
-    icon.className = tipo === 'error' ? 'fas fa-exclamation-circle text-red-400' : 'fas fa-check-circle text-green-400';
+    const iconMap = {
+        error: 'fas fa-exclamation-circle text-red-400',
+        info: 'fas fa-spinner fa-spin text-blue-400',
+        success: 'fas fa-check-circle text-green-400'
+    };
+    icon.className = iconMap[tipo] || iconMap.success;
     toast.classList.remove('translate-y-20', 'opacity-0');
     setTimeout(() => toast.classList.add('translate-y-20', 'opacity-0'), 3000);
 }
@@ -759,11 +763,8 @@ function buscarAlumno(query) {
         `${a.nombre} ${a.apellido}`.toLowerCase().includes(query.toLowerCase()) ||
         `${a.apellido} ${a.nombre}`.toLowerCase().includes(query.toLowerCase())
     ).slice(0, 10);
-    const btnCrear = document.getElementById('btn-crear-alumno-inline');
-    const esRegente = getPerfil()?.rol === 'regente';
     if (filtrados.length === 0) {
         resultados.innerHTML = '<div class="p-3 text-sm text-slate-500">No se encontraron alumnos</div>';
-        if (btnCrear) btnCrear.classList.toggle('hidden', !esRegente);
     } else {
         resultados.innerHTML = filtrados.map(a => `
             <div tabindex="0"
@@ -778,7 +779,6 @@ function buscarAlumno(query) {
                 <p class="font-medium text-sm">${a.apellido}, ${a.nombre}</p>
                 <p class="text-xs text-slate-500">${a.curso} ${a.division}${a.turno ? ' · ' + a.turno : ''}</p>
             </div>`).join('');
-        if (btnCrear) btnCrear.classList.add('hidden');
     }
     resultados.classList.remove('hidden');
 }
@@ -797,8 +797,6 @@ function seleccionarAlumno(id, nombre, apellido, curso, division, turno = '') {
 function limpiarAlumno() {
     document.getElementById('alumnoId').value = '';
     document.getElementById('alumnoSeleccionado').classList.add('hidden');
-    const btnCrear = document.getElementById('btn-crear-alumno-inline');
-    if (btnCrear) btnCrear.classList.add('hidden');
     document.getElementById('buscadorAlumno').classList.remove('hidden');
     document.getElementById('btn-cambiar-alumno').classList.add('hidden');
     document.getElementById('searchAlumno').focus();
@@ -1233,11 +1231,13 @@ async function guardarInforme(e) {
             if (['archivado', 'anulado'].includes(inf.estado)) return mostrarToast('No se puede editar un informe finalizado', 'error');
             if (inf.creado_por !== getPerfil().id && getPerfil().rol !== 'regente') return mostrarToast('No tiene permiso para editar', 'error');
 
+            mostrarToast('Actualizando informe...', 'info');
             const { error } = await supabaseClient.from('informes').update(datos).eq('id', editId);
             if (error) { return mostrarToast('Error actualizando informe', 'error'); }
             // Informe actualizado
             await registrarHistorial(editId, 'edicion', `Informe editado por ${getNombreUsuario(getPerfil().id)}`);
             await cargarInformes();
+            sincronizarInformeEnNexus(editId).catch(() => {}); // sincronización en segundo plano
             mostrarToast('Informe actualizado correctamente');
         } else {
             const nuevo = {
@@ -1250,11 +1250,13 @@ async function guardarInforme(e) {
                 fecha_revision: null,
                 motivo_rechazo: null
             };
+            mostrarToast('Guardando informe...', 'info');
             const { error } = await supabaseClient.from('informes').insert(nuevo);
             if (error) { return mostrarToast('Error guardando informe', 'error'); }
             // Informe creado
             await registrarHistorial(nuevo.id, 'creacion', `Informe creado por ${getNombreUsuario(getPerfil().id)}`);
             await cargarInformes();
+            sincronizarInformeEnNexus(nuevo.id).catch(() => {}); // sincronización en segundo plano
             mostrarToast('Informe creado correctamente');
         }
         cancelarForm();
@@ -1576,6 +1578,7 @@ function abrirModalGrupoInformes(informesGrupo, timestampDia, mostrarAlumno = fa
 
 async function cambiarEstado(id, nuevoEstado, options = {}) {
     const { silent = false, cerrarModal: debeCerrarModal = true, recargarLista = true, fecha_reunion } = options;
+    if (!silent) mostrarToast('Procesando...', 'info');
     const esDOE = getPerfil()?.rol === 'doe';
     const esRegente = getPerfil()?.rol === 'regente';
     const perfil = getPerfil();
@@ -1642,6 +1645,7 @@ async function cambiarEstado(id, nuevoEstado, options = {}) {
 
     await registrarHistorial(id, accionHistorial, detalleHistorial);
     await cargarInformes();
+    sincronizarInformeEnNexus(id).catch(() => {});
     if (!silent) mostrarToast(`Informe ${toastLabel} correctamente`);
     if (debeCerrarModal) cerrarModal();
     if (recargarLista) filtrarInformes();
@@ -1699,11 +1703,13 @@ async function confirmarAnulacion() {
         revisado_por: getPerfil().id,
         fecha_revision: new Date().toISOString()
     };
+    mostrarToast('Anulando informe...', 'info');
     const { error } = await supabaseClient.from('informes').update(updates).eq('id', anulacionId);
     if (error) { return mostrarToast('Error rechazando informe', 'error'); }
     // Informe rechazado
     await registrarHistorial(anulacionId, 'anulado', `Informe anulado por ${getNombreUsuario(getPerfil().id)}. Motivo: ${motivo}`);
     await cargarInformes();
+    sincronizarInformeEnNexus(anulacionId).catch(() => {});
 
     mostrarToast('Informe anulado');
     cerrarModalAnulacion();
@@ -1753,6 +1759,7 @@ async function confirmarDerivacion() {
         btnConfirmar.innerHTML = '<span class="btn-spinner mr-2"></span> Derivando...';
         btnConfirmar.disabled = true;
     }
+    mostrarToast('Derivando informe...', 'info');
     const { error } = await supabaseClient.from('informes').update({
         estado: 'derivado',
         derivado_a: destinatarioId,
@@ -1770,6 +1777,7 @@ async function confirmarDerivacion() {
     const destLabel = destinatario ? `${destinatario.apellido}, ${destinatario.nombre}` : destinatarioId;
     await registrarHistorial(derivacionId, 'derivacion', `Informe derivado a ${destLabel} por ${getNombreUsuario(getPerfil().id)}${observaciones ? '. ' + observaciones : ''}`);
     await cargarInformes();
+    sincronizarInformeEnNexus(derivacionId).catch(() => {});
     mostrarToast('Informe derivado correctamente');
     cerrarModalDerivacion();
     cerrarModal();
@@ -3003,6 +3011,7 @@ async function crearUsuario(e) {
     if (email.length > 200) return mostrarToast('El email no puede exceder 200 caracteres', 'error');
 
     if (USE_SUPABASE) {
+        mostrarToast('Creando usuario...', 'info');
         // Creando usuario en Supabase
         // Verificar si ya existe en auth.users (usando la función RPC)
         const { data: usuariosExistentes } = await supabaseClient.rpc('listar_usuarios_completos');
@@ -3369,6 +3378,7 @@ window.guardarEdicionUsuario = async function() {
     if (email.length > 200) return mostrarToast('El email no puede exceder 200 caracteres', 'error');
 
     if (USE_SUPABASE) {
+        mostrarToast('Actualizando usuario...', 'info');
         // 1. Actualizar perfil
         const updates = { nombre, apellido, rol, activo, cursos: _cursosEditando, alumnos_pat: _alumnosPATEditando };
         const { error } = await supabaseClient.from('perfiles').update(updates).eq('id', id);
@@ -3681,6 +3691,7 @@ window.crearPlantilla = async function() {
     if (resumen.length > 2000) return mostrarToast('El resumen no puede exceder 2000 caracteres', 'error');
 
     if (USE_SUPABASE) {
+        mostrarToast('Creando plantilla...', 'info');
         const { data, error } = await supabaseClient.from('plantillas').insert({
             titulo, instancia, resumen, creado_por: getPerfil().id, usos: 0, activo: true
         }).select().single();
@@ -3703,6 +3714,7 @@ window.eliminarPlantilla = async function(id) {
     if (!p) return;
     if (!confirm(`¿Eliminar la plantilla "${p.titulo}"?`)) return;
 
+    mostrarToast('Eliminando plantilla...', 'info');
     const { error } = await supabaseClient.from('plantillas').delete().eq('id', id);
     if (error) { return mostrarToast('Error eliminando plantilla', 'error'); }
 
@@ -4057,45 +4069,7 @@ window.cerrarModalTiposObservacion = cerrarModalTiposObservacion;
 window.crearTipoObservacion = crearTipoObservacion;
 window.eliminarTipoObservacion = eliminarTipoObservacion;
 
-// ==================== CREAR ALUMNO INLINE ====================
-window.mostrarModalCrearAlumno = function() {
-    document.getElementById('modalCrearAlumno').classList.remove('hidden');
-    document.body.classList.add('overflow-hidden');
-    document.getElementById('newAlumnoNombre').value = '';
-    document.getElementById('newAlumnoApellido').value = '';
-    document.getElementById('newAlumnoCurso').value = '';
-    document.getElementById('newAlumnoDivision').value = '';
-    document.getElementById('newAlumnoTurno').value = '';
-};
-window.cerrarModalCrearAlumno = function() {
-    document.getElementById('modalCrearAlumno').classList.add('hidden');
-    document.body.classList.remove('overflow-hidden');
-};
-window.guardarNuevoAlumno = async function() {
-    if (getPerfil()?.rol !== 'regente') return mostrarToast('Solo el regente puede crear alumnos', 'error');
-    const nombre = document.getElementById('newAlumnoNombre').value.trim();
-    const apellido = document.getElementById('newAlumnoApellido').value.trim();
-    const curso = document.getElementById('newAlumnoCurso').value;
-    const division = document.getElementById('newAlumnoDivision').value;
-    const turno = document.getElementById('newAlumnoTurno').value;
-    if (!nombre || !apellido || !curso || !division || !turno) {
-        return mostrarToast('Todos los campos son obligatorios', 'error');
-    }
-    const { data, error } = await supabaseClient.from('alumnos').insert({ nombre, apellido, curso, division, turno }).select().single();
-    if (error) {
-        return mostrarToast('Error creando alumno: ' + error.message, 'error');
-    }
-    await cargarAlumnos();
-    cerrarModalCrearAlumno();
-    mostrarToast('Alumno creado correctamente');
-    const enSeccionAlumnos = document.getElementById('alumnos') && !document.getElementById('alumnos').classList.contains('hidden');
-    if (enSeccionAlumnos) {
-        filtrarAlumnos();
-        verAlumno(data.id);
-    } else {
-        seleccionarAlumno(data.id, data.nombre, data.apellido, data.curso, data.division, data.turno);
-    }
-};
+// ==================== ALUMNOS (solo lectura desde Nexus) ====================
 
 // ==================== FECHA DE REUNIÓN ====================
 let _reunionCallback = null;
@@ -4140,6 +4114,7 @@ window.cerrarModalGestionReunion = function() {
 window.guardarCambioReunion = async function() {
     const id = document.getElementById('gestionReunionInformeId').value;
     const fecha = document.getElementById('gestionReunionFecha').value || null;
+    mostrarToast('Actualizando reunión...', 'info');
     const { error } = await supabaseClient.from('informes').update({ fecha_reunion: fecha }).eq('id', id);
     if (error) return mostrarToast('Error actualizando reunión', 'error');
     await registrarHistorial(id, 'reunion', `Fecha de reunión actualizada por ${getNombreUsuario(getPerfil().id)}`);
@@ -4154,6 +4129,7 @@ window.posponerReunion = async function(dias) {
     const fecha = new Date(fechaActual || new Date());
     fecha.setDate(fecha.getDate() + dias);
     const fechaStr = fecha.toISOString().split('T')[0];
+    mostrarToast('Posponiendo reunión...', 'info');
     const { error } = await supabaseClient.from('informes').update({ fecha_reunion: fechaStr }).eq('id', id);
     if (error) return mostrarToast('Error posponiendo reunión', 'error');
     await registrarHistorial(id, 'reunion_pospuesta', `Reunión pospuesta ${dias} días por ${getNombreUsuario(getPerfil().id)}`);
@@ -4165,6 +4141,7 @@ window.posponerReunion = async function(dias) {
 window.eliminarReunion = async function() {
     const id = document.getElementById('gestionReunionInformeId').value;
     if (!confirm('¿Eliminar la fecha de reunión?')) return;
+    mostrarToast('Eliminando reunión...', 'info');
     const { error } = await supabaseClient.from('informes').update({ fecha_reunion: null }).eq('id', id);
     if (error) return mostrarToast('Error eliminando reunión', 'error');
     await registrarHistorial(id, 'reunion_eliminada', `Fecha de reunión eliminada por ${getNombreUsuario(getPerfil().id)}`);
@@ -4173,6 +4150,8 @@ window.eliminarReunion = async function() {
     cerrarModalGestionReunion();
     mostrarToast('Reunión eliminada');
 };
+
+window.mostrarToast = mostrarToast;
 
 // ==================== VER CONTRASEÑA ====================
 window.togglePassword = function(inputId, btn) {
