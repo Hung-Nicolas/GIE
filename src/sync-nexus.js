@@ -14,6 +14,7 @@ export async function sincronizarAlumnosDesdeNexus() {
         return { ok: false, error: 'Nexus no configurado', sincronizados: 0 };
     }
 
+    if (typeof mostrarToast === 'function') mostrarToast('Sincronizando alumnos con Nexus...', 'info');
     console.log('[Nexus] Iniciando sincronización de alumnos...');
 
     // 1. Leer alumnos de Nexus (incluyendo curso relacionado para mapeo)
@@ -177,6 +178,7 @@ export async function sincronizarInformeEnNexus(informeId) {
         return { ok: false, error: 'Nexus no configurado' };
     }
 
+    if (typeof mostrarToast === 'function') mostrarToast('Sincronizando informe con Nexus...', 'info');
     try {
         // 1. Leer informe completo desde GIE
         const { data: informe, error: errInf } = await supabaseClient
@@ -260,4 +262,123 @@ export async function sincronizarInformeEnNexus(informeId) {
         console.error('[Nexus] Error inesperado sincronizando informe:', err);
         return { ok: false, error: err.message };
     }
+}
+
+/**
+ * Sincroniza informes desde Nexus hacia GIE.
+ * Lee informes de Nexus y los inserta en GIE vinculando por DNI.
+ */
+export async function sincronizarInformesDesdeNexus() {
+    if (!NEXUS_ENABLED || !nexusClient) {
+        console.warn('[Nexus] Cliente no configurado. Saltando sincronización de informes.');
+        return { ok: false, error: 'Nexus no configurado', sincronizados: 0 };
+    }
+
+    console.log('[Nexus] Iniciando sincronización de informes...');
+
+    // 1. Leer informes de Nexus
+    const { data: nexusInformes, error: errNexus } = await nexusClient
+        .from('informes')
+        .select('id_informe, dni_alumno, id_categoria, tipo_falta, titulo, instancia, resumen, descargo, estado, dni_creador, dni_revisor, fecha_creacion, fecha_revision, motivo_rechazo, fecha_reunion, dni_derivado, numero, observaciones')
+        .order('fecha_creacion', { ascending: false })
+        .limit(100);
+
+    if (errNexus) {
+        console.error('[Nexus] Error leyendo informes de Nexus:', errNexus);
+        return { ok: false, error: errNexus.message, sincronizados: 0 };
+    }
+
+    if (!nexusInformes || nexusInformes.length === 0) {
+        console.log('[Nexus] No hay informes para sincronizar.');
+        return { ok: true, sincronizados: 0 };
+    }
+
+    // Mapeo de id_categoria Nexus → nombre
+    const categoriaNombres = {
+        1: 'Conducta',
+        2: 'Disciplina',
+        3: 'Asistencia',
+        4: 'Académica',
+        5: 'Otros'
+    };
+
+    // 2. Leer categorías de GIE
+    const { data: gieCategorias } = await supabaseClient.from('categorias').select('id, nombre');
+    const catPorNombre = new Map((gieCategorias || []).map(c => [c.nombre, c.id]));
+
+    let insertados = 0;
+    let actualizados = 0;
+
+    for (const ni of nexusInformes) {
+        if (!ni.dni_alumno) continue;
+
+        // Buscar alumno en GIE por DNI
+        const { data: alumnoGie } = await supabaseClient
+            .from('alumnos')
+            .select('id')
+            .eq('dni', ni.dni_alumno)
+            .single();
+
+        if (!alumnoGie?.id) {
+            console.warn('[Nexus] Alumno no encontrado en GIE para DNI:', ni.dni_alumno);
+            continue;
+        }
+
+        // Buscar categoría
+        const catNombre = categoriaNombres[ni.id_categoria] || 'Otros';
+        const catId = catPorNombre.get(catNombre);
+
+        // Buscar si el informe ya existe en GIE por número
+        const { data: existente } = await supabaseClient
+            .from('informes')
+            .select('id')
+            .eq('numero', ni.numero)
+            .maybeSingle();
+
+        if (existente?.id) {
+            // Actualizar
+            const { error: errUpd } = await supabaseClient
+                .from('informes')
+                .update({
+                    titulo: ni.titulo,
+                    resumen: ni.resumen,
+                    estado: ni.estado,
+                    instancia: ni.instancia,
+                    tipo_falta: ni.tipo_falta,
+                    descargo: ni.descargo,
+                    fecha_revision: ni.fecha_revision,
+                    motivo_rechazo: ni.motivo_rechazo,
+                    fecha_reunion: ni.fecha_reunion,
+                    observaciones: ni.observaciones,
+                    categoria_id: catId
+                })
+                .eq('id', existente.id);
+            if (!errUpd) actualizados++;
+        } else {
+            // Insertar
+            const { error: errIns } = await supabaseClient
+                .from('informes')
+                .insert({
+                    alumno_id: alumnoGie.id,
+                    categoria_id: catId,
+                    tipo_falta: ni.tipo_falta || 'Otra',
+                    titulo: ni.titulo,
+                    instancia: ni.instancia,
+                    resumen: ni.resumen,
+                    descargo: ni.descargo,
+                    estado: ni.estado || 'pendiente',
+                    fecha_creacion: ni.fecha_creacion,
+                    fecha_revision: ni.fecha_revision,
+                    motivo_rechazo: ni.motivo_rechazo,
+                    fecha_reunion: ni.fecha_reunion,
+                    observaciones: ni.observaciones,
+                    numero: ni.numero
+                });
+            if (!errIns) insertados++;
+        }
+    }
+
+    const total = insertados + actualizados;
+    console.log(`[Nexus] Sincronización de informes completa: ${insertados} insertados, ${actualizados} actualizados.`);
+    return { ok: true, insertados, actualizados, sincronizados: total };
 }
