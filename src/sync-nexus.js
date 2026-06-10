@@ -16,11 +16,10 @@ export async function sincronizarAlumnosDesdeNexus() {
 
     console.log('[Nexus] Iniciando sincronización de alumnos...');
 
-    // 1. Leer alumnos activos de Nexus (incluyendo curso relacionado para mapeo)
+    // 1. Leer alumnos de Nexus (incluyendo curso relacionado para mapeo)
     const { data: nexusAlumnos, error: errorNexus } = await nexusClient
         .from('alumnos')
-        .select('dni, nombre, apellido, email, especialidad, division, turno, email_padre, telefono, activo, cursos(anio, division, turno, especialidad)')
-        .eq('activo', true)
+        .select('dni, nombre, apellido, email, especialidad, division, turno, email_padre, telefono, cursos(anio, division, turno, especialidad)')
         .order('apellido');
 
     if (errorNexus) {
@@ -77,7 +76,6 @@ export async function sincronizarAlumnosDesdeNexus() {
                     curso: cursoNexus,
                     division: divisionNexus,
                     turno: turnoNexus,
-                    activo: na.activo !== false,
                     nexus_synced_at: ahora,
                     origen: 'nexus'
                 });
@@ -90,7 +88,6 @@ export async function sincronizarAlumnosDesdeNexus() {
                     division: divisionNexus,
                     turno: turnoNexus,
                     dni: na.dni,
-                    activo: na.activo !== false,
                     nexus_synced_at: ahora,
                     origen: 'nexus'
                 });
@@ -134,7 +131,7 @@ export async function sincronizarAlumnosDesdeNexus() {
         const idsDesactivar = paraDesactivar.map(a => a.id);
         const { error: errDes } = await supabaseClient
             .from('alumnos')
-            .update({ activo: false })
+            .delete()
             .in('id', idsDesactivar);
         if (errDes) {
             console.error('[Nexus] Error desactivando alumnos:', errDes);
