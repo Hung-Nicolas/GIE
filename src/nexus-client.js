@@ -9,7 +9,7 @@ const NEXUS_URL = import.meta.env.VITE_NEXUS_URL || '';
 const NEXUS_KEY = import.meta.env.VITE_NEXUS_ANON_KEY || '';
 
 const URL_VALIDA = typeof NEXUS_URL === 'string' && /^https?:\/\//.test(NEXUS_URL);
-const KEY_VALIDA = typeof NEXUS_KEY === 'string' && NEXUS_KEY.length > 20;
+const KEY_VALIDA = typeof NEXUS_KEY === 'string' && NEXUS_KEY.length > 20 && NEXUS_KEY.startsWith('eyJ');
 
 export const NEXUS_ENABLED = URL_VALIDA && KEY_VALIDA;
 export let nexusClient = null;

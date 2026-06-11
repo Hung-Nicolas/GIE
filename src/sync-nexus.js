@@ -90,7 +90,6 @@ export async function sincronizarAlumnosDesdeNexus(forzar = false) {
                     division: divisionNexus,
                     turno: turnoNexus,
                     dni: na.dni,
-                    nexus_synced_at: syncTime,
                     origen: 'nexus'
                 });
             } else {
@@ -102,7 +101,6 @@ export async function sincronizarAlumnosDesdeNexus(forzar = false) {
                     division: divisionNexus,
                     turno: turnoNexus,
                     dni: na.dni,
-                    nexus_synced_at: syncTime,
                     origen: 'nexus'
                 });
             }
@@ -151,6 +149,98 @@ export async function sincronizarAlumnosDesdeNexus(forzar = false) {
 }
 
 /**
+ * Mapea roles de Nexus a roles válidos de GIE.
+ */
+function mapearRolNexusAGIE(rolNexus) {
+    const map = {
+        regente: 'regente',
+        subregente: 'regente',
+        jefe_de_taller: 'regente',
+        docente: 'docente',
+        preceptor: 'preceptor',
+        doe: 'doe',
+        pat: 'pat'
+    };
+    return map[rolNexus] || 'docente';
+}
+
+/**
+ * Sincroniza personal de Nexus hacia perfiles de GIE.
+ * Solo actualiza perfiles existentes (no crea usuarios en auth.users).
+ */
+export async function sincronizarPersonalDesdeNexus(forzar = false) {
+    if (!NEXUS_ENABLED || !nexusClient) {
+        console.warn('[Nexus] Cliente no configurado. Saltando sincronización de personal.');
+        return { ok: false, error: 'Nexus no configurado' };
+    }
+
+    console.log('[Nexus] Iniciando sincronización de personal...');
+
+    const { data: nexusPersonal, error: errorNexus } = await nexusClient
+        .from('personal')
+        .select('dni, nombre, apellido, email, rol')
+        .order('apellido');
+
+    if (errorNexus) {
+        console.error('[Nexus] Error leyendo personal de Nexus:', errorNexus);
+        return { ok: false, error: errorNexus.message };
+    }
+
+    if (!nexusPersonal || nexusPersonal.length === 0) {
+        console.log('[Nexus] No hay personal para sincronizar.');
+        return { ok: true, sincronizados: 0 };
+    }
+
+    const emails = nexusPersonal.map(p => p.email).filter(Boolean);
+    const { data: giePerfiles, error: errorGie } = await supabaseClient
+        .from('perfiles')
+        .select('id, email, nombre, apellido, rol')
+        .in('email', emails);
+
+    if (errorGie) {
+        console.error('[Nexus] Error leyendo perfiles de GIE:', errorGie);
+        return { ok: false, error: errorGie.message };
+    }
+
+    const perfilPorEmail = new Map((giePerfiles || []).map(p => [p.email, p]));
+
+    let actualizados = 0;
+    let sinUsuario = 0;
+
+    for (const np of nexusPersonal) {
+        if (!np.email) continue;
+        const perfil = perfilPorEmail.get(np.email);
+        if (!perfil) {
+            sinUsuario++;
+            continue;
+        }
+
+        const rolGIE = mapearRolNexusAGIE(np.rol);
+        if (perfil.nombre === np.nombre && perfil.apellido === np.apellido && perfil.rol === rolGIE) {
+            continue;
+        }
+
+        const { error: updError } = await supabaseClient
+            .from('perfiles')
+            .update({
+                nombre: np.nombre,
+                apellido: np.apellido,
+                rol: rolGIE
+            })
+            .eq('id', perfil.id);
+
+        if (updError) {
+            console.warn('[Nexus] Error actualizando perfil:', np.email, updError);
+        } else {
+            actualizados++;
+        }
+    }
+
+    console.log(`[Nexus] Sincronización de personal completa: ${actualizados} actualizados, ${sinUsuario} sin usuario en GIE.`);
+    return { ok: true, actualizados, sinUsuario };
+}
+
+/**
  * Fuerza la sincronización manual (puede llamarse desde consola o un botón de admin)
  */
 export async function forzarSincronizacionNexus() {
@@ -160,14 +250,15 @@ export async function forzarSincronizacionNexus() {
         btn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Sincronizando...';
     }
 
-    const resultado = await sincronizarAlumnosDesdeNexus(true);
+    const resAlumnos = await sincronizarAlumnosDesdeNexus(true);
+    const resPersonal = await sincronizarPersonalDesdeNexus(true);
 
     if (btn) {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-sync-alt mr-2"></i>Sincronizar con Nexus';
     }
 
-    return resultado;
+    return { alumnos: resAlumnos, personal: resPersonal };
 }
 
 /**
@@ -247,19 +338,26 @@ export async function sincronizarInformeEnNexus(informeId) {
             return { ok: false, error: rpcError.message };
         }
 
-        // 6. Marcar como sincronizado en GIE
+        // 6. Guardar trazabilidad del sync en tabla desacoplada
         const ahora = new Date().toISOString();
-        const { error: updError } = await supabaseClient
-            .from('informes')
-            .update({ nexus_synced_at: ahora })
-            .eq('id', informe.id);
+        if (informe.numero) {
+            const { error: syncErr } = await supabaseClient
+                .from('sincronizaciones')
+                .upsert({
+                    tabla_origen: 'informes',
+                    id_local: informe.id,
+                    sistema_externo: 'nexus',
+                    id_remoto: String(informe.numero),
+                    synced_at: ahora
+                }, { onConflict: 'tabla_origen,sistema_externo,id_remoto' });
 
-        if (updError) {
-            console.error('[Nexus] Error actualizando nexus_synced_at:', updError);
+            if (syncErr) {
+                console.error('[Nexus] Error guardando sincronización:', syncErr);
+            }
         }
 
         console.log('[Nexus] Informe sincronizado:', informe.id);
-        return { ok: true, nexus_synced_at: ahora };
+        return { ok: true, synced_at: ahora };
     } catch (err) {
         console.error('[Nexus] Error inesperado sincronizando informe:', err);
         return { ok: false, error: err.message };

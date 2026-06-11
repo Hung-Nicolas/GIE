@@ -2,7 +2,7 @@ import Chart from 'chart.js/auto';
 import html2pdf from 'html2pdf.js/dist/html2pdf.bundle.min.js';
 import { USE_SUPABASE, supabaseClient } from './config.js';
 import { getPerfil, setPerfil, esRegente, setPerfilCursos, showLogin, showApp, restoreSession, doLogout, updateAuthUI, setupLoginForm, setupLoginBanner } from './auth.js';
-import { sincronizarAlumnosDesdeNexus, sincronizarInformeEnNexus } from './sync-nexus.js';
+import { sincronizarAlumnosDesdeNexus, sincronizarPersonalDesdeNexus, sincronizarInformeEnNexus } from './sync-nexus.js';
 import './styles.css';
 
 // ==================== ESTADO GLOBAL ====================
@@ -287,8 +287,9 @@ async function iniciarApp() {
     await Promise.all([cargarAlumnos(), cargarInformes(), cargarPlantillas(), cargarCategorias(), cargarUsuariosSupa(), cargarTiposObservacion(), cargarObservacionesAlumnos()]);
     initFiltros();
 
-    // Sincronizar alumnos desde Nexus en segundo plano (no bloquea la UI)
+    // Sincronizar alumnos y personal desde Nexus en segundo plano
     sincronizarAlumnosDesdeNexus().catch(() => {});
+    sincronizarPersonalDesdeNexus().catch(() => {});
 
     if (esRegente) {
         showSection('dashboard');
@@ -990,7 +991,8 @@ function filtrarInformes() {
         const matchBusqueda = !busqueda ||
             `${alumno?.apellido || ''} ${alumno?.nombre || ''}`.toLowerCase().includes(busqueda) ||
             i.titulo.toLowerCase().includes(busqueda) ||
-            i.resumen.toLowerCase().includes(busqueda);
+            i.resumen.toLowerCase().includes(busqueda) ||
+            (i.numero !== null && i.numero !== undefined && i.numero.toString().includes(busqueda));
         const matchCurso = !curso || (alumno && alumno.curso === curso);
         const matchDivision = !division || (alumno && alumno.division === division);
         const matchTurno = !turno || (alumno && alumno.turno === turno);
@@ -1022,7 +1024,8 @@ function filtrarInformes() {
         const matchBusqueda = !busqueda ||
             `${alumno?.apellido || ''} ${alumno?.nombre || ''}`.toLowerCase().includes(busqueda) ||
             i.titulo.toLowerCase().includes(busqueda) ||
-            i.resumen.toLowerCase().includes(busqueda);
+            i.resumen.toLowerCase().includes(busqueda) ||
+            (i.numero !== null && i.numero !== undefined && i.numero.toString().includes(busqueda));
         const matchCurso = !curso || (alumno && alumno.curso === curso);
         const matchDivision = !division || (alumno && alumno.division === division);
         const matchTurno = !turno || (alumno && alumno.turno === turno);
@@ -1286,9 +1289,11 @@ function cancelarForm() {
 // ==================== HISTORIAL DE INFORMES ====================
 async function registrarHistorial(informeId, accion, detalle) {
     if (!USE_SUPABASE) return;
+    const perfil = getPerfil();
     const { error } = await supabaseClient.from('historial_informes').insert({
         informe_id: informeId,
-        usuario_id: getPerfil()?.id,
+        usuario_id: perfil?.id,
+        usuario_nombre: perfil ? `${perfil.apellido}, ${perfil.nombre}` : 'Sistema',
         accion,
         detalle
     });
@@ -1358,7 +1363,7 @@ function renderizarHistorial(historial) {
     <div class="relative pl-4 border-l-2 border-slate-200 space-y-5">
         ${historial.map((h, idx) => {
             const esUltimo = idx === historial.length - 1;
-            const nombre = getNombreUsuario(h.usuario_id) || 'Sistema';
+            const nombre = h.usuario_nombre || getNombreUsuario(h.usuario_id) || 'Usuario eliminado';
             const fecha = formatearFecha(h.fecha);
             const hora = new Date(h.fecha).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
             const badge = badgeAccion[h.accion] || { label: (h.accion || 'ACCIÓN').toUpperCase(), clase: 'bg-slate-100 text-slate-700 border-slate-200' };
