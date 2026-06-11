@@ -44,7 +44,7 @@ export async function sincronizarAlumnosDesdeNexus(forzar = false) {
         return { ok: true, sincronizados: 0 };
     }
 
-    // 2. Leer alumnos actuales de GIE para hacer match por nombre+apellido
+    // 2. Leer alumnos actuales de GIE para hacer match por DNI y por nombre+apellido
     const { data: gieAlumnos, error: errorGie } = await supabaseClient
         .from('alumnos')
         .select('id, dni, nombre, apellido, curso, division, turno, origen');
@@ -54,7 +54,8 @@ export async function sincronizarAlumnosDesdeNexus(forzar = false) {
         return { ok: false, error: errorGie.message, sincronizados: 0 };
     }
 
-    // Mapear por nombre+apellido (la constraint única de GIE)
+    // Mapear por DNI (prioridad) y por nombre+apellido (fallback)
+    const giePorDni = new Map((gieAlumnos || []).filter(a => a.dni).map(a => [String(a.dni), a]));
     const giePorNombre = new Map((gieAlumnos || []).map(a => [`${a.nombre}|${a.apellido}`, a]));
     let insertados = 0;
     let actualizados = 0;
@@ -76,8 +77,9 @@ export async function sincronizarAlumnosDesdeNexus(forzar = false) {
             const divisionNexus = na.cursos?.division || na.division || '';
             const turnoNexus = na.cursos?.turno || na.turno || 'Mañana';
 
-            const clave = `${na.nombre}|${na.apellido}`;
-            const existente = giePorNombre.get(clave);
+            const claveDni = na.dni ? String(na.dni) : null;
+            const claveNombre = `${na.nombre}|${na.apellido}`;
+            const existente = claveDni ? giePorDni.get(claveDni) : giePorNombre.get(claveNombre);
 
             if (existente) {
                 // Actualizar alumno existente (manteniendo su UUID)
@@ -179,8 +181,8 @@ export async function sincronizarPersonalDesdeNexus(forzar = false) {
     console.log('[Nexus] Iniciando sincronización de personal...');
 
     const { data: nexusPersonal, error: errorNexus } = await nexusClient
-        .from('personal')
-        .select('dni, nombre, apellido, email, rol')
+        .from('perfiles')
+        .select('nombre, apellido, email, rol')
         .order('apellido');
 
     if (errorNexus) {

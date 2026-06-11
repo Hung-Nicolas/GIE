@@ -33,24 +33,24 @@ function mapearRolNexusAGIE(rolNexus) {
 async function obtenerRolDesdeNexus(email) {
     try {
         const { data, error } = await nexusClient
-            .from('personal')
+            .from('perfiles')
             .select('rol')
             .eq('email', email)
             .maybeSingle();
         if (error) {
-            console.warn('[GIE] Error leyendo personal de Nexus:', error);
+            console.warn('[GIE] Error leyendo perfil de Nexus:', error);
             return null;
         }
         return data?.rol || null;
     } catch (err) {
-        console.warn('[GIE] Excepción leyendo personal de Nexus:', err);
+        console.warn('[GIE] Excepción leyendo perfil de Nexus:', err);
         return null;
     }
 }
 
 /**
  * Valida la sesión de Nexus contra la Edge Function de GIE y genera/devuelve
- * un token_hash para iniciar sesión en GIE.
+ * una contraseña temporal para iniciar sesión en GIE.
  */
 async function provisionarGIE(nexusAccessToken, email, rolNexus, nombre, apellido) {
     const rolGIE = mapearRolNexusAGIE(rolNexus);
@@ -70,18 +70,17 @@ async function provisionarGIE(nexusAccessToken, email, rolNexus, nombre, apellid
     });
 
     const json = await res.json().catch(() => ({}));
-    if (!res.ok || !json.success || !json.token_hash) {
+    if (!res.ok || !json.success || !json.password) {
         throw new Error(json.error || 'Error provisionando sesión en GIE');
     }
 
     return json;
 }
 
-async function iniciarSesionGIE(email, tokenHash) {
-    const { data, error } = await supabaseClient.auth.verifyOtp({
+async function iniciarSesionGIE(email, password) {
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
         email,
-        token: tokenHash,
-        type: 'magiclink'
+        password
     });
 
     if (error || !data?.session) {
@@ -146,7 +145,7 @@ export async function restoreSession() {
             nexusSession.user.user_metadata?.apellido
         );
 
-        await iniciarSesionGIE(provision.email, provision.token_hash);
+        await iniciarSesionGIE(provision.email, provision.password);
         return await cargarPerfilGIE();
     } catch (err) {
         console.error('[GIE] Error restaurando sesión:', err);
@@ -188,8 +187,8 @@ export async function doLogin(email, password) {
             nexusData.session.user.user_metadata?.apellido
         );
 
-        // 4. Iniciar sesión en GIE con el magiclink token
-        await iniciarSesionGIE(provision.email, provision.token_hash);
+        // 4. Iniciar sesión en GIE con contraseña temporal
+        await iniciarSesionGIE(provision.email, provision.password);
 
         // 5. Cargar perfil local
         const perfil = await cargarPerfilGIE();

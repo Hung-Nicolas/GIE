@@ -86,12 +86,15 @@ Deno.serve(async (req) => {
 
     const existingUser = listData?.users?.[0];
 
+    // Contraseña temporal de un solo uso para iniciar sesión en GIE
+    const tempPassword = crypto.randomUUID();
+
     if (!existingUser) {
       // Crear usuario en GIE auth (UUID será distinto al de Nexus; se vincula por email)
       const { data: createData, error: createError } = await gieAdmin.auth.admin.createUser({
         email: user.email,
         email_confirm: true,
-        password: crypto.randomUUID(),
+        password: tempPassword,
         user_metadata: { nombre, apellido },
       });
 
@@ -105,10 +108,19 @@ Deno.serve(async (req) => {
       gieUserId = createData.user.id;
     } else {
       gieUserId = existingUser.id;
-      await gieAdmin.auth.admin.updateUserById(gieUserId, {
+      // Actualizar datos y establecer contraseña temporal para este login
+      const { error: updError } = await gieAdmin.auth.admin.updateUserById(gieUserId, {
         email: user.email,
         user_metadata: { nombre, apellido },
+        password: tempPassword,
       });
+
+      if (updError) {
+        return new Response(
+          JSON.stringify({ error: updError.message || "Error actualizando usuario en GIE" }),
+          { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
+        );
+      }
     }
 
     // 5. Asegurar perfil en GIE (trigger crea uno básico, pero forzamos datos correctos)
@@ -133,25 +145,12 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 6. Generar magiclink para obtener sesión en GIE sin conocer la contraseña
-    const { data: linkData, error: linkError } = await gieAdmin.auth.admin.generateLink({
-      type: "magiclink",
-      email: user.email,
-    });
-
-    if (linkError || !linkData?.properties?.hashed_token) {
-      return new Response(
-        JSON.stringify({ error: linkError?.message || "Error generando sesión de GIE" }),
-        { status: 500, headers: { "Content-Type": "application/json", ...corsHeaders } }
-      );
-    }
-
     return new Response(
       JSON.stringify({
         success: true,
         user_id: gieUserId,
         email: user.email,
-        token_hash: linkData.properties.hashed_token,
+        password: tempPassword,
       }),
       { status: 200, headers: { "Content-Type": "application/json", ...corsHeaders } }
     );
