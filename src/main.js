@@ -1,6 +1,6 @@
 import Chart from 'chart.js/auto';
 import html2pdf from 'html2pdf.js/dist/html2pdf.bundle.min.js';
-import { USE_SUPABASE, supabaseClient } from './config.js';
+import { USE_SUPABASE, supabaseClient, nexusClient } from './config.js';
 import { getPerfil, setPerfil, esRegente, setPerfilCursos, showLogin, showApp, restoreSession, doLogout, updateAuthUI, setupLoginForm, setupLoginBanner } from './auth.js';
 import { sincronizarAlumnosDesdeNexus, sincronizarPersonalDesdeNexus, sincronizarInformeEnNexus } from './sync-nexus.js';
 import './styles.css';
@@ -181,28 +181,26 @@ async function cargarObservacionesAlumnos() {
 
 async function cargarUsuariosSupa() {
     if (!USE_SUPABASE) return;
-    
-    // Intentar RPC primero (trae email + perfiles)
-    const { data, error } = await supabaseClient.rpc('listar_usuarios_completos');
-    if (!error && data && data.length > 0) {
-        usuarios = data;
-        console.log('[GIE] Usuarios cargados vía RPC:', usuarios.length);
-        return;
-    }
-    
-    if (error) {
-        console.error('[GIE] Error en listar_usuarios_completos:', error);
-    }
-    
-    // Fallback: leer perfiles directamente (evita problemas de permisos con auth.users)
+
+    // Los perfiles con roles/cursos reales viven en GIE
     const { data: perfiles, error: errPerfiles } = await supabaseClient.from('perfiles').select('*');
     if (errPerfiles) {
-        console.error('[GIE] Error cargando perfiles:', errPerfiles);
+        console.error('[GIE] Error cargando perfiles desde GIE:', errPerfiles);
         mostrarToast('Error cargando usuarios', 'error');
         return;
     }
-    usuarios = perfiles || [];
-    console.log('[GIE] Usuarios cargados vía perfiles:', usuarios.length);
+
+    usuarios = (perfiles || []).map(p => ({
+        id: p.id,
+        email: p.email,
+        nombre: p.nombre,
+        apellido: p.apellido,
+        rol: p.rol,
+        activo: p.activo !== false,
+        cursos: p.cursos || [],
+        alumnos_pat: p.alumnos_pat || []
+    }));
+    console.log('[GIE] Usuarios cargados desde GIE:', usuarios.length);
 }
 
 // --- Helpers de acceso sincrónico ---
@@ -407,30 +405,6 @@ function setupEventListeners() {
         });
     }
 
-    const formUsuario = document.getElementById('formUsuario');
-    if (formUsuario) formUsuario.addEventListener('submit', crearUsuario);
-
-    const newRol = document.getElementById('newRol');
-    if (newRol) {
-        newRol.addEventListener('change', () => {
-            const containerCursos = document.getElementById('containerCursosNuevoUsuario');
-            const containerPAT = document.getElementById('containerAlumnosPATNuevoUsuario');
-            if (containerCursos) containerCursos.classList.toggle('hidden', !(newRol.value === 'docente' || newRol.value === 'preceptor' || newRol.value === 'pat'));
-            if (containerPAT) containerPAT.classList.toggle('hidden', newRol.value !== 'pat');
-        });
-    }
-
-    const editUserRolEl = document.getElementById('editUserRol');
-    if (editUserRolEl) {
-        editUserRolEl.addEventListener('change', () => {
-            const val = editUserRolEl.value;
-            const cursosContainer = document.getElementById('editUserCursoAnio')?.parentElement;
-            const patContainer = document.getElementById('editUserAlumnosPATContainer');
-            if (cursosContainer) cursosContainer.classList.toggle('hidden', !(val === 'docente' || val === 'preceptor' || val === 'pat'));
-            if (patContainer) patContainer.classList.toggle('hidden', val !== 'pat');
-        });
-    }
-
     const modalDetalle = document.getElementById('modalDetalle');
     if (modalDetalle) {
         modalDetalle.addEventListener('click', (e) => {
@@ -581,7 +555,6 @@ function showSection(sectionId) {
             }, 50);
         });
     }
-    if (sectionId === 'usuarios') { mostrarSkeleton('usuarios'); cargarUsuarios().then(() => ocultarSkeleton('usuarios')); }
     if (sectionId === 'docentes') { mostrarSkeleton('docentes'); cargarDocentes().then(() => ocultarSkeleton('docentes')); }
     if (sectionId === 'dashboard') { mostrarSkeleton('dashboard'); actualizarDashboard(); ocultarSkeleton('dashboard'); }
     if (sectionId === 'ajustes') {
@@ -2850,67 +2823,7 @@ function verDocente(userId) {
     ocultarSkeleton('vistaDocente');
 }
 
-// ==================== USUARIOS ====================
-async function cargarUsuarios() {
-    if (getPerfil().rol !== 'regente') return;
-    await cargarUsuariosSupa();
-    const lista = usuarios.sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
-
-    const renderRow = (u) => {
-        const sinPerfil = !u.rol;
-        const nombreCompleto = sinPerfil ? '<span class="text-slate-400 italic">Sin perfil</span>' : `${u.apellido}, ${u.nombre}`;
-        const rolBadge = sinPerfil
-            ? '<span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">sin perfil</span>'
-            : `<span class="px-2 py-1 rounded-full text-xs font-medium capitalize ${u.rol === 'regente' ? 'bg-purple-100 text-purple-700' : u.rol === 'preceptor' ? 'bg-blue-100 text-blue-700' : u.rol === 'doe' ? 'bg-orange-100 text-orange-700' : u.rol === 'pat' ? 'bg-teal-100 text-teal-700' : 'bg-green-100 text-green-700'}">${u.rol}</span>`;
-        const activoBadge = sinPerfil
-            ? '<span class="px-2 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">-</span>'
-            : `<span class="px-2 py-1 rounded-full text-xs font-medium ${u.activo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}">${u.activo ? 'Activo' : 'Inactivo'}</span>`;
-        const acciones = sinPerfil
-            ? `<button onclick="sincronizarPerfilUsuario('${u.id}', '${u.email}')" class="text-sm text-amber-600 hover:text-amber-700" title="Crear perfil"><i class="fas fa-user-plus"></i></button>`
-            : `${u.id === getPerfil().id ? '<span class="text-xs text-slate-400">Usted</span>' : `
-                <button onclick="editarUsuarioForm('${u.id}')" class="text-sm text-blue-600 hover:text-blue-700" title="Editar"><i class="fas fa-edit"></i></button>
-                ${u.id !== getPerfil().id && u.email !== 'admin@gie.com' ? `<button onclick="mostrarModalEliminar('${u.id}')" class="text-sm text-red-600 hover:text-red-700" title="Eliminar"><i class="fas fa-trash-alt"></i></button>` : ''}
-            `}`;
-        return { nombreCompleto, rolBadge, activoBadge, acciones, sinPerfil };
-    };
-
-    // Desktop
-    document.getElementById('listaUsuariosDesktop').innerHTML = lista.map(u => {
-        const r = renderRow(u);
-        return `
-        <tr id="user-row-${u.id}" class="hover:bg-slate-50 transition-colors ${r.sinPerfil ? 'bg-amber-50/50' : ''}">
-            <td class="px-4 py-3 font-medium cursor-pointer hover:text-blue-600 hover:underline" onclick="verDocente('${u.id}')">${r.nombreCompleto}</td>
-            <td class="px-4 py-3 text-slate-500">${u.email}</td>
-            <td class="px-4 py-3">${r.rolBadge}</td>
-            <td class="px-4 py-3">${r.activoBadge}</td>
-            <td class="px-4 py-3">
-                <div class="flex items-center gap-2">${r.acciones}</div>
-            </td>
-        </tr>`;
-    }).join('');
-
-    // Mobile cards
-    document.getElementById('listaUsuariosMobile').innerHTML = lista.map(u => {
-        const r = renderRow(u);
-        return `
-        <div id="user-card-${u.id}" class="p-4 ${r.sinPerfil ? 'bg-amber-50/50' : ''}">
-            <div class="flex items-start justify-between gap-3">
-                <div class="min-w-0 flex-1">
-                    <p class="font-medium text-slate-800 text-sm cursor-pointer hover:text-blue-600 hover:underline" onclick="verDocente('${u.id}')">${r.nombreCompleto}</p>
-                    <p class="text-xs text-slate-500 mt-0.5 truncate">${u.email}</p>
-                    <div class="flex items-center gap-2 mt-2">
-                        ${r.rolBadge}
-                        ${r.activoBadge}
-                    </div>
-                </div>
-                <div class="flex items-center gap-3 shrink-0">
-                    ${r.acciones}
-                </div>
-            </div>
-        </div>`;
-    }).join('');
-}
-
+// ==================== DOCENTES ====================
 async function cargarDocentes() {
     await cargarUsuariosSupa();
     filtrarDocentes();
@@ -2995,113 +2908,7 @@ function filtrarDocentes() {
     }
 }
 
-async function crearUsuario(e) {
-    e.preventDefault();
-    const email = document.getElementById('newEmail').value.trim().toLowerCase();
-    const password = document.getElementById('newPassword').value;
-    const nombre = document.getElementById('newNombre').value.trim();
-    const apellido = document.getElementById('newApellido').value.trim();
-    const rol = document.getElementById('newRol').value;
-
-    if (!email || !password || !nombre || !apellido) {
-        return mostrarToast('Todos los campos son obligatorios', 'error');
-    }
-    if (password.length < 6) {
-        return mostrarToast('La contraseña debe tener al menos 6 caracteres', 'error');
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        return mostrarToast('El email no tiene un formato válido', 'error');
-    }
-    if (nombre.length > 100) return mostrarToast('El nombre no puede exceder 100 caracteres', 'error');
-    if (apellido.length > 100) return mostrarToast('El apellido no puede exceder 100 caracteres', 'error');
-    if (email.length > 200) return mostrarToast('El email no puede exceder 200 caracteres', 'error');
-
-    if (USE_SUPABASE) {
-        mostrarToast('Creando usuario...', 'info');
-        // Creando usuario en Supabase
-        // Verificar si ya existe en auth.users (usando la función RPC)
-        const { data: usuariosExistentes } = await supabaseClient.rpc('listar_usuarios_completos');
-        if (usuariosExistentes?.some(u => u.email === email)) {
-            return mostrarToast('El email ya está registrado', 'error');
-        }
-        const { data: authData, error: authError } = await supabaseClient.auth.signUp({
-            email, password,
-            options: { data: { nombre, apellido, rol } }
-        });
-        if (authError) {
-            // Error creando usuario
-            console.error('[GIE] Error signUp:', authError);
-            const detalle = authError.code ? ` (${authError.code})` : '';
-            return mostrarToast(`Error creando usuario: ${authError.message}${detalle}. Revisá la consola para más detalles.`, 'error');
-        }
-        if (!authData.user) {
-            return mostrarToast('No se pudo crear el usuario', 'error');
-        }
-        // Si el trigger no generó el perfil, crearlo manualmente
-        const { data: perfilCreado } = await supabaseClient.from('perfiles').select('*').eq('id', authData.user.id).single();
-        if (!perfilCreado) {
-            // Trigger no generó perfil, creando manualmente
-            const cursos = (rol === 'docente' || rol === 'preceptor') ? [..._cursosNuevoUsuario] : [];
-            const alumnos_pat = (rol === 'pat') ? [..._alumnosPATNuevoUsuario] : [];
-            const { error: syncError } = await supabaseClient.rpc('sincronizar_perfil', {
-                p_id: authData.user.id,
-                p_email: email,
-                p_nombre: nombre,
-                p_apellido: apellido,
-                p_rol: rol,
-                p_activo: true,
-                p_cursos: cursos,
-                p_alumnos_pat: alumnos_pat
-            });
-            if (syncError) {
-                // Error sincronizando perfil
-                return mostrarToast('Usuario creado pero error al generar perfil', 'error');
-            }
-        } else {
-            if (_cursosNuevoUsuario.length > 0 && (rol === 'docente' || rol === 'preceptor')) {
-                await supabaseClient.from('perfiles').update({ cursos: [..._cursosNuevoUsuario] }).eq('id', authData.user.id);
-            }
-            if (_alumnosPATNuevoUsuario.length > 0 && rol === 'pat') {
-                await supabaseClient.from('perfiles').update({ alumnos_pat: [..._alumnosPATNuevoUsuario] }).eq('id', authData.user.id);
-            }
-        }
-        mostrarToast(`Usuario ${nombre} ${apellido} creado exitosamente`);
-    } else {
-        return mostrarToast('Servicio de autenticación no disponible', 'error');
-    }
-    document.getElementById('formUsuario').reset();
-    _cursosNuevoUsuario = [];
-    renderizarChipsCursos('newCursosLista', _cursosNuevoUsuario, 'quitarCursoNuevoUsuario');
-    _alumnosPATNuevoUsuario = [];
-    renderizarChipsAlumnosPAT('newAlumnosPATLista', _alumnosPATNuevoUsuario, 'quitarAlumnoPATNuevoUsuario');
-    const containerCursos = document.getElementById('containerCursosNuevoUsuario');
-    if (containerCursos) containerCursos.classList.add('hidden');
-    const containerPAT = document.getElementById('containerAlumnosPATNuevoUsuario');
-    if (containerPAT) containerPAT.classList.add('hidden');
-    await cargarUsuarios();
-}
-
-// ==================== EDITAR / ELIMINAR USUARIOS ====================
-window.sincronizarPerfilUsuario = async function(id, email) {
-    const { error } = await supabaseClient.rpc('sincronizar_perfil', {
-        p_id: id,
-        p_email: email,
-        p_nombre: 'Sin',
-        p_apellido: 'Nombre',
-        p_rol: 'docente',
-        p_activo: true
-    });
-    if (error) {
-        // Error sincronizando perfil
-        return mostrarToast('Error al crear perfil', 'error');
-    }
-    mostrarToast('Perfil creado correctamente');
-    await cargarUsuarios();
-};
-
-let _cursosEditando = [];
 let _cursosAjustes = [];
-let _cursosNuevoUsuario = [];
 
 function renderizarChipsCursos(containerId, cursos, onRemove) {
     const container = document.getElementById(containerId);
@@ -3163,24 +2970,6 @@ function _buscarAlumnoGenerico(query, resultadosId, onSelectFn) {
     }
     resultados.classList.remove('hidden');
 }
-
-window.agregarCursoEditar = function() {
-    const anio = document.getElementById('editUserCursoAnio').value;
-    const div = document.getElementById('editUserCursoDivision').value;
-    if (!anio || !div) return mostrarToast('Seleccioná año y división', 'error');
-    const curso = `${anio}${div}`;
-    if (_cursosEditando.includes(curso)) return mostrarToast('El curso ya está agregado', 'error');
-    _cursosEditando.push(curso);
-    _cursosEditando.sort();
-    renderizarChipsCursos('editUserCursosLista', _cursosEditando, 'quitarCursoEditar');
-    document.getElementById('editUserCursoAnio').value = '';
-    document.getElementById('editUserCursoDivision').value = '';
-};
-
-window.quitarCursoEditar = function(curso) {
-    _cursosEditando = _cursosEditando.filter(c => c !== curso);
-    renderizarChipsCursos('editUserCursosLista', _cursosEditando, 'quitarCursoEditar');
-};
 
 window.agregarMiCurso = async function() {
     const anio = document.getElementById('ajustesCursoAnio').value;
@@ -3275,143 +3064,6 @@ window.quitarAlumnoPAT = async function(id) {
     }
 };
 
-let _alumnosPATEditando = [];
-
-window.buscarAlumnoPATModal = function(query) {
-    _buscarAlumnoGenerico(query, 'editUserResultadosAlumnoPAT', 'seleccionarAlumnoPATModal');
-};
-
-window.seleccionarAlumnoPATModal = function(id, nombre, apellido) {
-    document.getElementById('editUserResultadosAlumnoPAT').classList.add('hidden');
-    document.getElementById('editUserBuscarAlumnoPAT').value = '';
-    if (_alumnosPATEditando.includes(id)) return mostrarToast('El alumno ya está agregado', 'error');
-    _alumnosPATEditando.push(id);
-    renderizarChipsAlumnosPAT('editUserAlumnosPATLista', _alumnosPATEditando, 'quitarAlumnoPATEditar');
-};
-
-window.quitarAlumnoPATEditar = function(id) {
-    _alumnosPATEditando = _alumnosPATEditando.filter(x => x !== id);
-    renderizarChipsAlumnosPAT('editUserAlumnosPATLista', _alumnosPATEditando, 'quitarAlumnoPATEditar');
-};
-
-window.agregarCursoNuevoUsuario = function() {
-    const anio = document.getElementById('newCursoAnio').value;
-    const div = document.getElementById('newCursoDivision').value;
-    if (!anio || !div) return mostrarToast('Seleccioná año y división', 'error');
-    const curso = `${anio}${div}`;
-    if (_cursosNuevoUsuario.includes(curso)) return mostrarToast('El curso ya está agregado', 'error');
-    _cursosNuevoUsuario.push(curso);
-    _cursosNuevoUsuario.sort();
-    renderizarChipsCursos('newCursosLista', _cursosNuevoUsuario, 'quitarCursoNuevoUsuario');
-    document.getElementById('newCursoAnio').value = '';
-    document.getElementById('newCursoDivision').value = '';
-};
-
-window.quitarCursoNuevoUsuario = function(curso) {
-    _cursosNuevoUsuario = _cursosNuevoUsuario.filter(c => c !== curso);
-    renderizarChipsCursos('newCursosLista', _cursosNuevoUsuario, 'quitarCursoNuevoUsuario');
-};
-
-let _alumnosPATNuevoUsuario = [];
-
-window.buscarAlumnoPATNuevoUsuario = function(query) {
-    _buscarAlumnoGenerico(query, 'newResultadosAlumnoPAT', 'seleccionarAlumnoPATNuevoUsuario');
-};
-
-window.seleccionarAlumnoPATNuevoUsuario = function(id, nombre, apellido) {
-    document.getElementById('newResultadosAlumnoPAT').classList.add('hidden');
-    document.getElementById('newBuscarAlumnoPAT').value = '';
-    if (_alumnosPATNuevoUsuario.includes(id)) return mostrarToast('El alumno ya está agregado', 'error');
-    _alumnosPATNuevoUsuario.push(id);
-    renderizarChipsAlumnosPAT('newAlumnosPATLista', _alumnosPATNuevoUsuario, 'quitarAlumnoPATNuevoUsuario');
-};
-
-window.quitarAlumnoPATNuevoUsuario = function(id) {
-    _alumnosPATNuevoUsuario = _alumnosPATNuevoUsuario.filter(x => x !== id);
-    renderizarChipsAlumnosPAT('newAlumnosPATLista', _alumnosPATNuevoUsuario, 'quitarAlumnoPATNuevoUsuario');
-};
-
-window.editarUsuarioForm = function(id) {
-    const u = usuarios.find(x => x.id === id);
-    if (!u) return mostrarToast('Usuario no encontrado', 'error');
-    document.getElementById('editUserId').value = u.id;
-    document.getElementById('editUserNombre').value = u.nombre || '';
-    document.getElementById('editUserApellido').value = u.apellido || '';
-    document.getElementById('editUserEmail').value = u.email;
-    document.getElementById('editUserRol').value = u.rol || 'docente';
-    document.getElementById('editUserActivo').checked = u.activo !== false;
-    _cursosEditando = [...(u.cursos || [])];
-    renderizarChipsCursos('editUserCursosLista', _cursosEditando, 'quitarCursoEditar');
-    _alumnosPATEditando = [...(u.alumnos_pat || [])];
-    renderizarChipsAlumnosPAT('editUserAlumnosPATLista', _alumnosPATEditando, 'quitarAlumnoPATEditar');
-    // Mostrar/ocultar secciones según rol
-    const val = u.rol || 'docente';
-    const cursosContainer = document.getElementById('editUserCursoAnio')?.parentElement;
-    const patContainer = document.getElementById('editUserAlumnosPATContainer');
-    if (cursosContainer) cursosContainer.classList.toggle('hidden', !(val === 'docente' || val === 'preceptor' || val === 'pat'));
-    if (patContainer) patContainer.classList.toggle('hidden', val !== 'pat');
-    document.getElementById('editUserPassword').value = '';
-    // Email no editable en Supabase (requiere confirmación), contraseña sí vía RPC
-    const esSupa = USE_SUPABASE;
-    document.getElementById('editUserEmail').disabled = esSupa;
-    document.getElementById('editUserEmail').classList.toggle('bg-slate-100', esSupa);
-    document.getElementById('editUserPassword').placeholder = 'Dejar vacío para no cambiar';
-    document.getElementById('editUserPassword').disabled = false;
-    document.getElementById('editUserPassword').classList.remove('bg-slate-100');
-    document.getElementById('modalEditarUsuario').classList.remove('hidden');
-    document.body.classList.add('overflow-hidden');
-};
-
-window.cerrarModalEditarUsuario = function() {
-    document.getElementById('modalEditarUsuario').classList.add('hidden');
-    document.body.classList.remove('overflow-hidden');
-};
-
-window.guardarEdicionUsuario = async function() {
-    const id = document.getElementById('editUserId').value;
-    const nombre = document.getElementById('editUserNombre').value.trim();
-    const apellido = document.getElementById('editUserApellido').value.trim();
-    const email = document.getElementById('editUserEmail').value.trim().toLowerCase();
-    const rol = document.getElementById('editUserRol').value;
-    const activo = document.getElementById('editUserActivo').checked;
-    const password = document.getElementById('editUserPassword').value;
-
-    if (!nombre || !apellido || !email) {
-        return mostrarToast('Nombre, apellido y email son obligatorios', 'error');
-    }
-    if (nombre.length > 100) return mostrarToast('El nombre no puede exceder 100 caracteres', 'error');
-    if (apellido.length > 100) return mostrarToast('El apellido no puede exceder 100 caracteres', 'error');
-    if (email.length > 200) return mostrarToast('El email no puede exceder 200 caracteres', 'error');
-
-    if (USE_SUPABASE) {
-        mostrarToast('Actualizando usuario...', 'info');
-        // 1. Actualizar perfil
-        const updates = { nombre, apellido, rol, activo, cursos: _cursosEditando, alumnos_pat: _alumnosPATEditando };
-        const { error } = await supabaseClient.from('perfiles').update(updates).eq('id', id);
-        if (error) { return mostrarToast('Error editando usuario', 'error'); }
-
-        // 2. Actualizar contraseña vía Edge Function si se ingresó una nueva
-        if (password) {
-            if (password.length < 6) {
-                return mostrarToast('La contraseña debe tener al menos 6 caracteres', 'error');
-            }
-            const { error: fnError } = await supabaseClient.functions.invoke('actualizar-password', {
-                body: { user_id: id, new_password: password }
-            });
-            if (fnError) {
-                return mostrarToast('Error cambiando contraseña: ' + (fnError.message || fnError), 'error');
-            }
-            // Contraseña actualizada
-        }
-        // Usuario editado
-    } else {
-        return mostrarToast('Servicio de autenticación no disponible', 'error');
-    }
-    mostrarToast('Usuario actualizado correctamente');
-    cerrarModalEditarUsuario();
-    await cargarUsuarios();
-};
-
 async function _persistirMisCursos() {
     const cursos = [..._cursosAjustes];
     const id = getPerfil()?.id;
@@ -3425,56 +3077,6 @@ async function _persistirMisCursos() {
     setPerfilCursos(cursos);
     return true;
 }
-
-let _eliminarUserId = null;
-
-window.mostrarModalEliminar = function(id) {
-    const u = usuarios.find(x => x.id === id);
-    if (!u) return;
-    if (id === getPerfil().id) {
-        return mostrarToast('No podés eliminar tu propio usuario', 'error');
-    }
-    if (u.email === 'admin@gie.com') {
-        return mostrarToast('No se puede eliminar al usuario administrador', 'error');
-    }
-    _eliminarUserId = id;
-    document.getElementById('eliminarUserNombre').textContent = `${u.nombre || u.email} (${u.email})`;
-    document.getElementById('modalConfirmarEliminar').classList.remove('hidden');
-    document.body.classList.add('overflow-hidden');
-};
-
-window.cerrarModalEliminar = function() {
-    _eliminarUserId = null;
-    document.getElementById('modalConfirmarEliminar').classList.add('hidden');
-    document.body.classList.remove('overflow-hidden');
-};
-
-window.confirmarEliminarUsuario = async function() {
-    if (!_eliminarUserId) return;
-    const id = _eliminarUserId;
-    const u = usuarios.find(x => x.id === id);
-    const row = document.getElementById(`user-row-${id}`);
-    const card = document.getElementById(`user-card-${id}`);
-    if (row) row.classList.add('animate-slide-out');
-    if (card) card.classList.add('animate-slide-out');
-
-    console.log('[GIE] Intentando eliminar usuario:', id, 'perfil actual:', getPerfil());
-    const { error } = await supabaseClient.rpc('eliminar_usuario_completo', { user_id: id });
-    if (error) {
-        console.error('[GIE] Error RPC eliminar_usuario_completo:', error);
-        if (row) row.classList.remove('animate-slide-out');
-        if (card) card.classList.remove('animate-slide-out');
-        return mostrarToast('Error eliminando usuario: ' + error.message, 'error');
-    }
-
-    mostrarToast(`Usuario ${u.nombre || u.email} eliminado`);
-    cerrarModalEliminar();
-    setTimeout(() => {
-        if (row) row.remove();
-        if (card) card.remove();
-        usuarios = usuarios.filter(x => x.id !== id);
-    }, 400);
-};
 
 // ==================== PLANTILLAS CRUD ====================
 async function cargarPlantillas() {
@@ -4060,9 +3662,6 @@ window.abrirModalCategorias = abrirModalCategorias;
 window.cerrarModalCategorias = cerrarModalCategorias;
 window.crearCategoria = crearCategoria;
 window.eliminarCategoria = eliminarCategoria;
-window.mostrarModalEliminar = mostrarModalEliminar;
-window.cerrarModalEliminar = cerrarModalEliminar;
-window.confirmarEliminarUsuario = confirmarEliminarUsuario;
 window.mostrarDerivacion = mostrarDerivacion;
 window.cerrarModalDerivacion = cerrarModalDerivacion;
 window.confirmarDerivacion = confirmarDerivacion;

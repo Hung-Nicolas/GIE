@@ -377,8 +377,9 @@ inspector_port = 8083
 # The Deno major version to use.
 deno_version = 2
 
-# [edge_runtime.secrets]
-# secret_key = "env(SECRET_VALUE)"
+[edge_runtime.secrets]
+NEXUS_URL = "env(NEXUS_URL)"
+NEXUS_ANON_KEY = "env(NEXUS_ANON_KEY)"
 
 [analytics]
 enabled = true

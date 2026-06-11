@@ -1,5 +1,4 @@
-import { NEXUS_ENABLED, nexusClient } from './nexus-client.js';
-import { supabaseClient } from './config.js';
+import { USE_SUPABASE as NEXUS_ENABLED, nexusClient, supabaseClient } from './config.js';
 
 /**
  * Sincroniza alumnos desde Nexus hacia GIE.
@@ -13,7 +12,7 @@ const MIN_SYNC_INTERVAL_MS = 5 * 60 * 1000;
 let _lastAlumnosSync = 0;
 
 export async function sincronizarAlumnosDesdeNexus(forzar = false) {
-    if (!NEXUS_ENABLED || !nexusClient) {
+    if (!NEXUS_ENABLED || !nexusClient || !supabaseClient) {
         console.warn('[Nexus] Cliente no configurado. Saltando sincronización.');
         return { ok: false, error: 'Nexus no configurado', sincronizados: 0 };
     }
@@ -155,6 +154,8 @@ function mapearRolNexusAGIE(rolNexus) {
     const map = {
         regente: 'regente',
         subregente: 'regente',
+        rector: 'regente',
+        vicerector: 'regente',
         jefe_de_taller: 'regente',
         docente: 'docente',
         preceptor: 'preceptor',
@@ -167,9 +168,10 @@ function mapearRolNexusAGIE(rolNexus) {
 /**
  * Sincroniza personal de Nexus hacia perfiles de GIE.
  * Solo actualiza perfiles existentes (no crea usuarios en auth.users).
+ * Los nuevos usuarios se crean automáticamente al iniciar sesión.
  */
 export async function sincronizarPersonalDesdeNexus(forzar = false) {
-    if (!NEXUS_ENABLED || !nexusClient) {
+    if (!NEXUS_ENABLED || !nexusClient || !supabaseClient) {
         console.warn('[Nexus] Cliente no configurado. Saltando sincronización de personal.');
         return { ok: false, error: 'Nexus no configurado' };
     }
@@ -266,7 +268,7 @@ export async function forzarSincronizacionNexus() {
  * Se llama después de crear o actualizar un informe.
  */
 export async function sincronizarInformeEnNexus(informeId) {
-    if (!NEXUS_ENABLED || !nexusClient) {
+    if (!NEXUS_ENABLED || !nexusClient || !supabaseClient) {
         console.warn('[Nexus] Cliente no configurado. Saltando sincronización de informe.');
         return { ok: false, error: 'Nexus no configurado' };
     }
@@ -369,7 +371,7 @@ export async function sincronizarInformeEnNexus(informeId) {
  * Lee informes de Nexus y los inserta en GIE vinculando por DNI.
  */
 export async function sincronizarInformesDesdeNexus() {
-    if (!NEXUS_ENABLED || !nexusClient) {
+    if (!NEXUS_ENABLED || !nexusClient || !supabaseClient) {
         console.warn('[Nexus] Cliente no configurado. Saltando sincronización de informes.');
         return { ok: false, error: 'Nexus no configurado', sincronizados: 0 };
     }
