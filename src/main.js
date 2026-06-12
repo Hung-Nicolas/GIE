@@ -2,7 +2,7 @@ import Chart from 'chart.js/auto';
 import html2pdf from 'html2pdf.js/dist/html2pdf.bundle.min.js';
 import { USE_SUPABASE, supabaseClient, nexusClient } from './config.js';
 import { getPerfil, setPerfil, esRegente, setPerfilCursos, showLogin, showApp, restoreSession, doLogout, updateAuthUI, setupLoginForm, setupLoginBanner } from './auth.js';
-import { sincronizarAlumnosDesdeNexus, sincronizarPersonalDesdeNexus, sincronizarInformeEnNexus } from './sync-nexus.js';
+import { sincronizarAlumnosDesdeNexus, sincronizarPersonalDesdeNexus } from './sync-nexus.js';
 import './styles.css';
 
 // ==================== ESTADO GLOBAL ====================
@@ -1214,7 +1214,6 @@ async function guardarInforme(e) {
             // Informe actualizado
             await registrarHistorial(editId, 'edicion', `Informe editado por ${getNombreUsuario(getPerfil().id)}`);
             await cargarInformes();
-            sincronizarInformeEnNexus(editId).catch(() => {}); // sincronización en segundo plano
             mostrarToast('Informe actualizado correctamente');
         } else {
             const nuevo = {
@@ -1233,7 +1232,6 @@ async function guardarInforme(e) {
             // Informe creado
             await registrarHistorial(nuevo.id, 'creacion', `Informe creado por ${getNombreUsuario(getPerfil().id)}`);
             await cargarInformes();
-            sincronizarInformeEnNexus(nuevo.id).catch(() => {}); // sincronización en segundo plano
             mostrarToast('Informe creado correctamente');
         }
         cancelarForm();
@@ -1624,7 +1622,6 @@ async function cambiarEstado(id, nuevoEstado, options = {}) {
 
     await registrarHistorial(id, accionHistorial, detalleHistorial);
     await cargarInformes();
-    sincronizarInformeEnNexus(id).catch(() => {});
     if (!silent) mostrarToast(`Informe ${toastLabel} correctamente`);
     if (debeCerrarModal) cerrarModal();
     if (recargarLista) filtrarInformes();
@@ -1688,7 +1685,6 @@ async function confirmarAnulacion() {
     // Informe rechazado
     await registrarHistorial(anulacionId, 'anulado', `Informe anulado por ${getNombreUsuario(getPerfil().id)}. Motivo: ${motivo}`);
     await cargarInformes();
-    sincronizarInformeEnNexus(anulacionId).catch(() => {});
 
     mostrarToast('Informe anulado');
     cerrarModalAnulacion();
@@ -1756,7 +1752,6 @@ async function confirmarDerivacion() {
     const destLabel = destinatario ? `${destinatario.apellido}, ${destinatario.nombre}` : destinatarioId;
     await registrarHistorial(derivacionId, 'derivacion', `Informe derivado a ${destLabel} por ${getNombreUsuario(getPerfil().id)}${observaciones ? '. ' + observaciones : ''}`);
     await cargarInformes();
-    sincronizarInformeEnNexus(derivacionId).catch(() => {});
     mostrarToast('Informe derivado correctamente');
     cerrarModalDerivacion();
     cerrarModal();

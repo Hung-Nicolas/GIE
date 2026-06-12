@@ -1,7 +1,6 @@
 import { getInforme, getDB, saveDB, cargarInformes, perfil } from './db.js';
 import { USE_SUPABASE, supabaseClient } from './config.js';
 import { mostrarToast, limpiarAlumno, showSection, generarId } from './app.js';
-import { sincronizarInformeEnNexus } from './sync-nexus.js';
 
 export async function guardarInforme(e) {
     e.preventDefault();
@@ -31,8 +30,6 @@ export async function guardarInforme(e) {
                 return;
             }
             await cargarInformes();
-            // Sincronizar con Nexus en segundo plano
-            sincronizarInformeEnNexus(editId).catch(err => console.error('[GIE] Sync Nexus failed:', err));
         } else {
             const db = getDB();
             const idx = db.informes.findIndex(i => i.id === editId);
@@ -60,9 +57,6 @@ export async function guardarInforme(e) {
                 return;
             }
             await cargarInformes();
-            // Sincronizar con Nexus en segundo plano
-            const nuevoId = insertData?.[0]?.id || nuevo.id;
-            sincronizarInformeEnNexus(nuevoId).catch(err => console.error('[GIE] Sync Nexus failed:', err));
         } else {
             const db = getDB();
             db.informes.push(nuevo);
