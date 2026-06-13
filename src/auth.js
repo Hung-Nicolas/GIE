@@ -1,4 +1,4 @@
-import { USE_SUPABASE, supabaseClient, nexusClient, GIE_URL, GIE_KEY } from './config.js';
+import { USE_SUPABASE, supabaseClient } from './config.js';
 
 // ==================== ESTADO DE AUTENTICACIÓN ====================
 let _perfil = null;
@@ -21,75 +21,7 @@ export function showApp() {
     document.getElementById('appContainer').classList.remove('hidden');
 }
 
-// ==================== HELPERS ====================
-function mapearRolNexusAGIE(rolNexus) {
-    const map = {
-        regente: 'regente', subregente: 'regente', rector: 'regente', vicerector: 'regente', jefe_de_taller: 'regente',
-        docente: 'docente', preceptor: 'preceptor', doe: 'doe', pat: 'pat'
-    };
-    return map[rolNexus] || 'docente';
-}
-
-async function obtenerRolDesdeNexus(email) {
-    try {
-        const { data, error } = await nexusClient
-            .from('perfiles')
-            .select('rol')
-            .eq('email', email)
-            .maybeSingle();
-        if (error) {
-            console.warn('[GIE] Error leyendo perfil de Nexus:', error);
-            return null;
-        }
-        return data?.rol || null;
-    } catch (err) {
-        console.warn('[GIE] Excepción leyendo perfil de Nexus:', err);
-        return null;
-    }
-}
-
-/**
- * Valida la sesión de Nexus contra la Edge Function de GIE y genera/devuelve
- * una contraseña temporal para iniciar sesión en GIE.
- */
-async function provisionarGIE(nexusAccessToken, email, rolNexus, nombre, apellido) {
-    const rolGIE = mapearRolNexusAGIE(rolNexus);
-
-    const res = await fetch(`${GIE_URL}/functions/v1/nexus-auth-provision`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${GIE_KEY}`,
-            'x-nexus-auth': nexusAccessToken
-        },
-        body: JSON.stringify({
-            rol: rolGIE,
-            nombre: nombre || undefined,
-            apellido: apellido || undefined
-        })
-    });
-
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok || !json.success || !json.password) {
-        throw new Error(json.error || 'Error provisionando sesión en GIE');
-    }
-
-    return json;
-}
-
-async function iniciarSesionGIE(email, password) {
-    const { data, error } = await supabaseClient.auth.signInWithPassword({
-        email,
-        password
-    });
-
-    if (error || !data?.session) {
-        throw new Error(error?.message || 'No se pudo iniciar sesión en GIE');
-    }
-
-    return data.session;
-}
-
+// ==================== PERFIL ====================
 async function cargarPerfilGIE() {
     const { data: { session } } = await supabaseClient.auth.getSession();
     if (!session?.user) return null;
@@ -128,24 +60,6 @@ export async function restoreSession() {
     if (!USE_SUPABASE) return null;
 
     try {
-        // 1. Intentar recuperar sesión de GIE
-        const perfil = await cargarPerfilGIE();
-        if (perfil) return perfil;
-
-        // 2. Si no hay sesión de GIE, intentar renovarla desde Nexus
-        const { data: { session: nexusSession } } = await nexusClient.auth.getSession();
-        if (!nexusSession?.access_token || !nexusSession?.user?.email) return null;
-
-        const rolNexus = await obtenerRolDesdeNexus(nexusSession.user.email);
-        const provision = await provisionarGIE(
-            nexusSession.access_token,
-            nexusSession.user.email,
-            rolNexus,
-            nexusSession.user.user_metadata?.nombre,
-            nexusSession.user.user_metadata?.apellido
-        );
-
-        await iniciarSesionGIE(provision.email, provision.password);
         return await cargarPerfilGIE();
     } catch (err) {
         console.error('[GIE] Error restaurando sesión:', err);
@@ -156,7 +70,6 @@ export async function restoreSession() {
 
 export async function clearSession() {
     if (supabaseClient) await supabaseClient.auth.signOut();
-    if (nexusClient) await nexusClient.auth.signOut();
     _perfil = null;
     sessionStorage.clear();
     localStorage.clear();
@@ -168,41 +81,19 @@ export async function doLogin(email, password) {
         return { ok: false, error: 'Servicio de autenticación no disponible.' };
     }
 
-    // 1. Autenticar contra Nexus
-    const { data: nexusData, error: nexusError } = await nexusClient.auth.signInWithPassword({ email, password });
-    if (nexusError || !nexusData?.session?.access_token) {
-        return { ok: false, error: 'Credenciales inválidas' };
+    const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+
+    if (error || !data?.session) {
+        return { ok: false, error: error?.message || 'Credenciales inválidas' };
     }
 
-    try {
-        // 2. Obtener rol desde personal de Nexus
-        const rolNexus = await obtenerRolDesdeNexus(nexusData.session.user.email);
-
-        // 3. Provisionar usuario/sesión en GIE
-        const provision = await provisionarGIE(
-            nexusData.session.access_token,
-            nexusData.session.user.email,
-            rolNexus,
-            nexusData.session.user.user_metadata?.nombre,
-            nexusData.session.user.user_metadata?.apellido
-        );
-
-        // 4. Iniciar sesión en GIE con contraseña temporal
-        await iniciarSesionGIE(provision.email, provision.password);
-
-        // 5. Cargar perfil local
-        const perfil = await cargarPerfilGIE();
-        if (!perfil) {
-            return { ok: false, error: 'Perfil no encontrado en GIE. Contactá al administrador.' };
-        }
-
-        return { ok: true };
-    } catch (err) {
-        console.error('[GIE] Error en doLogin:', err);
-        await nexusClient.auth.signOut();
+    const perfil = await cargarPerfilGIE();
+    if (!perfil) {
         await supabaseClient.auth.signOut();
-        return { ok: false, error: err.message || 'Error iniciando sesión en GIE' };
+        return { ok: false, error: 'Perfil no encontrado en GIE. Contactá al administrador.' };
     }
+
+    return { ok: true };
 }
 
 // ==================== LOGOUT ====================

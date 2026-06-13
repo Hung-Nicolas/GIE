@@ -23,7 +23,7 @@ Aplicación web para la gestión de informes disciplinarios y académicos escola
 
 | Rol | Permisos |
 |-----|----------|
-| **Regente** | Acceso total: gestión de informes, dashboard, estadísticas, docentes y plantillas. Puede aprobar, rechazar, reactivar y derivar informes. La gestión de usuarios se realiza en Nexus. |
+| **Regente** | Acceso total: gestión de informes, dashboard, estadísticas, docentes, usuarios y plantillas. Puede aprobar, rechazar, reactivar y derivar informes. Puede crear, editar, activar/desactivar, cambiar contraseña y eliminar usuarios. |
 | **Docente / Preceptor** | Crear, ver y editar sus propios informes. No pueden editar informes finalizados. Acceso a listado de alumnos (todos o "Mis cursos" según asignación). |
 | **DOE** | Visualización de informes derivados, archivados y anulados. Puede agregar observaciones y acciones en informes derivados, y devolverlos a estado `pendiente`. |
 | **PAT** | Seguimiento de alumnos asignados. Acceso limitado a la información de sus alumnos designados. |
@@ -59,9 +59,10 @@ Aplicación web para la gestión de informes disciplinarios y académicos escola
 - **Tabla "Informes por Curso"** con desglose por instancia para cada curso+división.
 - Top alumnos con más informes.
 
-### Docentes
+### Docentes y usuarios
 - Vista de docentes con historial de informes creados.
-- Los usuarios se gestionan en **Nexus**; GIE solo consulta los perfiles locales para mostrar nombres y roles.
+- Los regentes pueden gestionar usuarios desde la sección **Docentes y Personal**: crear, editar datos y cursos, activar/desactivar, cambiar contraseña y eliminar usuarios.
+- Los usuarios se autentican directamente en **GIE**.
 
 ### Administración
 - Panel de espacio utilizado en la base de datos.
@@ -70,16 +71,14 @@ Aplicación web para la gestión de informes disciplinarios y académicos escola
 
 ## 🔗 Integración con Nexus (Base de Datos Escolar Maestra)
 
-GIE se integra con **Nexus**, la BD escolar centralizada.
+GIE puede integrarse con **Nexus**, la BD escolar centralizada, únicamente para la sincronización de alumnos.
 
 ### Autenticación
-- El login se realiza contra **Supabase Auth de Nexus**.
-- GIE mantiene una copia local (shadow) de `auth.users` + `perfiles` para poder aplicar RLS y conservar sus propios roles/cursos.
-- Al iniciar sesión, una Edge Function (`nexus-auth-provision`) valida el JWT de Nexus, crea/actualiza el usuario en GIE y devuelve un token mágico para iniciar sesión en GIE.
-- Las contraseñas nunca se almacenan ni gestionan desde GIE.
+- El login se realiza directamente contra **Supabase Auth de GIE**.
+- Los usuarios, roles y contraseñas se gestionan en GIE.
 
 ### Sincronización de datos
-- **Nexus → GIE:** alumnos y personal (solo actualiza perfiles existentes; nuevos usuarios se crean al primer login).
-- **GIE → Nexus:** informes creados o modificados en GIE se sincronizan a Nexus vía RPC.
+- **Nexus → GIE:** alumnos vía Edge Function `sync-alumnos-nexus`, que corre en el servidor de GIE y no expone las credenciales de Nexus al frontend.
+- **GIE → Nexus:** no hay sincronización de informes ni usuarios hacia Nexus.
 
 

@@ -378,8 +378,12 @@ inspector_port = 8083
 deno_version = 2
 
 [edge_runtime.secrets]
+SUPABASE_URL = "env(SUPABASE_URL)"
+SUPABASE_ANON_KEY = "env(SUPABASE_ANON_KEY)"
+SUPABASE_SERVICE_ROLE_KEY = "env(SUPABASE_SERVICE_ROLE_KEY)"
 NEXUS_URL = "env(NEXUS_URL)"
 NEXUS_ANON_KEY = "env(NEXUS_ANON_KEY)"
+NEXUS_SERVICE_ROLE_KEY = "env(NEXUS_SERVICE_ROLE_KEY)"
 
 [analytics]
 enabled = true

@@ -1,8 +1,8 @@
 import Chart from 'chart.js/auto';
 import html2pdf from 'html2pdf.js/dist/html2pdf.bundle.min.js';
-import { USE_SUPABASE, supabaseClient, nexusClient } from './config.js';
+import { USE_SUPABASE, supabaseClient, GIE_URL, GIE_KEY } from './config.js';
 import { getPerfil, setPerfil, esRegente, setPerfilCursos, showLogin, showApp, restoreSession, doLogout, updateAuthUI, setupLoginForm, setupLoginBanner } from './auth.js';
-import { sincronizarAlumnosDesdeNexus, sincronizarPersonalDesdeNexus } from './sync-nexus.js';
+import { sincronizarAlumnosDesdeEdge } from './sync-alumnos-edge.js';
 import './styles.css';
 
 // ==================== ESTADO GLOBAL ====================
@@ -282,12 +282,21 @@ async function iniciarApp() {
     const cardMisAlumnosPAT = document.getElementById('cardMisAlumnosPAT');
     if (cardMisAlumnosPAT) cardMisAlumnosPAT.classList.toggle('hidden', !esPAT);
 
+    // Mostrar/ocultar items del menú según rol
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+        const section = btn.dataset.section;
+        if (section === 'dashboard' || section === 'estadisticas' || section === 'usuarios') {
+            btn.classList.toggle('hidden', !esRegente);
+        }
+    });
+
     await Promise.all([cargarAlumnos(), cargarInformes(), cargarPlantillas(), cargarCategorias(), cargarUsuariosSupa(), cargarTiposObservacion(), cargarObservacionesAlumnos()]);
     initFiltros();
 
-    // Sincronizar alumnos y personal desde Nexus en segundo plano
-    sincronizarAlumnosDesdeNexus().catch(() => {});
-    sincronizarPersonalDesdeNexus().catch(() => {});
+    // Sincronizar alumnos desde Nexus vía Edge Function en segundo plano (solo regentes)
+    if (esRegente) {
+        sincronizarAlumnosDesdeEdge().catch(() => {});
+    }
 
     if (esRegente) {
         showSection('dashboard');
@@ -556,6 +565,7 @@ function showSection(sectionId) {
         });
     }
     if (sectionId === 'docentes') { mostrarSkeleton('docentes'); cargarDocentes().then(() => ocultarSkeleton('docentes')); }
+    if (sectionId === 'usuarios') { mostrarSkeleton('usuarios'); cargarUsuarios().then(() => ocultarSkeleton('usuarios')); }
     if (sectionId === 'dashboard') { mostrarSkeleton('dashboard'); actualizarDashboard(); ocultarSkeleton('dashboard'); }
     if (sectionId === 'ajustes') {
         mostrarSkeleton('ajustes');
@@ -2903,6 +2913,127 @@ function filtrarDocentes() {
     }
 }
 
+// ==================== USUARIOS ====================
+async function cargarUsuarios() {
+    if (!esRegente()) return;
+    await cargarUsuariosSupa();
+
+    const rolColor = { regente: 'bg-purple-100 text-purple-700', preceptor: 'bg-blue-100 text-blue-700', docente: 'bg-green-100 text-green-700', doe: 'bg-orange-100 text-orange-700', pat: 'bg-teal-100 text-teal-700' };
+    const rolLabel = { regente: 'Regente', preceptor: 'Preceptor', docente: 'Docente', doe: 'DOE', pat: 'PAT' };
+    const perfilActual = getPerfil();
+
+    const lista = [...usuarios].sort((a, b) => `${a.apellido || ''}, ${a.nombre || ''}`.localeCompare(`${b.apellido || ''}, ${b.nombre || ''}`));
+
+    document.getElementById('listaUsuariosDesktop').innerHTML = lista.map(u => {
+        const puedeToggle = u.id !== perfilActual?.id && u.email !== 'admin@gie.com';
+        const accion = puedeToggle
+            ? `<button onclick="toggleUsuario('${u.id}', ${u.activo === false})" class="text-sm font-medium ${u.activo === false ? 'text-green-600 hover:text-green-700' : 'text-red-600 hover:text-red-700'}">${u.activo === false ? 'Activar' : 'Desactivar'}</button>`
+            : '<span class="text-xs text-slate-400">-</span>';
+        return `
+        <tr class="hover:bg-slate-50 transition-colors">
+            <td class="px-4 py-3 font-medium">${u.apellido || ''}, ${u.nombre || ''}</td>
+            <td class="px-4 py-3 text-slate-500">${u.email}</td>
+            <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-medium capitalize ${rolColor[u.rol] || 'bg-slate-100 text-slate-600'}">${rolLabel[u.rol] || u.rol}</span></td>
+            <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-medium ${u.activo === false ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">${u.activo === false ? 'Inactivo' : 'Activo'}</span></td>
+            <td class="px-4 py-3 text-center">${accion}</td>
+        </tr>
+    `;
+    }).join('');
+
+    document.getElementById('listaUsuariosMobile').innerHTML = lista.map(u => {
+        const puedeToggle = u.id !== perfilActual?.id && u.email !== 'admin@gie.com';
+        const accion = puedeToggle
+            ? `<button onclick="toggleUsuario('${u.id}', ${u.activo === false})" class="text-xs font-medium ${u.activo === false ? 'text-green-600 hover:text-green-700' : 'text-red-600 hover:text-red-700'}">${u.activo === false ? 'Activar' : 'Desactivar'}</button>`
+            : '';
+        return `
+        <div class="p-4">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                    <p class="font-medium text-slate-800 text-sm">${u.apellido || ''}, ${u.nombre || ''}</p>
+                    <p class="text-xs text-slate-500 mt-0.5 truncate">${u.email}</p>
+                    <div class="mt-2 flex items-center gap-2">
+                        ${u.rol ? `<span class="px-2 py-1 rounded-full text-xs font-medium capitalize ${rolColor[u.rol] || 'bg-slate-100 text-slate-600'}">${rolLabel[u.rol] || u.rol}</span>` : ''}
+                        <span class="px-2 py-1 rounded-full text-xs font-medium ${u.activo === false ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">${u.activo === false ? 'Inactivo' : 'Activo'}</span>
+                    </div>
+                    ${accion ? `<div class="mt-2">${accion}</div>` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+    }).join('');
+
+    const empty = document.getElementById('usuariosEmpty');
+    if (lista.length === 0) {
+        document.getElementById('listaUsuariosDesktop').innerHTML = '';
+        document.getElementById('listaUsuariosMobile').innerHTML = '';
+        empty?.classList.remove('hidden');
+    } else {
+        empty?.classList.add('hidden');
+    }
+}
+
+window.crearUsuario = async function() {
+    if (!esRegente()) return mostrarToast('Solo el regente puede crear usuarios', 'error');
+
+    const email = document.getElementById('newUsuarioEmail').value.trim().toLowerCase();
+    const password = document.getElementById('newUsuarioPassword').value;
+    const nombre = document.getElementById('newUsuarioNombre').value.trim();
+    const apellido = document.getElementById('newUsuarioApellido').value.trim();
+    const rol = document.getElementById('newUsuarioRol').value;
+
+    if (!email || !nombre || !apellido || !rol) {
+        return mostrarToast('Completá email, nombre, apellido y rol', 'error');
+    }
+    if (password.length < 6) {
+        return mostrarToast('La contraseña debe tener al menos 6 caracteres', 'error');
+    }
+
+    mostrarToast('Creando usuario...', 'info');
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const res = await fetch(`${GIE_URL}/functions/v1/crear-usuario`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session?.access_token || ''}`
+            },
+            body: JSON.stringify({ email, password, nombre, apellido, rol })
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || json.error) throw new Error(json.error || `HTTP ${res.status}`);
+
+        document.getElementById('newUsuarioEmail').value = '';
+        document.getElementById('newUsuarioPassword').value = '';
+        document.getElementById('newUsuarioNombre').value = '';
+        document.getElementById('newUsuarioApellido').value = '';
+        document.getElementById('newUsuarioRol').value = 'docente';
+
+        await cargarUsuarios();
+        mostrarToast('Usuario creado correctamente', 'success');
+    } catch (err) {
+        console.error('[GIE] Error creando usuario:', err);
+        mostrarToast(err.message || 'Error creando usuario', 'error');
+    }
+};
+
+window.toggleUsuario = async function(id, activo) {
+    if (!esRegente()) return mostrarToast('Solo el regente puede cambiar el estado', 'error');
+    const u = usuarios.find(x => x.id === id);
+    if (!u) return;
+    if (u.id === getPerfil()?.id) return mostrarToast('No podés cambiar tu propio estado', 'error');
+    if (u.email === 'admin@gie.com') return mostrarToast('No podés desactivar al administrador', 'error');
+
+    const accion = activo ? 'activar' : 'desactivar';
+    if (!confirm(`¿${accion.charAt(0).toUpperCase() + accion.slice(1)} el usuario ${u.nombre} ${u.apellido}?`)) return;
+
+    const { error } = await supabaseClient.from('perfiles').update({ activo }).eq('id', id);
+    if (error) return mostrarToast(error.message, 'error');
+
+    await cargarUsuarios();
+    mostrarToast(`Usuario ${activo ? 'activado' : 'desactivado'}`, 'success');
+};
+
 let _cursosAjustes = [];
 
 function renderizarChipsCursos(containerId, cursos, onRemove) {
@@ -2965,6 +3096,264 @@ function _buscarAlumnoGenerico(query, resultadosId, onSelectFn) {
     }
     resultados.classList.remove('hidden');
 }
+
+// ==================== GESTIÓN DE USUARIOS ====================
+let _usuarioEdicionId = null;
+let _cursosUsuario = [];
+let _alumnosPATUsuario = [];
+
+function abrirModalUsuario(userId = null) {
+    if (!esRegente()) return mostrarToast('Solo el regente puede gestionar usuarios', 'error');
+
+    _usuarioEdicionId = userId || null;
+    _cursosUsuario = [];
+    _alumnosPATUsuario = [];
+
+    const titulo = document.getElementById('tituloModalUsuario');
+    const emailInput = document.getElementById('usuarioEmail');
+    const passInput = document.getElementById('usuarioPassword');
+    const passRequerido = document.getElementById('usuarioPasswordRequerido');
+    const passHint = document.getElementById('usuarioPasswordHint');
+
+    emailInput.disabled = !!userId;
+    passInput.value = '';
+
+    if (userId) {
+        const u = usuarios.find(x => x.id === userId);
+        if (!u) return mostrarToast('Usuario no encontrado', 'error');
+        titulo.textContent = 'Editar usuario';
+        emailInput.value = u.email || '';
+        document.getElementById('usuarioNombre').value = u.nombre || '';
+        document.getElementById('usuarioApellido').value = u.apellido || '';
+        document.getElementById('usuarioRol').value = u.rol || 'docente';
+        document.getElementById('usuarioActivo').checked = u.activo !== false;
+        _cursosUsuario = Array.isArray(u.cursos) ? [...u.cursos] : [];
+        _alumnosPATUsuario = Array.isArray(u.alumnos_pat) ? [...u.alumnos_pat] : [];
+        passRequerido.classList.add('hidden');
+        passHint.classList.remove('hidden');
+    } else {
+        titulo.textContent = 'Nuevo usuario';
+        emailInput.value = '';
+        document.getElementById('usuarioNombre').value = '';
+        document.getElementById('usuarioApellido').value = '';
+        document.getElementById('usuarioRol').value = 'docente';
+        document.getElementById('usuarioActivo').checked = true;
+        passRequerido.classList.remove('hidden');
+        passHint.classList.add('hidden');
+    }
+
+    onChangeRolUsuario();
+    _renderizarCursosUsuario();
+    _cargarSelectAlumnosPAT();
+    _renderizarAlumnosPATUsuario();
+
+    document.getElementById('modalUsuario').classList.remove('hidden');
+    document.body.classList.add('overflow-hidden');
+}
+
+function cerrarModalUsuario() {
+    document.getElementById('modalUsuario').classList.add('hidden');
+    document.body.classList.remove('overflow-hidden');
+    _usuarioEdicionId = null;
+    _cursosUsuario = [];
+    _alumnosPATUsuario = [];
+}
+
+function onChangeRolUsuario() {
+    const rol = document.getElementById('usuarioRol').value;
+    const grupoPAT = document.getElementById('grupoAlumnosPAT');
+    if (grupoPAT) grupoPAT.classList.toggle('hidden', rol !== 'pat');
+}
+
+function _renderizarCursosUsuario() {
+    renderizarChipsCursos('usuarioCursosChips', _cursosUsuario, 'quitarCursoUsuario');
+}
+
+window.agregarCursoUsuario = function() {
+    const input = document.getElementById('usuarioNuevoCurso');
+    const curso = (input.value || '').trim();
+    if (!curso) return;
+    if (_cursosUsuario.includes(curso)) return mostrarToast('El curso ya está agregado', 'error');
+    _cursosUsuario.push(curso);
+    _cursosUsuario.sort();
+    _renderizarCursosUsuario();
+    input.value = '';
+};
+
+window.quitarCursoUsuario = function(curso) {
+    _cursosUsuario = _cursosUsuario.filter(c => c !== curso);
+    _renderizarCursosUsuario();
+};
+
+function _renderizarAlumnosPATUsuario() {
+    renderizarChipsAlumnosPAT('usuarioAlumnosPATChips', _alumnosPATUsuario, 'quitarAlumnoPATUsuario');
+}
+
+function _cargarSelectAlumnosPAT() {
+    const select = document.getElementById('usuarioNuevoAlumnoPAT');
+    if (!select) return;
+    const asignados = new Set(_alumnosPATUsuario);
+    const opciones = alumnos
+        .filter(a => !asignados.has(a.id))
+        .sort((a, b) => `${a.apellido}, ${a.nombre}`.localeCompare(`${b.apellido}, ${b.nombre}`))
+        .map(a => `<option value="${a.id}">${a.apellido}, ${a.nombre} · ${a.curso} ${a.division}</option>`)
+        .join('');
+    select.innerHTML = '<option value="">Seleccionar alumno...</option>' + opciones;
+}
+
+window.agregarAlumnoPATUsuario = function() {
+    const select = document.getElementById('usuarioNuevoAlumnoPAT');
+    const id = select.value;
+    if (!id) return;
+    if (_alumnosPATUsuario.includes(id)) return;
+    _alumnosPATUsuario.push(id);
+    _renderizarAlumnosPATUsuario();
+    _cargarSelectAlumnosPAT();
+    select.value = '';
+};
+
+window.quitarAlumnoPATUsuario = function(id) {
+    _alumnosPATUsuario = _alumnosPATUsuario.filter(x => x !== id);
+    _renderizarAlumnosPATUsuario();
+    _cargarSelectAlumnosPAT();
+};
+
+async function guardarUsuario() {
+    if (!esRegente()) return mostrarToast('Solo el regente puede guardar usuarios', 'error');
+
+    const email = document.getElementById('usuarioEmail').value.trim().toLowerCase();
+    const nombre = document.getElementById('usuarioNombre').value.trim();
+    const apellido = document.getElementById('usuarioApellido').value.trim();
+    const rol = document.getElementById('usuarioRol').value;
+    const activo = document.getElementById('usuarioActivo').checked;
+    const password = document.getElementById('usuarioPassword').value;
+
+    if (!email || !nombre || !apellido || !rol) {
+        return mostrarToast('Completá email, nombre, apellido y rol', 'error');
+    }
+
+    const esNuevo = !_usuarioEdicionId;
+    if (esNuevo && password.length < 6) {
+        return mostrarToast('La contraseña debe tener al menos 6 caracteres', 'error');
+    }
+
+    mostrarToast('Guardando usuario...', 'info');
+
+    try {
+        if (esNuevo) {
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            const res = await fetch(`${GIE_URL}/functions/v1/crear-usuario`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${session?.access_token || ''}`
+                },
+                body: JSON.stringify({ email, password, nombre, apellido, rol })
+            });
+            const json = await res.json().catch(() => ({}));
+            if (!res.ok || json.error) throw new Error(json.error || `HTTP ${res.status}`);
+
+            const nuevoId = json.user?.id;
+            if (nuevoId) {
+                await supabaseClient.from('perfiles').update({
+                    activo,
+                    cursos: _cursosUsuario,
+                    alumnos_pat: rol === 'pat' ? _alumnosPATUsuario : []
+                }).eq('id', nuevoId);
+            }
+        } else {
+            const updates = {
+                nombre,
+                apellido,
+                rol,
+                activo,
+                cursos: _cursosUsuario,
+                alumnos_pat: rol === 'pat' ? _alumnosPATUsuario : []
+            };
+            const { error } = await supabaseClient.from('perfiles').update(updates).eq('id', _usuarioEdicionId);
+            if (error) throw new Error(error.message);
+
+            if (password.length >= 6) {
+                await cambiarPasswordUsuario(_usuarioEdicionId, password);
+            }
+        }
+
+        await cargarUsuariosSupa();
+        filtrarDocentes();
+        cerrarModalUsuario();
+        mostrarToast('Usuario guardado', 'success');
+    } catch (err) {
+        console.error('[GIE] Error guardando usuario:', err);
+        mostrarToast(err.message || 'Error guardando usuario', 'error');
+    }
+}
+
+window.cambiarPasswordUsuario = async function(userId, nuevaPassword = null) {
+    if (!esRegente()) return mostrarToast('Solo el regente puede cambiar contraseñas', 'error');
+
+    let password = nuevaPassword;
+    if (!password) {
+        password = prompt('Ingresá la nueva contraseña (mínimo 6 caracteres):');
+        if (!password || password.length < 6) return mostrarToast('Contraseña inválida', 'error');
+    }
+
+    try {
+        const { data: { session } } = await supabaseClient.auth.getSession();
+        const res = await fetch(`${GIE_URL}/functions/v1/actualizar-password`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${session?.access_token || ''}`
+            },
+            body: JSON.stringify({ user_id: userId, new_password: password })
+        });
+        const json = await res.json().catch(() => ({}));
+        if (!res.ok || json.error) throw new Error(json.error || `HTTP ${res.status}`);
+        if (!nuevaPassword) mostrarToast('Contraseña actualizada', 'success');
+    } catch (err) {
+        console.error('[GIE] Error cambiando contraseña:', err);
+        if (!nuevaPassword) mostrarToast(err.message || 'Error cambiando contraseña', 'error');
+        throw err;
+    }
+};
+
+window.cambiarEstadoUsuario = async function(userId, activo) {
+    if (!esRegente()) return mostrarToast('Solo el regente puede cambiar el estado', 'error');
+    const u = usuarios.find(x => x.id === userId);
+    if (!u) return;
+    if (u.id === getPerfil()?.id) return mostrarToast('No podés cambiar tu propio estado', 'error');
+    if (u.email === 'admin@gie.com') return mostrarToast('No podés desactivar al administrador', 'error');
+
+    const accion = activo ? 'activar' : 'desactivar';
+    if (!confirm(`¿${accion.charAt(0).toUpperCase() + accion.slice(1)} el usuario ${u.nombre} ${u.apellido}?`)) return;
+
+    const { error } = await supabaseClient.from('perfiles').update({ activo }).eq('id', userId);
+    if (error) return mostrarToast(error.message, 'error');
+
+    await cargarUsuariosSupa();
+    filtrarDocentes();
+    mostrarToast(`Usuario ${activo ? 'activado' : 'desactivado'}`, 'success');
+};
+
+window.eliminarUsuario = async function(userId) {
+    if (!esRegente()) return mostrarToast('Solo el regente puede eliminar usuarios', 'error');
+    const u = usuarios.find(x => x.id === userId);
+    if (!u) return;
+    if (u.id === getPerfil()?.id) return mostrarToast('No podés eliminar tu propio usuario', 'error');
+    if (u.email === 'admin@gie.com') return mostrarToast('No podés eliminar al administrador', 'error');
+    if (!confirm(`¿Eliminar definitivamente al usuario ${u.nombre} ${u.apellido}? Esta acción no se puede deshacer.`)) return;
+
+    try {
+        const { error } = await supabaseClient.rpc('eliminar_usuario_completo', { user_id: userId });
+        if (error) throw new Error(error.message);
+        await cargarUsuariosSupa();
+        filtrarDocentes();
+        mostrarToast('Usuario eliminado', 'success');
+    } catch (err) {
+        console.error('[GIE] Error eliminando usuario:', err);
+        mostrarToast(err.message || 'Error eliminando usuario', 'error');
+    }
+};
 
 window.agregarMiCurso = async function() {
     const anio = document.getElementById('ajustesCursoAnio').value;
@@ -3752,6 +4141,15 @@ window.eliminarReunion = async function() {
 };
 
 window.mostrarToast = mostrarToast;
+
+// ==================== GESTIÓN DE USUARIOS (window) ====================
+window.cargarUsuarios = cargarUsuarios;
+window.abrirModalUsuario = abrirModalUsuario;
+window.cerrarModalUsuario = cerrarModalUsuario;
+window.guardarUsuario = guardarUsuario;
+window.onChangeRolUsuario = onChangeRolUsuario;
+window.quitarCursoUsuario = quitarCursoUsuario;
+window.quitarAlumnoPATUsuario = quitarAlumnoPATUsuario;
 
 // ==================== VER CONTRASEÑA ====================
 window.togglePassword = function(inputId, btn) {

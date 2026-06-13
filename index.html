@@ -100,6 +100,9 @@
             <button class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" data-section="docentes">
                 <i class="fas fa-chalkboard-teacher w-5"></i><span>Docentes</span>
             </button>
+            <button class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" data-section="usuarios">
+                <i class="fas fa-users w-5"></i><span>Usuarios</span>
+            </button>
             <button class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" data-section="estadisticas">
                 <i class="fas fa-chart-bar w-5"></i><span>Estadísticas</span>
             </button>
@@ -510,7 +513,7 @@
             </div>
             <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4 flex items-center gap-2 text-sm text-blue-700">
                 <i class="fas fa-sync-alt text-blue-500"></i>
-                <span>Los alumnos se sincronizan automáticamente desde <strong>Nexus</strong>. Para crear o modificar un alumno, usá el sistema Nexus.</span>
+                <span>Los alumnos se sincronizan automáticamente desde el sistema de gestión escolar. Para crear o modificar un alumno, usá ese sistema.</span>
             </div>
             <div id="tabsAlumnos" class="flex gap-2 mb-4 overflow-x-auto hidden">
                 <button id="tabAlumnosTodos" onclick="setTabAlumnos('todos')" class="tab-alumnos px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white">
@@ -676,6 +679,106 @@
                 <div id="docentesEmpty" class="hidden text-center py-12">
                     <i class="fas fa-search text-4xl text-slate-300 mb-3"></i>
                     <p class="text-slate-500">No se encontraron docentes</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- USUARIOS -->
+        <section id="usuarios" class="section hidden p-6 max-w-6xl mx-auto animate-fade-in">
+            <!-- Skeleton Usuarios -->
+            <div id="skeleton-usuarios" class="skeleton-container">
+                <div class="skeleton-text h-8 w-48 mb-6"></div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                        <div class="skeleton-text h-9 w-full"></div>
+                        <div class="skeleton-text h-9 w-full"></div>
+                        <div class="skeleton-text h-9 w-full"></div>
+                        <div class="skeleton-text h-9 w-full"></div>
+                        <div class="skeleton-text h-9 w-full"></div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="hidden md:block">
+                        <div class="flex gap-2 p-3 bg-slate-50 border-b border-slate-100">
+                            <div class="skeleton-text h-4 w-32"></div>
+                            <div class="skeleton-text h-4 w-40"></div>
+                            <div class="skeleton-text h-4 w-24"></div>
+                            <div class="skeleton-text h-4 w-20"></div>
+                            <div class="skeleton-text h-4 w-24"></div>
+                        </div>
+                        <div class="divide-y divide-slate-100">
+                            <div class="flex gap-2 p-3"><div class="skeleton-text h-4 w-32"></div><div class="skeleton-text h-4 w-40"></div><div class="skeleton-text h-4 w-24"></div><div class="skeleton-text h-4 w-20"></div><div class="skeleton-text h-4 w-24"></div></div>
+                            <div class="flex gap-2 p-3"><div class="skeleton-text h-4 w-32"></div><div class="skeleton-text h-4 w-40"></div><div class="skeleton-text h-4 w-24"></div><div class="skeleton-text h-4 w-20"></div><div class="skeleton-text h-4 w-24"></div></div>
+                        </div>
+                    </div>
+                    <div class="md:hidden divide-y divide-slate-100">
+                        <div class="p-3 space-y-2"><div class="skeleton-text h-4 w-3/4"></div><div class="skeleton-text h-3 w-1/2"></div><div class="skeleton-text h-3 w-2/3"></div></div>
+                        <div class="p-3 space-y-2"><div class="skeleton-text h-4 w-3/4"></div><div class="skeleton-text h-3 w-1/2"></div><div class="skeleton-text h-3 w-2/3"></div></div>
+                    </div>
+                </div>
+            </div>
+            <div id="content-usuarios" class="section-content hidden">
+                <h1 class="text-2xl font-bold text-slate-800 mb-6">Usuarios del Sistema</h1>
+
+                <!-- Formulario de creación -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
+                    <h2 class="text-sm font-semibold text-slate-700 mb-3">Crear nuevo usuario</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4 items-end">
+                        <div class="lg:col-span-1">
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Nombre</label>
+                            <input type="text" id="newUsuarioNombre" placeholder="Nombre" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        <div class="lg:col-span-1">
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Apellido</label>
+                            <input type="text" id="newUsuarioApellido" placeholder="Apellido" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        <div class="lg:col-span-2">
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Email</label>
+                            <input type="email" id="newUsuarioEmail" placeholder="usuario@escuela.edu.ar" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        <div class="lg:col-span-1">
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Contraseña</label>
+                            <input type="password" id="newUsuarioPassword" placeholder="Mínimo 6 caracteres" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        </div>
+                        <div class="lg:col-span-1">
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Rol</label>
+                            <select id="newUsuarioRol" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
+                                <option value="docente">Docente</option>
+                                <option value="preceptor">Preceptor</option>
+                                <option value="doe">DOE</option>
+                                <option value="pat">PAT</option>
+                                <option value="regente">Regente</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-4 flex justify-end">
+                        <button onclick="crearUsuario()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+                            <i class="fas fa-plus mr-2"></i>Crear usuario
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Tabla de usuarios -->
+                <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div class="hidden md:block overflow-x-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="bg-slate-50 text-slate-600 font-medium">
+                                <tr>
+                                    <th class="px-4 py-3">Nombre</th>
+                                    <th class="px-4 py-3">Email</th>
+                                    <th class="px-4 py-3">Rol</th>
+                                    <th class="px-4 py-3">Estado</th>
+                                    <th class="px-4 py-3 text-center">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="listaUsuariosDesktop" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                    </div>
+                    <div id="listaUsuariosMobile" class="md:hidden divide-y divide-slate-100"></div>
+                </div>
+                <div id="usuariosEmpty" class="hidden text-center py-12">
+                    <i class="fas fa-search text-4xl text-slate-300 mb-3"></i>
+                    <p class="text-slate-500">No se encontraron usuarios</p>
                 </div>
             </div>
         </section>
@@ -905,7 +1008,7 @@
                 <ul class="space-y-2 text-sm text-slate-600">
                     <li class="flex items-start gap-2">
                         <i class="fas fa-check-circle text-green-500 mt-0.5 text-xs"></i>
-                        <span><strong>Integración con Nexus</strong> para sincronización de alumnos.</span>
+                        <span><strong>Sincronización automática</strong> de alumnos desde el sistema de gestión escolar.</span>
                     </li>
                     <li class="flex items-start gap-2">
                         <i class="fas fa-check-circle text-green-500 mt-0.5 text-xs"></i>
@@ -1326,6 +1429,77 @@
                 <button onclick="guardarCambioReunion()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors">Guardar cambio</button>
                 <button onclick="posponerReunion(7)" class="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg transition-colors text-sm"><i class="fas fa-calendar-plus mr-1"></i>+7 días</button>
                 <button onclick="eliminarReunion()" class="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg transition-colors text-sm"><i class="fas fa-trash mr-1"></i>Eliminar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Usuario -->
+    <div id="modalUsuario" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-fade-in">
+            <div class="p-6 border-b border-slate-200 flex justify-between items-center">
+                <h3 id="tituloModalUsuario" class="text-lg font-bold text-slate-800">Nuevo usuario</h3>
+                <button onclick="cerrarModalUsuario()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="p-6 space-y-4">
+                <input type="hidden" id="usuarioId">
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Email <span class="text-red-500">*</span></label>
+                    <input type="email" id="usuarioEmail" placeholder="usuario@escuela.edu.ar" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Nombre <span class="text-red-500">*</span></label>
+                        <input type="text" id="usuarioNombre" placeholder="Nombre" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-500 mb-1">Apellido <span class="text-red-500">*</span></label>
+                        <input type="text" id="usuarioApellido" placeholder="Apellido" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Rol <span class="text-red-500">*</span></label>
+                    <select id="usuarioRol" onchange="onChangeRolUsuario()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
+                        <option value="docente">Docente</option>
+                        <option value="preceptor">Preceptor</option>
+                        <option value="doe">DOE</option>
+                        <option value="pat">PAT</option>
+                        <option value="regente">Regente</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Contraseña <span id="usuarioPasswordRequerido" class="text-red-500">*</span></label>
+                    <input type="password" id="usuarioPassword" placeholder="Mínimo 6 caracteres" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                    <p id="usuarioPasswordHint" class="text-xs text-slate-500 mt-1">Dejá en blanco para mantener la contraseña actual al editar.</p>
+                </div>
+                <div class="flex items-center justify-between bg-slate-50 rounded-lg border border-slate-200 p-3">
+                    <span class="text-sm font-medium text-slate-700">Usuario activo</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="usuarioActivo" class="sr-only peer" checked>
+                        <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-500 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Cursos asignados</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="usuarioNuevoCurso" placeholder="Ej: 1° A" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
+                        <button onclick="agregarCursoUsuario()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <div id="usuarioCursosChips" class="flex flex-wrap gap-2 mt-2"></div>
+                </div>
+                <div id="grupoAlumnosPAT" class="hidden">
+                    <label class="block text-xs font-medium text-slate-500 mb-1">Alumnos PAT</label>
+                    <div class="flex gap-2">
+                        <select id="usuarioNuevoAlumnoPAT" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
+                            <option value="">Seleccionar alumno...</option>
+                        </select>
+                        <button onclick="agregarAlumnoPATUsuario()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm"><i class="fas fa-plus"></i></button>
+                    </div>
+                    <div id="usuarioAlumnosPATChips" class="flex flex-wrap gap-2 mt-2"></div>
+                </div>
+            </div>
+            <div class="p-6 border-t border-slate-200 bg-slate-50 flex flex-wrap justify-end gap-3">
+                <button onclick="cerrarModalUsuario()" class="px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 transition-colors text-sm">Cancelar</button>
+                <button onclick="guardarUsuario()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition-colors">Guardar</button>
             </div>
         </div>
     </div>
