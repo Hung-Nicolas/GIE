@@ -711,7 +711,55 @@ window.confirmarLogout = async function() {
     document.getElementById('loginForm').reset();
 };
 
-// ==================== UTILIDADES ====================
+// ==================== UTILIDADES / SEGURIDAD ====================
+
+/**
+ * Escapa caracteres HTML peligrosos para prevenir XSS.
+ * @param {string} text
+ * @returns {string}
+ */
+function escapeHtml(text) {
+    if (text == null) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/`/g, '&#96;');
+}
+
+/**
+ * Escapa un valor para usarlo dentro de un atributo HTML entre comillas dobles.
+ * @param {string} text
+ * @returns {string}
+ */
+function escapeAttr(text) {
+    if (text == null) return '';
+    return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+}
+
+/**
+ * Escapa un valor para usarlo dentro de una cadena JavaScript inline (onclick, etc.).
+ * @param {string} text
+ * @returns {string}
+ */
+function escapeJsString(text) {
+    if (text == null) return '';
+    return String(text)
+        .replace(/\\/g, '\\\\')
+        .replace(/'/g, "\\'")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
+        .replace(/\t/g, '\\t');
+}
+
 function formatearFecha(fecha) {
     if (!fecha) return 'N/A';
     return new Date(fecha).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
@@ -754,15 +802,15 @@ function buscarAlumno(query) {
         resultados.innerHTML = filtrados.map(a => `
             <div tabindex="0"
                 data-alumno-id="${a.id}"
-                data-alumno-nombre="${a.nombre}"
-                data-alumno-apellido="${a.apellido}"
-                data-alumno-curso="${a.curso}"
-                data-alumno-division="${a.division}"
-                data-alumno-turno="${a.turno || ''}"
-                onclick="seleccionarAlumno('${a.id}', '${a.nombre}', '${a.apellido}', '${a.curso}', '${a.division}', '${a.turno || ''}')"
+                data-alumno-nombre="${escapeAttr(a.nombre)}"
+                data-alumno-apellido="${escapeAttr(a.apellido)}"
+                data-alumno-curso="${escapeAttr(a.curso)}"
+                data-alumno-division="${escapeAttr(a.division)}"
+                data-alumno-turno="${escapeAttr(a.turno || '')}"
+                onclick="seleccionarAlumno('${a.id}', '${escapeJsString(a.nombre)}', '${escapeJsString(a.apellido)}', '${escapeJsString(a.curso)}', '${escapeJsString(a.division)}', '${escapeJsString(a.turno || '')}')"
                 class="p-3 hover:bg-slate-50 focus:bg-blue-50 cursor-pointer border-b border-slate-100 last:border-0 outline-none">
-                <p class="font-medium text-sm">${a.apellido}, ${a.nombre}</p>
-                <p class="text-xs text-slate-500">${a.curso} ${a.division}${a.turno ? ' · ' + a.turno : ''}</p>
+                <p class="font-medium text-sm">${escapeHtml(a.apellido)}, ${escapeHtml(a.nombre)}</p>
+                <p class="text-xs text-slate-500">${escapeHtml(a.curso)} ${escapeHtml(a.division)}${a.turno ? ' · ' + escapeHtml(a.turno) : ''}</p>
             </div>`).join('');
     }
     resultados.classList.remove('hidden');
@@ -883,13 +931,13 @@ function renderizarAlumnos(lista, informesPorAlumno) {
         <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 hover:shadow-md transition-shadow cursor-pointer card-scroll" onclick="verAlumno('${a.id}')">
             <div class="flex items-center gap-3 mb-3">
                 <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center text-white font-bold text-sm">
-                    ${a.nombre[0]}${a.apellido[0]}
+                    ${escapeHtml(a.nombre[0])}${escapeHtml(a.apellido[0])}
                 </div>
                 <div class="flex-1 min-w-0">
-                    <h3 class="font-semibold text-slate-800 text-sm">${a.apellido}, ${a.nombre}</h3>
+                    <h3 class="font-semibold text-slate-800 text-sm">${escapeHtml(a.apellido)}, ${escapeHtml(a.nombre)}</h3>
                     <div class="flex items-center gap-2 mt-0.5">
-                        <p class="text-xs text-slate-500">${a.curso} ${a.division}</p>
-                        ${a.turno ? `<span class="text-[10px] px-1.5 py-0.5 rounded font-medium ${turnoColor}">${a.turno}</span>` : ''}
+                        <p class="text-xs text-slate-500">${escapeHtml(a.curso)} ${escapeHtml(a.division)}</p>
+                        ${a.turno ? `<span class="text-[10px] px-1.5 py-0.5 rounded font-medium ${turnoColor}">${escapeHtml(a.turno)}</span>` : ''}
                     </div>
                 </div>
             </div>
@@ -1062,18 +1110,18 @@ function renderCardInforme(i) {
             </button>
         </div>` : '';
     return `
-    <div id="item-${i.id}" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 cursor-pointer hover:shadow-md transition-all instancia-${i.instancia} card-scroll">
+    <div id="item-${i.id}" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 cursor-pointer hover:shadow-md transition-all instancia-${escapeAttr(i.instancia)} card-scroll">
         <div class="flex flex-col sm:flex-row justify-between items-start gap-3" onclick="verDetalle('${i.id}')">
             <div class="flex-1">
                 <div class="flex items-center gap-2 mb-1 flex-wrap">
-                    <span class="status-${estadoVisual} px-2 py-0.5 rounded-full text-xs font-medium capitalize">${estadoVisual.replace('_', ' ')}</span>
+                    <span class="status-${escapeAttr(estadoVisual)} px-2 py-0.5 rounded-full text-xs font-medium capitalize">${escapeHtml(estadoVisual.replace('_', ' '))}</span>
                     <span class="text-xs text-slate-500">${formatearFechaCorta(i.fecha_creacion)}</span>
-                    ${i.numero !== null && i.numero !== undefined ? `<span class="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">Informe N° ${i.numero}</span>` : `<span class="text-xs text-red-500 italic">Sin numerar</span>`}
+                    ${i.numero !== null && i.numero !== undefined ? `<span class="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">Informe N° ${escapeHtml(i.numero)}</span>` : `<span class="text-xs text-red-500 italic">Sin numerar</span>`}
                 </div>
-                <h3 class="font-semibold text-slate-800 mb-1">${i.titulo}</h3>
-                <p class="text-sm text-slate-600 mb-2"><i class="fas fa-user mr-1"></i>${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'} • ${alumno ? `${alumno.curso} ${alumno.division}${alumno.turno ? ' · ' + alumno.turno : ''}` : ''}</p>
-                ${i.estado === 'derivado' && i.derivado_a ? `<p class="text-sm text-green-600 mb-2"><i class="fas fa-share mr-1"></i>Derivado a ${getNombreUsuario(i.derivado_a)}</p>` : ''}
-                <p class="text-sm text-slate-500 line-clamp-2">${i.resumen}</p>
+                <h3 class="font-semibold text-slate-800 mb-1">${escapeHtml(i.titulo)}</h3>
+                <p class="text-sm text-slate-600 mb-2"><i class="fas fa-user mr-1"></i>${alumno ? `${escapeHtml(alumno.apellido)}, ${escapeHtml(alumno.nombre)}` : 'Desconocido'} • ${alumno ? `${escapeHtml(alumno.curso)} ${escapeHtml(alumno.division)}${alumno.turno ? ' · ' + escapeHtml(alumno.turno) : ''}` : ''}</p>
+                ${i.estado === 'derivado' && i.derivado_a ? `<p class="text-sm text-green-600 mb-2"><i class="fas fa-share mr-1"></i>Derivado a ${escapeHtml(getNombreUsuario(i.derivado_a))}</p>` : ''}
+                <p class="text-sm text-slate-500 line-clamp-2">${escapeHtml(i.resumen)}</p>
             </div>
             <div class="flex items-center gap-2">
                 ${['muy_grave','consejo_aula','consejo'].includes(i.instancia) ? `<i class="fas fa-exclamation-triangle ${i.instancia === 'muy_grave' ? 'text-red-500' : i.instancia === 'consejo_aula' ? 'text-pink-600' : 'text-purple-600'}" title="${i.instancia === 'muy_grave' ? 'Muy Grave' : i.instancia === 'consejo_aula' ? 'Consejo de Aula' : 'Consejo Escolar'}"></i>` : ''}
@@ -1354,11 +1402,11 @@ function renderizarHistorial(historial) {
                 <div class="absolute -left-[21px] top-1.5 w-3 h-3 rounded-full bg-white border-2 border-blue-400"></div>
                 <div class="flex flex-col gap-1">
                     <div class="flex items-center gap-2 flex-wrap">
-                        <span class="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded border ${badge.clase}">${badge.label}</span>
+                        <span class="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded border ${badge.clase}">${escapeHtml(badge.label)}</span>
                         <span class="text-xs text-slate-400">${fecha} · ${hora}</span>
                     </div>
-                    <p class="text-xs text-slate-500 font-medium">${verbo} por <span class="text-slate-700">${nombre}</span></p>
-                    ${h.detalle ? `<p class="text-sm text-slate-600 bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">${h.detalle}</p>` : ''}
+                    <p class="text-xs text-slate-500 font-medium">${verbo} por <span class="text-slate-700">${escapeHtml(nombre)}</span></p>
+                    ${h.detalle ? `<p class="text-sm text-slate-600 bg-slate-50 rounded-lg px-3 py-2 border border-slate-100">${escapeHtml(h.detalle)}</p>` : ''}
                 </div>
             </div>`;
         }).join('')}
@@ -1384,36 +1432,36 @@ function verDetalle(id) {
 
     contenido.innerHTML = `
         <div class="flex items-center gap-3 mb-4 flex-wrap">
-            <span class="status-${informe.estado} px-3 py-1 rounded-full text-sm font-medium capitalize">${informe.estado.replace('_', ' ')}</span>
+            <span class="status-${escapeAttr(informe.estado)} px-3 py-1 rounded-full text-sm font-medium capitalize">${escapeHtml(informe.estado.replace('_', ' '))}</span>
             <span class="text-sm text-slate-500">${formatearFecha(informe.fecha_creacion)}</span>
-            ${informe.numero !== null && informe.numero !== undefined ? `<span class="text-lg font-mono font-bold text-slate-800 bg-slate-100 px-3 py-1 rounded border border-slate-200">Informe N° ${informe.numero}</span>` : `<span class="text-sm text-red-500 italic">Sin numerar</span>`}
+            ${informe.numero !== null && informe.numero !== undefined ? `<span class="text-lg font-mono font-bold text-slate-800 bg-slate-100 px-3 py-1 rounded border border-slate-200">Informe N° ${escapeHtml(informe.numero)}</span>` : `<span class="text-sm text-red-500 italic">Sin numerar</span>`}
         </div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div class="p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors" onclick="verAlumno('${alumno?.id}')">
                 <p class="text-xs text-slate-500 mb-1">Alumno</p>
-                <p class="font-medium">${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'}</p>
-                <p class="text-sm text-slate-600">${alumno ? `${alumno.curso} ${alumno.division}${alumno.turno ? ' · ' + alumno.turno : ''}` : ''}</p>
+                <p class="font-medium">${alumno ? `${escapeHtml(alumno.apellido)}, ${escapeHtml(alumno.nombre)}` : 'Desconocido'}</p>
+                <p class="text-sm text-slate-600">${alumno ? `${escapeHtml(alumno.curso)} ${escapeHtml(alumno.division)}${alumno.turno ? ' · ' + escapeHtml(alumno.turno) : ''}` : ''}</p>
                 <p class="text-xs text-blue-600 mt-1"><i class="fas fa-eye mr-1"></i>Ver resumen</p>
             </div>
             <div class="p-3 bg-slate-50 rounded-lg">
                 <p class="text-xs text-slate-500 mb-1">Creado por</p>
-                <p class="font-medium">${getNombreUsuario(informe.creado_por)}</p>
+                <p class="font-medium">${escapeHtml(getNombreUsuario(informe.creado_por))}</p>
             </div>
         </div>
         <div class="space-y-4">
-            <div><p class="text-sm font-medium text-slate-700 mb-1">Título</p><p class="text-slate-600">${informe.titulo}</p></div>
+            <div><p class="text-sm font-medium text-slate-700 mb-1">Título</p><p class="text-slate-600">${escapeHtml(informe.titulo)}</p></div>
             <div class="grid grid-cols-2 gap-4">
                 <div><p class="text-sm font-medium text-slate-700 mb-1">Instancia</p>
-                    <p class="text-slate-600 capitalize font-medium ${informe.instancia === 'muy_grave' ? 'text-red-600' : informe.instancia === 'grave' ? 'text-orange-600' : informe.instancia === 'leve' ? 'text-amber-600' : informe.instancia === 'consejo_aula' ? 'text-pink-600' : informe.instancia === 'consejo' ? 'text-purple-600' : 'text-blue-600'}">${informe.instancia.replace('_', ' ')}</p>
+                    <p class="text-slate-600 capitalize font-medium ${informe.instancia === 'muy_grave' ? 'text-red-600' : informe.instancia === 'grave' ? 'text-orange-600' : informe.instancia === 'leve' ? 'text-amber-600' : informe.instancia === 'consejo_aula' ? 'text-pink-600' : informe.instancia === 'consejo' ? 'text-purple-600' : 'text-blue-600'}">${escapeHtml(informe.instancia.replace('_', ' '))}</p>
                 </div>
-                <div><p class="text-sm font-medium text-slate-700 mb-1">Creado por</p><p class="text-slate-600">${getNombreUsuario(informe.creado_por)}</p></div>
+                <div><p class="text-sm font-medium text-slate-700 mb-1">Creado por</p><p class="text-slate-600">${escapeHtml(getNombreUsuario(informe.creado_por))}</p></div>
             </div>
-            ${informe.estado === 'derivado' && informe.derivado_a ? `<div class="p-3 bg-green-50 border border-green-200 rounded-lg"><p class="text-sm font-medium text-green-800 mb-1">Derivado a</p><p class="text-green-700">${getNombreUsuario(informe.derivado_a)}</p></div>` : ''}
-            <div><p class="text-sm font-medium text-slate-700 mb-1">Descripción de la problemática</p><p class="text-slate-600 whitespace-pre-wrap">${informe.resumen}</p></div>
+            ${informe.estado === 'derivado' && informe.derivado_a ? `<div class="p-3 bg-green-50 border border-green-200 rounded-lg"><p class="text-sm font-medium text-green-800 mb-1">Derivado a</p><p class="text-green-700">${escapeHtml(getNombreUsuario(informe.derivado_a))}</p></div>` : ''}
+            <div><p class="text-sm font-medium text-slate-700 mb-1">Descripción de la problemática</p><p class="text-slate-600 whitespace-pre-wrap">${escapeHtml(informe.resumen)}</p></div>
 
-            ${informe.observaciones ? `<div class="p-3 bg-blue-50 border border-blue-200 rounded-lg"><p class="text-sm font-medium text-blue-800 mb-1">Observaciones previas</p><p class="text-blue-700 whitespace-pre-wrap">${informe.observaciones}</p></div>` : ''}
-            ${informe.motivo_rechazo ? `<div class="p-3 bg-red-50 border border-red-200 rounded-lg"><p class="text-sm font-medium text-red-800 mb-1">Motivo de la anulación</p><p class="text-red-700">${informe.motivo_rechazo}</p></div>` : ''}
-            ${informe.fecha_revision ? `<div class="text-sm text-slate-500"><i class="fas fa-check-double mr-1"></i>Revisado por ${getNombreUsuario(informe.revisado_por)} el ${formatearFecha(informe.fecha_revision)}</div>` : ''}
+            ${informe.observaciones ? `<div class="p-3 bg-blue-50 border border-blue-200 rounded-lg"><p class="text-sm font-medium text-blue-800 mb-1">Observaciones previas</p><p class="text-blue-700 whitespace-pre-wrap">${escapeHtml(informe.observaciones)}</p></div>` : ''}
+            ${informe.motivo_rechazo ? `<div class="p-3 bg-red-50 border border-red-200 rounded-lg"><p class="text-sm font-medium text-red-800 mb-1">Motivo de la anulación</p><p class="text-red-700">${escapeHtml(informe.motivo_rechazo)}</p></div>` : ''}
+            ${informe.fecha_revision ? `<div class="text-sm text-slate-500"><i class="fas fa-check-double mr-1"></i>Revisado por ${escapeHtml(getNombreUsuario(informe.revisado_por))} el ${formatearFecha(informe.fecha_revision)}</div>` : ''}
         </div>
         
         <div class="mt-6 border-t border-slate-200 pt-4">
@@ -1541,14 +1589,14 @@ function abrirModalGrupoInformes(informesGrupo, timestampDia, mostrarAlumno = fa
         <div data-informe-id="${i.id}" class="cursor-pointer bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg p-4 transition-colors">
             <div class="flex items-center justify-between gap-2 mb-1 flex-wrap">
                 <div class="flex items-center gap-2">
-                    <span class="status-${i.estado} px-2 py-0.5 rounded-full text-xs font-medium capitalize">${i.estado.replace('_', ' ')}</span>
-                    ${i.numero !== null && i.numero !== undefined ? `<span class="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">Informe N° ${i.numero}</span>` : `<span class="text-xs text-red-500 italic">Sin numerar</span>`}
+                    <span class="status-${escapeAttr(i.estado)} px-2 py-0.5 rounded-full text-xs font-medium capitalize">${escapeHtml(i.estado.replace('_', ' '))}</span>
+                    ${i.numero !== null && i.numero !== undefined ? `<span class="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-1 py-0.5 rounded">Informe N° ${escapeHtml(i.numero)}</span>` : `<span class="text-xs text-red-500 italic">Sin numerar</span>`}
                 </div>
-                <span class="text-xs ${colorInstancia[i.instancia] ?? 'text-blue-600'} font-semibold capitalize">${labelInstancia[i.instancia] ?? i.instancia}</span>
+                <span class="text-xs ${colorInstancia[i.instancia] ?? 'text-blue-600'} font-semibold capitalize">${escapeHtml(labelInstancia[i.instancia] ?? i.instancia)}</span>
             </div>
-            <p class="font-medium text-slate-800 text-sm">${i.numero !== null && i.numero !== undefined ? `<span class="font-mono text-slate-500 mr-1">Informe N° ${i.numero}</span>` : `<span class="text-xs text-red-500 italic mr-1">Sin numerar</span>`}${i.titulo}</p>
-            ${alumno ? `<p class="text-xs text-slate-500 mt-0.5">${alumno.apellido}, ${alumno.nombre} • ${alumno.curso} ${alumno.division}${alumno.turno ? ' · ' + alumno.turno : ''}</p>` : ''}
-            <p class="text-xs text-slate-500 mt-1 line-clamp-2">${i.resumen}</p>
+            <p class="font-medium text-slate-800 text-sm">${i.numero !== null && i.numero !== undefined ? `<span class="font-mono text-slate-500 mr-1">Informe N° ${escapeHtml(i.numero)}</span>` : `<span class="text-xs text-red-500 italic mr-1">Sin numerar</span>`}${escapeHtml(i.titulo)}</p>
+            ${alumno ? `<p class="text-xs text-slate-500 mt-0.5">${escapeHtml(alumno.apellido)}, ${escapeHtml(alumno.nombre)} • ${escapeHtml(alumno.curso)} ${escapeHtml(alumno.division)}${alumno.turno ? ' · ' + escapeHtml(alumno.turno) : ''}</p>` : ''}
+            <p class="text-xs text-slate-500 mt-1 line-clamp-2">${escapeHtml(i.resumen)}</p>
         </div>
     `}).join('');
 
@@ -1598,7 +1646,8 @@ async function cambiarEstado(id, nuevoEstado, options = {}) {
     }
     
     if (error) {
-        return mostrarToast(`Error actualizando estado: ${error?.message || error?.code || 'desconocido'}`, 'error');
+        console.error('[GIE] Error actualizando estado:', error);
+        return mostrarToast('Error al actualizar el estado del informe', 'error');
     }
     
     const labelMap = {
@@ -2454,16 +2503,16 @@ function verAlumno(alumnoId) {
     });
 
     document.getElementById('historialAlumno').innerHTML = lista.map(i => `
-        <div onclick="verDetalle('${i.id}')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 instancia-${i.instancia} cursor-pointer hover:shadow-md transition-all">
+        <div onclick="verDetalle('${i.id}')" class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 instancia-${escapeAttr(i.instancia)} cursor-pointer hover:shadow-md transition-all">
             <div class="flex flex-col sm:flex-row justify-between items-start gap-3">
                 <div class="flex-1">
                     <div class="flex items-center gap-2 mb-1 flex-wrap">
-                        <span class="status-${i.estado} px-2 py-0.5 rounded-full text-xs font-medium capitalize">${i.estado.replace('_', ' ')}</span>
+                        <span class="status-${escapeAttr(i.estado)} px-2 py-0.5 rounded-full text-xs font-medium capitalize">${escapeHtml(i.estado.replace('_', ' '))}</span>
                         <span class="text-xs text-slate-500">${formatearFechaCorta(i.fecha_creacion)}</span>
-                        ${i.numero !== null && i.numero !== undefined ? `<span class="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">Informe N° ${i.numero}</span>` : `<span class="text-xs text-red-500 italic">Sin numerar</span>`}
+                        ${i.numero !== null && i.numero !== undefined ? `<span class="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">Informe N° ${escapeHtml(i.numero)}</span>` : `<span class="text-xs text-red-500 italic">Sin numerar</span>`}
                     </div>
-                    <h4 class="font-semibold text-slate-800">${i.titulo}</h4>
-                    <p class="text-sm text-slate-600 line-clamp-2">${i.resumen}</p>
+                    <h4 class="font-semibold text-slate-800">${escapeHtml(i.titulo)}</h4>
+                    <p class="text-sm text-slate-600 line-clamp-2">${escapeHtml(i.resumen)}</p>
                 </div>
                 <div class="flex items-center gap-2">
                     ${['muy_grave','consejo_aula','consejo'].includes(i.instancia) ? `<i class="fas fa-exclamation-triangle ${i.instancia === 'muy_grave' ? 'text-red-500' : i.instancia === 'consejo_aula' ? 'text-pink-600' : 'text-purple-600'}" title="${i.instancia === 'muy_grave' ? 'Muy Grave' : i.instancia === 'consejo_aula' ? 'Consejo de Aula' : 'Consejo Escolar'}"></i>` : ''}
@@ -2497,20 +2546,20 @@ function renderizarObservacionesAlumno(alumnoId) {
     }
     const esRegente = getPerfil()?.rol === 'regente';
     container.innerHTML = lista.map(o => {
-        const creador = o.creador ? `${o.creador.apellido}, ${o.creador.nombre}` : getNombreUsuario(o.creado_por);
+        const creador = o.creador ? `${escapeHtml(o.creador.apellido)}, ${escapeHtml(o.creador.nombre)}` : escapeHtml(getNombreUsuario(o.creado_por));
         const puedeEliminar = esRegente || o.creado_por === getPerfil()?.id;
         const tipoInfo = getTipoObservacionInfo(o.tipo);
         return `
         <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
             <div class="flex items-start justify-between gap-2 flex-wrap mb-2">
                 <div class="flex items-center gap-2 flex-wrap">
-                    <span class="px-2 py-0.5 rounded-full text-xs font-medium capitalize" style="background-color:${tipoInfo.color}26;color:${tipoInfo.color}">${tipoInfo.label}</span>
+                    <span class="px-2 py-0.5 rounded-full text-xs font-medium capitalize" style="background-color:${escapeAttr(tipoInfo.color)}26;color:${escapeAttr(tipoInfo.color)}">${escapeHtml(tipoInfo.label)}</span>
                     <span class="text-xs text-slate-500">${formatearFechaCorta(o.fecha_creacion)}</span>
                     ${o.fecha_evento ? `<span class="text-xs text-slate-500"><i class="far fa-calendar-alt mr-1"></i>${formatearFechaCorta(o.fecha_evento + 'T00:00:00')}</span>` : ''}
                 </div>
                 ${puedeEliminar ? `<button onclick="eliminarObservacionAlumno('${o.id}')" class="text-xs text-red-500 hover:text-red-700" title="Eliminar"><i class="fas fa-trash"></i></button>` : ''}
             </div>
-            <p class="text-sm text-slate-700 whitespace-pre-wrap">${o.descripcion}</p>
+            <p class="text-sm text-slate-700 whitespace-pre-wrap">${escapeHtml(o.descripcion)}</p>
             <p class="text-xs text-slate-400 mt-2">Por: ${creador}</p>
         </div>`;
     }).join('');
@@ -2575,7 +2624,7 @@ async function eliminarObservacionAlumno(id) {
 function renderizarSelectTiposObservacion() {
     const select = document.getElementById('obsTipo');
     if (!select) return;
-    const tiposPersonalizados = tiposObservacion.map(t => `<option value="${t.nombre}">${t.nombre}</option>`).join('');
+    const tiposPersonalizados = tiposObservacion.map(t => `<option value="${escapeAttr(t.nombre)}">${escapeHtml(t.nombre)}</option>`).join('');
     const tiposDefault = [
         { value: 'observacion', label: 'Observación' },
         { value: 'accion', label: 'Acción' },
@@ -2651,8 +2700,8 @@ function renderizarListaTiposObservacion() {
     container.innerHTML = tiposObservacion.map(t => `
         <div class="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200">
             <div class="flex items-center gap-3">
-                <span class="w-4 h-4 rounded-full inline-block" style="background-color:${t.color};"></span>
-                <span class="text-sm font-medium text-slate-700">${t.nombre}</span>
+                <span class="w-4 h-4 rounded-full inline-block" style="background-color:${escapeAttr(t.color)};"></span>
+                <span class="text-sm font-medium text-slate-700">${escapeHtml(t.nombre)}</span>
             </div>
             <button onclick="eliminarTipoObservacion('${t.id}')" class="text-xs text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
         </div>
@@ -2925,15 +2974,19 @@ async function cargarUsuarios() {
     const lista = [...usuarios].sort((a, b) => `${a.apellido || ''}, ${a.nombre || ''}`.localeCompare(`${b.apellido || ''}, ${b.nombre || ''}`));
 
     document.getElementById('listaUsuariosDesktop').innerHTML = lista.map(u => {
-        const puedeToggle = u.id !== perfilActual?.id && u.email !== 'admin@gie.com';
-        const accion = puedeToggle
-            ? `<button onclick="toggleUsuario('${u.id}', ${u.activo === false})" class="text-sm font-medium ${u.activo === false ? 'text-green-600 hover:text-green-700' : 'text-red-600 hover:text-red-700'}">${u.activo === false ? 'Activar' : 'Desactivar'}</button>`
-            : '<span class="text-xs text-slate-400">-</span>';
+        const puedeModificar = u.id !== perfilActual?.id && u.email !== 'admin@gie.com';
+        const btnEditar = `<button onclick="abrirModalUsuario('${u.id}')" class="text-sm font-medium text-blue-600 hover:text-blue-700 mr-3" title="Editar"><i class="fas fa-edit mr-1"></i>Editar</button>`;
+        const btnEliminar = puedeModificar
+            ? `<button onclick="eliminarUsuario('${u.id}')" class="text-sm font-medium text-red-600 hover:text-red-700 mr-3" title="Eliminar definitivamente"><i class="fas fa-trash mr-1"></i>Eliminar</button>`
+            : '';
+        const accion = puedeModificar
+            ? `${btnEditar}${btnEliminar}<button onclick="toggleUsuario('${u.id}', ${u.activo === false})" class="text-sm font-medium ${u.activo === false ? 'text-green-600 hover:text-green-700' : 'text-red-600 hover:text-red-700'}">${u.activo === false ? 'Activar' : 'Desactivar'}</button>`
+            : `${btnEditar}<span class="text-xs text-slate-400">-</span>`;
         return `
-        <tr class="hover:bg-slate-50 transition-colors">
-            <td class="px-4 py-3 font-medium">${u.apellido || ''}, ${u.nombre || ''}</td>
-            <td class="px-4 py-3 text-slate-500">${u.email}</td>
-            <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-medium capitalize ${rolColor[u.rol] || 'bg-slate-100 text-slate-600'}">${rolLabel[u.rol] || u.rol}</span></td>
+        <tr id="fila-usuario-${u.id}" class="hover:bg-slate-50 transition-colors">
+            <td class="px-4 py-3 font-medium">${escapeHtml(u.apellido || '')}, ${escapeHtml(u.nombre || '')}</td>
+            <td class="px-4 py-3 text-slate-500">${escapeHtml(u.email)}</td>
+            <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-medium capitalize ${rolColor[u.rol] || 'bg-slate-100 text-slate-600'}">${escapeHtml(rolLabel[u.rol] || u.rol)}</span></td>
             <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-medium ${u.activo === false ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">${u.activo === false ? 'Inactivo' : 'Activo'}</span></td>
             <td class="px-4 py-3 text-center">${accion}</td>
         </tr>
@@ -2941,18 +2994,22 @@ async function cargarUsuarios() {
     }).join('');
 
     document.getElementById('listaUsuariosMobile').innerHTML = lista.map(u => {
-        const puedeToggle = u.id !== perfilActual?.id && u.email !== 'admin@gie.com';
-        const accion = puedeToggle
-            ? `<button onclick="toggleUsuario('${u.id}', ${u.activo === false})" class="text-xs font-medium ${u.activo === false ? 'text-green-600 hover:text-green-700' : 'text-red-600 hover:text-red-700'}">${u.activo === false ? 'Activar' : 'Desactivar'}</button>`
+        const puedeModificar = u.id !== perfilActual?.id && u.email !== 'admin@gie.com';
+        const btnEditar = `<button onclick="abrirModalUsuario('${u.id}')" class="text-xs font-medium text-blue-600 hover:text-blue-700 mr-2" title="Editar"><i class="fas fa-edit mr-1"></i>Editar</button>`;
+        const btnEliminar = puedeModificar
+            ? `<button onclick="eliminarUsuario('${u.id}')" class="text-xs font-medium text-red-600 hover:text-red-700 mr-2" title="Eliminar definitivamente"><i class="fas fa-trash mr-1"></i>Eliminar</button>`
             : '';
+        const accion = puedeModificar
+            ? `${btnEditar}${btnEliminar}<button onclick="toggleUsuario('${u.id}', ${u.activo === false})" class="text-xs font-medium ${u.activo === false ? 'text-green-600 hover:text-green-700' : 'text-red-600 hover:text-red-700'}">${u.activo === false ? 'Activar' : 'Desactivar'}</button>`
+            : `${btnEditar}`;
         return `
-        <div class="p-4">
+        <div id="tarjeta-usuario-${u.id}" class="p-4">
             <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0 flex-1">
-                    <p class="font-medium text-slate-800 text-sm">${u.apellido || ''}, ${u.nombre || ''}</p>
-                    <p class="text-xs text-slate-500 mt-0.5 truncate">${u.email}</p>
+                    <p class="font-medium text-slate-800 text-sm">${escapeHtml(u.apellido || '')}, ${escapeHtml(u.nombre || '')}</p>
+                    <p class="text-xs text-slate-500 mt-0.5 truncate">${escapeHtml(u.email)}</p>
                     <div class="mt-2 flex items-center gap-2">
-                        ${u.rol ? `<span class="px-2 py-1 rounded-full text-xs font-medium capitalize ${rolColor[u.rol] || 'bg-slate-100 text-slate-600'}">${rolLabel[u.rol] || u.rol}</span>` : ''}
+                        ${u.rol ? `<span class="px-2 py-1 rounded-full text-xs font-medium capitalize ${rolColor[u.rol] || 'bg-slate-100 text-slate-600'}">${escapeHtml(rolLabel[u.rol] || u.rol)}</span>` : ''}
                         <span class="px-2 py-1 rounded-full text-xs font-medium ${u.activo === false ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">${u.activo === false ? 'Inactivo' : 'Activo'}</span>
                     </div>
                     ${accion ? `<div class="mt-2">${accion}</div>` : ''}
@@ -2984,8 +3041,8 @@ window.crearUsuario = async function() {
     if (!email || !nombre || !apellido || !rol) {
         return mostrarToast('Completá email, nombre, apellido y rol', 'error');
     }
-    if (password.length < 6) {
-        return mostrarToast('La contraseña debe tener al menos 6 caracteres', 'error');
+    if (!esPasswordValida(password)) {
+        return mostrarToast('La contraseña es requerida', 'error');
     }
 
     mostrarToast('Creando usuario...', 'info');
@@ -3228,11 +3285,12 @@ async function guardarUsuario() {
     const activo = document.getElementById('usuarioActivo').checked;
     const password = document.getElementById('usuarioPassword').value;
 
-    if (!email || !nombre || !apellido || !rol) {
+    const esNuevo = !_usuarioEdicionId;
+
+    if (esNuevo && (!email || !nombre || !apellido || !rol)) {
         return mostrarToast('Completá email, nombre, apellido y rol', 'error');
     }
 
-    const esNuevo = !_usuarioEdicionId;
     if (esNuevo && password.length < 6) {
         return mostrarToast('La contraseña debe tener al menos 6 caracteres', 'error');
     }
@@ -3262,18 +3320,51 @@ async function guardarUsuario() {
                 }).eq('id', nuevoId);
             }
         } else {
-            const updates = {
-                nombre,
-                apellido,
-                rol,
-                activo,
-                cursos: _cursosUsuario,
-                alumnos_pat: rol === 'pat' ? _alumnosPATUsuario : []
-            };
-            const { error } = await supabaseClient.from('perfiles').update(updates).eq('id', _usuarioEdicionId);
-            if (error) throw new Error(error.message);
+            const original = usuarios.find(x => x.id === _usuarioEdicionId);
+            if (!original) throw new Error('Usuario no encontrado');
 
-            if (password.length >= 6) {
+            // Si un input está vacío se conserva el valor original (no se sobreescribe)
+            const nombreFinal = nombre || original.nombre;
+            const apellidoFinal = apellido || original.apellido;
+            const rolFinal = rol || original.rol;
+            const cursosFinal = Array.isArray(_cursosUsuario) ? _cursosUsuario : (original.cursos || []);
+            const alumnosPATFinal = rolFinal === 'pat'
+                ? (Array.isArray(_alumnosPATUsuario) ? _alumnosPATUsuario : (original.alumnos_pat || []))
+                : [];
+
+            const updates = {};
+            if (nombreFinal !== original.nombre) updates.nombre = nombreFinal;
+            if (apellidoFinal !== original.apellido) updates.apellido = apellidoFinal;
+            if (rolFinal !== original.rol) updates.rol = rolFinal;
+            if (activo !== (original.activo !== false)) updates.activo = activo;
+
+            const cursosOrig = Array.isArray(original.cursos) ? original.cursos : [];
+            if (JSON.stringify([...cursosFinal].sort()) !== JSON.stringify([...cursosOrig].sort())) {
+                updates.cursos = cursosFinal;
+            }
+
+            const alumnosOrig = Array.isArray(original.alumnos_pat) ? original.alumnos_pat : [];
+            if (JSON.stringify([...alumnosPATFinal].sort()) !== JSON.stringify([...alumnosOrig].sort())) {
+                updates.alumnos_pat = alumnosPATFinal;
+            }
+
+            const hayCambiosPerfil = Object.keys(updates).length > 0;
+            const hayPasswordNueva = password.length >= 6;
+
+            if (!hayCambiosPerfil && !hayPasswordNueva) {
+                cerrarModalUsuario();
+                return mostrarToast('No se realizaron cambios', 'info');
+            }
+
+            if (hayCambiosPerfil) {
+                const { error } = await supabaseClient.from('perfiles').update(updates).eq('id', _usuarioEdicionId);
+                if (error) throw new Error(error.message);
+            }
+
+            if (hayPasswordNueva) {
+                if (!esPasswordValida(password)) {
+                    throw new Error('La contraseña es requerida');
+                }
                 await cambiarPasswordUsuario(_usuarioEdicionId, password);
             }
         }
@@ -3288,13 +3379,49 @@ async function guardarUsuario() {
     }
 }
 
+function esPasswordValida(password) {
+    return typeof password === 'string' && password.length >= 1;
+}
+
+function abrirModalCambiarPassword(userId) {
+    if (!esRegente()) return mostrarToast('Solo el regente puede cambiar contraseñas', 'error');
+    document.getElementById('cambiarPasswordUserId').value = userId;
+    document.getElementById('cambiarPasswordInput').value = '';
+    document.getElementById('cambiarPasswordConfirmar').value = '';
+    document.getElementById('modalCambiarPassword').classList.remove('hidden');
+}
+
+function cerrarModalCambiarPassword() {
+    document.getElementById('modalCambiarPassword').classList.add('hidden');
+}
+
+async function confirmarCambiarPassword() {
+    const userId = document.getElementById('cambiarPasswordUserId').value;
+    const password = document.getElementById('cambiarPasswordInput').value;
+    const confirmar = document.getElementById('cambiarPasswordConfirmar').value;
+
+    if (!password || !esPasswordValida(password)) {
+        return mostrarToast('La contraseña es requerida', 'error');
+    }
+    if (password !== confirmar) {
+        return mostrarToast('Las contraseñas no coinciden', 'error');
+    }
+
+    cerrarModalCambiarPassword();
+    await cambiarPasswordUsuario(userId, password);
+}
+
 window.cambiarPasswordUsuario = async function(userId, nuevaPassword = null) {
     if (!esRegente()) return mostrarToast('Solo el regente puede cambiar contraseñas', 'error');
 
     let password = nuevaPassword;
     if (!password) {
-        password = prompt('Ingresá la nueva contraseña (mínimo 6 caracteres):');
-        if (!password || password.length < 6) return mostrarToast('Contraseña inválida', 'error');
+        abrirModalCambiarPassword(userId);
+        return;
+    }
+
+    if (!esPasswordValida(password)) {
+        return mostrarToast('La contraseña es requerida', 'error');
     }
 
     try {
@@ -3335,25 +3462,60 @@ window.cambiarEstadoUsuario = async function(userId, activo) {
     mostrarToast(`Usuario ${activo ? 'activado' : 'desactivado'}`, 'success');
 };
 
-window.eliminarUsuario = async function(userId) {
+function abrirModalConfirmarEliminarUsuario(userId) {
     if (!esRegente()) return mostrarToast('Solo el regente puede eliminar usuarios', 'error');
     const u = usuarios.find(x => x.id === userId);
     if (!u) return;
     if (u.id === getPerfil()?.id) return mostrarToast('No podés eliminar tu propio usuario', 'error');
     if (u.email === 'admin@gie.com') return mostrarToast('No podés eliminar al administrador', 'error');
-    if (!confirm(`¿Eliminar definitivamente al usuario ${u.nombre} ${u.apellido}? Esta acción no se puede deshacer.`)) return;
+
+    document.getElementById('eliminarUsuarioId').value = userId;
+    document.getElementById('textoConfirmarEliminarUsuario').textContent =
+        `${escapeHtml(u.apellido || '')}, ${escapeHtml(u.nombre || '')} (${escapeHtml(u.email)})`;
+    document.getElementById('modalConfirmarEliminarUsuario').classList.remove('hidden');
+}
+
+function cerrarModalConfirmarEliminarUsuario() {
+    document.getElementById('modalConfirmarEliminarUsuario').classList.add('hidden');
+    document.getElementById('eliminarUsuarioId').value = '';
+}
+
+async function confirmarEliminarUsuario() {
+    const userId = document.getElementById('eliminarUsuarioId').value;
+    if (!userId) return;
+
+    cerrarModalConfirmarEliminarUsuario();
+
+    const filaDesktop = document.getElementById(`fila-usuario-${userId}`);
+    const tarjetaMobile = document.getElementById(`tarjeta-usuario-${userId}`);
 
     try {
         const { error } = await supabaseClient.rpc('eliminar_usuario_completo', { user_id: userId });
         if (error) throw new Error(error.message);
-        await cargarUsuariosSupa();
+
+        // Animar y remover de la UI sin recargar toda la lista
+        if (filaDesktop) filaDesktop.classList.add('animate-slide-out');
+        if (tarjetaMobile) tarjetaMobile.classList.add('animate-slide-out');
+
+        await new Promise(r => setTimeout(r, 400));
+
+        if (filaDesktop) filaDesktop.remove();
+        if (tarjetaMobile) tarjetaMobile.remove();
+
+        // Actualizar arrays locales
+        usuarios = usuarios.filter(u => u.id !== userId);
         filtrarDocentes();
+
         mostrarToast('Usuario eliminado', 'success');
     } catch (err) {
         console.error('[GIE] Error eliminando usuario:', err);
+        if (filaDesktop) filaDesktop.classList.remove('animate-slide-out');
+        if (tarjetaMobile) tarjetaMobile.classList.remove('animate-slide-out');
         mostrarToast(err.message || 'Error eliminando usuario', 'error');
     }
-};
+}
+
+window.eliminarUsuario = abrirModalConfirmarEliminarUsuario;
 
 window.agregarMiCurso = async function() {
     const anio = document.getElementById('ajustesCursoAnio').value;
@@ -3724,7 +3886,7 @@ async function exportarPDF(id) {
     const informe = getInforme(id);
     if (!informe) { _generandoPDF = false; return; }
     const alumno = getAlumno(informe.alumno_id);
-    const creador = getNombreUsuario(informe.creado_por);
+    const creador = escapeHtml(getNombreUsuario(informe.creado_por));
     const chk = (val) => informe.instancia === val ? '☑' : '☐';
 
     // Cargar logo como base64
@@ -3750,16 +3912,16 @@ async function exportarPDF(id) {
             <div style="font-size:10px; font-weight:bold;">MINISTERIO DE EDUCACIÓN</div>
             <div style="font-size:10px; font-weight:bold; margin-top:2px;">E.T. N°35 D.E. 18, "Ing. Eduardo Latzina"</div>
             <div style="font-size:12px; font-weight:bold; margin-top:4px; text-decoration:underline;">INFORME DE CONVIVENCIA ESCOLAR</div>
-            ${informe.numero !== null && informe.numero !== undefined ? `<div style="font-size:11px; font-weight:bold; margin-top:2px;">Informe N° ${informe.numero}</div>` : `<div style="font-size:11px; color:#ef4444; margin-top:2px;">Sin numerar</div>`}
+            ${informe.numero !== null && informe.numero !== undefined ? `<div style="font-size:11px; font-weight:bold; margin-top:2px;">Informe N° ${escapeHtml(informe.numero)}</div>` : `<div style="font-size:11px; color:#ef4444; margin-top:2px;">Sin numerar</div>`}
         </div>
 
         <div style="margin-bottom:6px;">
             <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">1. Datos del Alumno/a</div>
             <table style="width:100%; border-collapse:collapse;">
-                <tr><td style="padding:2px 0 10px 0; width:80px;">Alumno/a:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;">${alumno ? `${alumno.apellido}, ${alumno.nombre}` : ''}</td></tr>
-                <tr><td style="padding:2px 0 10px 0;">Año:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;">${alumno ? alumno.curso : ''}</td></tr>
-                <tr><td style="padding:2px 0 10px 0;">División:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;">${alumno ? alumno.division : ''}</td></tr>
-                ${alumno?.turno ? `<tr><td style="padding:2px 0 10px 0;">Turno:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;">${alumno.turno}</td></tr>` : ''}
+                <tr><td style="padding:2px 0 10px 0; width:80px;">Alumno/a:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;">${alumno ? `${escapeHtml(alumno.apellido)}, ${escapeHtml(alumno.nombre)}` : ''}</td></tr>
+                <tr><td style="padding:2px 0 10px 0;">Año:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;">${alumno ? escapeHtml(alumno.curso) : ''}</td></tr>
+                <tr><td style="padding:2px 0 10px 0;">División:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;">${alumno ? escapeHtml(alumno.division) : ''}</td></tr>
+                ${alumno?.turno ? `<tr><td style="padding:2px 0 10px 0;">Turno:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;">${escapeHtml(alumno.turno)}</td></tr>` : ''}
             </table>
         </div>
 
@@ -3767,8 +3929,8 @@ async function exportarPDF(id) {
             <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">2. Descripción de la Acción</div>
             <p style="margin:0 0 4px;">Ha realizado la acción que se describe a continuación:</p>
             <div style="border:1px solid #000; padding:6px; min-height:100px; margin-bottom:4px;">
-                <div style="font-weight:bold; margin-bottom:2px;">${informe.titulo}</div>
-                <div style="white-space:pre-wrap;">${informe.resumen}</div>
+                <div style="font-weight:bold; margin-bottom:2px;">${escapeHtml(informe.titulo)}</div>
+                <div style="white-space:pre-wrap;">${escapeHtml(informe.resumen)}</div>
             </div>
             <p style="margin:0;">transgrediendo normas del reglamento y convivencia de la escuela.</p>
         </div>
@@ -3785,12 +3947,12 @@ async function exportarPDF(id) {
 
         <div style="margin-bottom:6px;">
             <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">4. Descargo del Alumno/a</div>
-            <div style="border:1px solid #000; padding:6px; min-height:80px;">${informe.descargo ? `<div style="white-space:pre-wrap;">${informe.descargo}</div>` : ''}</div>
+            <div style="border:1px solid #000; padding:6px; min-height:80px;">${informe.descargo ? `<div style="white-space:pre-wrap;">${escapeHtml(informe.descargo)}</div>` : ''}</div>
         </div>
 
         <div style="margin-bottom:6px;">
             <div style="font-weight:bold; font-size:10px; margin-bottom:2px;">5. Observaciones</div>
-            <div style="border:1px solid #000; padding:6px; min-height:80px;">${informe.observaciones ? `<div style="white-space:pre-wrap;">${informe.observaciones}</div>` : ''}</div>
+            <div style="border:1px solid #000; padding:6px; min-height:80px;">${informe.observaciones ? `<div style="white-space:pre-wrap;">${escapeHtml(informe.observaciones)}</div>` : ''}</div>
         </div>
 
         <div>
@@ -4150,8 +4312,15 @@ window.guardarUsuario = guardarUsuario;
 window.onChangeRolUsuario = onChangeRolUsuario;
 window.quitarCursoUsuario = quitarCursoUsuario;
 window.quitarAlumnoPATUsuario = quitarAlumnoPATUsuario;
+window.eliminarUsuario = abrirModalConfirmarEliminarUsuario;
+window.cerrarModalConfirmarEliminarUsuario = cerrarModalConfirmarEliminarUsuario;
+window.confirmarEliminarUsuario = confirmarEliminarUsuario;
 
 // ==================== VER CONTRASEÑA ====================
+window.abrirModalCambiarPassword = abrirModalCambiarPassword;
+window.cerrarModalCambiarPassword = cerrarModalCambiarPassword;
+window.confirmarCambiarPassword = confirmarCambiarPassword;
+
 window.togglePassword = function(inputId, btn) {
     const input = document.getElementById(inputId);
     const icon = btn.querySelector('i');

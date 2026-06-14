@@ -12,6 +12,7 @@ dist-ssr/
 .env
 .env.local
 .env.*.local
+supabase/config.toml
 
 # IDE / Editor
 .vscode/*
@@ -46,8 +47,13 @@ coverage/
 
 # Misc
 *.log
+reset-pass.js
+reset-*.js
+*.key
+*.secret
 
 # Project docs / SQL scripts
 AGENTS.md
 PLANTILLA_AGENTE.md
 *.sql
+scripts/

@@ -23,7 +23,10 @@ if (USE_SUPABASE) {
                 storage: window.localStorage
             }
         });
-        window.supabaseClient = supabaseClient;
+        // Exponer el cliente solo en desarrollo para debugging. Nunca en producción.
+        if (import.meta.env.DEV) {
+            window.supabaseClient = supabaseClient;
+        }
     } catch (err) {
         console.error('[GIE] Error inicializando cliente Supabase:', err);
         USE_SUPABASE = false;
