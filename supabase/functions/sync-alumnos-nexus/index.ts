@@ -281,6 +281,7 @@ Deno.serve(async (req) => {
         const turnoNexus = normalizeTurno(
           sanitizeString(na.turno, 50) || sanitizeString(curso?.turno, 50)
         );
+        const especialidadNexus = sanitizeString(curso?.especialidad, 100) || "Sin especialidad";
 
         const existente = giePorDni.get(dniStr);
 
@@ -292,6 +293,7 @@ Deno.serve(async (req) => {
             curso: cursoNexus,
             division: divisionNexus,
             turno: turnoNexus,
+            especialidad: especialidadNexus,
             dni: na.dni,
             origen: "nexus",
             activo: true,

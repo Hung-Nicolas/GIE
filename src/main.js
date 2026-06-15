@@ -349,7 +349,7 @@ function setupEventListeners() {
             } else if (e.key === 'Enter') {
                 e.preventDefault();
                 const first = items[0];
-                seleccionarAlumno(first.dataset.alumnoId, first.dataset.alumnoNombre, first.dataset.alumnoApellido, first.dataset.alumnoCurso, first.dataset.alumnoDivision, first.dataset.alumnoTurno);
+                seleccionarAlumno(first.dataset.alumnoId, first.dataset.alumnoNombre, first.dataset.alumnoApellido, first.dataset.alumnoCurso, first.dataset.alumnoDivision, first.dataset.alumnoTurno, first.dataset.alumnoEspecialidad);
             }
         });
     }
@@ -369,7 +369,7 @@ function setupEventListeners() {
                 e.preventDefault();
                 if (idx >= 0) {
                     const item = items[idx];
-                    seleccionarAlumno(item.dataset.alumnoId, item.dataset.alumnoNombre, item.dataset.alumnoApellido, item.dataset.alumnoCurso, item.dataset.alumnoDivision, item.dataset.alumnoTurno);
+                    seleccionarAlumno(item.dataset.alumnoId, item.dataset.alumnoNombre, item.dataset.alumnoApellido, item.dataset.alumnoCurso, item.dataset.alumnoDivision, item.dataset.alumnoTurno, item.dataset.alumnoEspecialidad);
                 }
             } else if (e.key === 'Tab') {
                 if (idx >= 0 && idx < items.length - 1) {
@@ -807,19 +807,20 @@ function buscarAlumno(query) {
                 data-alumno-curso="${escapeAttr(a.curso)}"
                 data-alumno-division="${escapeAttr(a.division)}"
                 data-alumno-turno="${escapeAttr(a.turno || '')}"
-                onclick="seleccionarAlumno('${a.id}', '${escapeJsString(a.nombre)}', '${escapeJsString(a.apellido)}', '${escapeJsString(a.curso)}', '${escapeJsString(a.division)}', '${escapeJsString(a.turno || '')}')"
+                data-alumno-especialidad="${escapeAttr(a.especialidad || '')}"
+                onclick="seleccionarAlumno('${a.id}', '${escapeJsString(a.nombre)}', '${escapeJsString(a.apellido)}', '${escapeJsString(a.curso)}', '${escapeJsString(a.division)}', '${escapeJsString(a.turno || '')}', '${escapeJsString(a.especialidad || '')}')"
                 class="p-3 hover:bg-slate-50 focus:bg-blue-50 cursor-pointer border-b border-slate-100 last:border-0 outline-none">
                 <p class="font-medium text-sm">${escapeHtml(a.apellido)}, ${escapeHtml(a.nombre)}</p>
-                <p class="text-xs text-slate-500">${escapeHtml(a.curso)} ${escapeHtml(a.division)}${a.turno ? ' · ' + escapeHtml(a.turno) : ''}</p>
+                <p class="text-xs text-slate-500">${escapeHtml(a.curso)} ${escapeHtml(a.division)}${a.turno ? ' · ' + escapeHtml(a.turno) : ''}${a.especialidad && a.especialidad !== 'Sin especialidad' ? ' · ' + escapeHtml(a.especialidad) : ''}</p>
             </div>`).join('');
     }
     resultados.classList.remove('hidden');
 }
 
-function seleccionarAlumno(id, nombre, apellido, curso, division, turno = '') {
+function seleccionarAlumno(id, nombre, apellido, curso, division, turno = '', especialidad = '') {
     document.getElementById('alumnoId').value = id;
     document.getElementById('alumnoNombre').textContent = `${apellido}, ${nombre}`;
-    document.getElementById('alumnoCurso').textContent = `${curso} ${division}${turno ? ' · ' + turno : ''}`;
+    document.getElementById('alumnoCurso').textContent = `${curso} ${division}${turno ? ' · ' + turno : ''}${especialidad && especialidad !== 'Sin especialidad' ? ' · ' + especialidad : ''}`;
     document.getElementById('alumnoSeleccionado').classList.remove('hidden');
     document.getElementById('resultadosAlumno').classList.add('hidden');
     document.getElementById('searchAlumno').value = '';
@@ -938,6 +939,7 @@ function renderizarAlumnos(lista, informesPorAlumno) {
                     <div class="flex items-center gap-2 mt-0.5">
                         <p class="text-xs text-slate-500">${escapeHtml(a.curso)} ${escapeHtml(a.division)}</p>
                         ${a.turno ? `<span class="text-[10px] px-1.5 py-0.5 rounded font-medium ${turnoColor}">${escapeHtml(a.turno)}</span>` : ''}
+                        ${a.especialidad && a.especialidad !== 'Sin especialidad' ? `<span class="text-[10px] px-1.5 py-0.5 rounded font-medium bg-emerald-100 text-emerald-700">${escapeHtml(a.especialidad)}</span>` : ''}
                     </div>
                 </div>
             </div>
@@ -1119,7 +1121,7 @@ function renderCardInforme(i) {
                     ${i.numero !== null && i.numero !== undefined ? `<span class="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">Informe N° ${escapeHtml(i.numero)}</span>` : `<span class="text-xs text-red-500 italic">Sin numerar</span>`}
                 </div>
                 <h3 class="font-semibold text-slate-800 mb-1">${escapeHtml(i.titulo)}</h3>
-                <p class="text-sm text-slate-600 mb-2"><i class="fas fa-user mr-1"></i>${alumno ? `${escapeHtml(alumno.apellido)}, ${escapeHtml(alumno.nombre)}` : 'Desconocido'} • ${alumno ? `${escapeHtml(alumno.curso)} ${escapeHtml(alumno.division)}${alumno.turno ? ' · ' + escapeHtml(alumno.turno) : ''}` : ''}</p>
+                <p class="text-sm text-slate-600 mb-2"><i class="fas fa-user mr-1"></i>${alumno ? `${escapeHtml(alumno.apellido)}, ${escapeHtml(alumno.nombre)}` : 'Desconocido'} • ${alumno ? `${escapeHtml(alumno.curso)} ${escapeHtml(alumno.division)}${alumno.turno ? ' · ' + escapeHtml(alumno.turno) : ''}${alumno.especialidad && alumno.especialidad !== 'Sin especialidad' ? ' · ' + escapeHtml(alumno.especialidad) : ''}` : ''}</p>
                 ${i.estado === 'derivado' && i.derivado_a ? `<p class="text-sm text-green-600 mb-2"><i class="fas fa-share mr-1"></i>Derivado a ${escapeHtml(getNombreUsuario(i.derivado_a))}</p>` : ''}
                 <p class="text-sm text-slate-500 line-clamp-2">${escapeHtml(i.resumen)}</p>
             </div>
@@ -1440,7 +1442,7 @@ function verDetalle(id) {
             <div class="p-3 bg-slate-50 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors" onclick="verAlumno('${alumno?.id}')">
                 <p class="text-xs text-slate-500 mb-1">Alumno</p>
                 <p class="font-medium">${alumno ? `${escapeHtml(alumno.apellido)}, ${escapeHtml(alumno.nombre)}` : 'Desconocido'}</p>
-                <p class="text-sm text-slate-600">${alumno ? `${escapeHtml(alumno.curso)} ${escapeHtml(alumno.division)}${alumno.turno ? ' · ' + escapeHtml(alumno.turno) : ''}` : ''}</p>
+                <p class="text-sm text-slate-600">${alumno ? `${escapeHtml(alumno.curso)} ${escapeHtml(alumno.division)}${alumno.turno ? ' · ' + escapeHtml(alumno.turno) : ''}${alumno.especialidad && alumno.especialidad !== 'Sin especialidad' ? ' · ' + escapeHtml(alumno.especialidad) : ''}` : ''}</p>
                 <p class="text-xs text-blue-600 mt-1"><i class="fas fa-eye mr-1"></i>Ver resumen</p>
             </div>
             <div class="p-3 bg-slate-50 rounded-lg">
@@ -1595,7 +1597,7 @@ function abrirModalGrupoInformes(informesGrupo, timestampDia, mostrarAlumno = fa
                 <span class="text-xs ${colorInstancia[i.instancia] ?? 'text-blue-600'} font-semibold capitalize">${escapeHtml(labelInstancia[i.instancia] ?? i.instancia)}</span>
             </div>
             <p class="font-medium text-slate-800 text-sm">${i.numero !== null && i.numero !== undefined ? `<span class="font-mono text-slate-500 mr-1">Informe N° ${escapeHtml(i.numero)}</span>` : `<span class="text-xs text-red-500 italic mr-1">Sin numerar</span>`}${escapeHtml(i.titulo)}</p>
-            ${alumno ? `<p class="text-xs text-slate-500 mt-0.5">${escapeHtml(alumno.apellido)}, ${escapeHtml(alumno.nombre)} • ${escapeHtml(alumno.curso)} ${escapeHtml(alumno.division)}${alumno.turno ? ' · ' + escapeHtml(alumno.turno) : ''}</p>` : ''}
+            ${alumno ? `<p class="text-xs text-slate-500 mt-0.5">${escapeHtml(alumno.apellido)}, ${escapeHtml(alumno.nombre)} • ${escapeHtml(alumno.curso)} ${escapeHtml(alumno.division)}${alumno.turno ? ' · ' + escapeHtml(alumno.turno) : ''}${alumno.especialidad && alumno.especialidad !== 'Sin especialidad' ? ' · ' + escapeHtml(alumno.especialidad) : ''}</p>` : ''}
             <p class="text-xs text-slate-500 mt-1 line-clamp-2">${escapeHtml(i.resumen)}</p>
         </div>
     `}).join('');
@@ -1832,7 +1834,7 @@ function editarInforme(id) {
     document.getElementById('editId').value = informe.id;
     document.getElementById('alumnoId').value = informe.alumno_id;
     document.getElementById('alumnoNombre').textContent = alumno ? `${alumno.apellido}, ${alumno.nombre}` : '';
-    document.getElementById('alumnoCurso').textContent = alumno ? `${alumno.curso} ${alumno.division}${alumno.turno ? ' · ' + alumno.turno : ''}` : '';
+    document.getElementById('alumnoCurso').textContent = alumno ? `${alumno.curso} ${alumno.division}${alumno.turno ? ' · ' + alumno.turno : ''}${alumno.especialidad && alumno.especialidad !== 'Sin especialidad' ? ' · ' + alumno.especialidad : ''}` : '';
     document.getElementById('alumnoSeleccionado').classList.remove('hidden');
     document.getElementById('categoriaInforme').value = informe.categoria_id || '';
     document.getElementById('instancia').value = informe.instancia;
@@ -2335,6 +2337,7 @@ function verAlumno(alumnoId) {
                 <div class="flex items-center gap-2 mt-1">
                     <p class="text-slate-500">${alumno.curso} ${alumno.division}</p>
                     ${alumno.turno ? `<span class="text-xs px-2 py-0.5 rounded-md font-medium ${turnoColorDetalle}">${alumno.turno}</span>` : ''}
+                    ${alumno.especialidad && alumno.especialidad !== 'Sin especialidad' ? `<span class="text-xs px-2 py-0.5 rounded-md font-medium bg-emerald-100 text-emerald-700">${escapeHtml(alumno.especialidad)}</span>` : ''}
                 </div>
                 <p class="text-sm text-slate-400 mt-1">${stats.total} informe${stats.total !== 1 ? 's' : ''} registrado${stats.total !== 1 ? 's' : ''}</p>
             </div>
@@ -2867,7 +2870,7 @@ function verDocente(userId) {
             </div>
             <h4 class="font-semibold text-slate-800">${i.titulo}</h4>
             <p class="text-sm text-slate-600 line-clamp-2">${i.resumen}</p>
-            <p class="text-xs text-slate-500 mt-1">${alumno ? `${alumno.apellido}, ${alumno.nombre} · ${alumno.curso} ${alumno.division}` : 'Alumno desconocido'}</p>
+            <p class="text-xs text-slate-500 mt-1">${alumno ? `${alumno.apellido}, ${alumno.nombre} · ${alumno.curso} ${alumno.division}${alumno.especialidad && alumno.especialidad !== 'Sin especialidad' ? ' · ' + alumno.especialidad : ''}` : 'Alumno desconocido'}</p>
             <button onclick="verDetalle('${i.id}')" class="text-sm text-blue-600 hover:text-blue-700 mt-2">Ver detalle <i class="fas fa-arrow-right text-xs"></i></button>
         </div>
     `;
@@ -3148,7 +3151,7 @@ function _buscarAlumnoGenerico(query, resultadosId, onSelectFn) {
                 onclick="${onSelectFn}('${a.id}', '${a.nombre.replace(/'/g, "\\'")}', '${a.apellido.replace(/'/g, "\\'")}')"
                 class="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0 outline-none">
                 <p class="font-medium text-sm">${a.apellido}, ${a.nombre}</p>
-                <p class="text-xs text-slate-500">${a.curso} ${a.division}${a.turno ? ' · ' + a.turno : ''}</p>
+                <p class="text-xs text-slate-500">${a.curso} ${a.division}${a.turno ? ' · ' + a.turno : ''}${a.especialidad && a.especialidad !== 'Sin especialidad' ? ' · ' + a.especialidad : ''}</p>
             </div>`).join('');
     }
     resultados.classList.remove('hidden');
@@ -3922,6 +3925,7 @@ async function exportarPDF(id) {
                 <tr><td style="padding:2px 0 10px 0;">Año:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;">${alumno ? escapeHtml(alumno.curso) : ''}</td></tr>
                 <tr><td style="padding:2px 0 10px 0;">División:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;">${alumno ? escapeHtml(alumno.division) : ''}</td></tr>
                 ${alumno?.turno ? `<tr><td style="padding:2px 0 10px 0;">Turno:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;">${escapeHtml(alumno.turno)}</td></tr>` : ''}
+                ${alumno?.especialidad && alumno.especialidad !== 'Sin especialidad' ? `<tr><td style="padding:2px 0 10px 0;">Especialidad:</td><td style="padding:2px 0 10px 0; border-bottom:1px solid #000;">${escapeHtml(alumno.especialidad)}</td></tr>` : ''}
             </table>
         </div>
 
