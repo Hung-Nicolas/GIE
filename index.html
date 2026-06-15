@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GIE - Panel de Control</title>
     <link rel="icon" type="image/png" href="/GIE_logo.png">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/css/materialdesignicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/src/styles.css">
     <script type="module" src="/src/main.js"></script>
 </head>
@@ -25,37 +25,37 @@
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2">Correo electrónico</label>
                         <div class="relative">
-                            <i class="fas fa-envelope absolute left-3 top-3 text-slate-400"></i>
+                            <i class="mdi mdi-email-outline absolute left-3 top-3 text-slate-400"></i>
                             <input type="text" id="email" required class="w-full pl-10 pr-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" placeholder="usuario">
                         </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2">Contraseña</label>
                         <div class="relative">
-                            <i class="fas fa-lock absolute left-3 top-3 text-slate-400"></i>
+                            <i class="mdi mdi-lock-outline absolute left-3 top-3 text-slate-400"></i>
                             <input type="password" id="password" required class="w-full pl-10 pr-10 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" placeholder="••••••••">
                             <button type="button" onclick="togglePassword('password', this)" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
-                                <i class="fas fa-eye"></i>
+                                <i class="mdi mdi-eye-outline"></i>
                             </button>
                         </div>
                     </div>
                     <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition-colors shadow-sm flex items-center justify-center gap-2">
-                        <i class="fas fa-sign-in-alt"></i><span id="txtBtn">Ingresar</span>
+                        <i class="mdi mdi-login-variant"></i><span id="txtBtn">Ingresar</span>
                     </button>
                 </form>
                 <div id="modoDemoBox" class="hidden mt-6 p-4 bg-amber-50 rounded-lg border border-amber-200">
-                    <p class="text-xs font-medium text-amber-800 mb-2"><i class="fas fa-exclamation-triangle mr-1"></i> Supabase no configurado</p>
+                    <p class="text-xs font-medium text-amber-800 mb-2"><i class="mdi mdi-alert-outline mr-1"></i> Supabase no configurado</p>
                     <p class="text-xs text-amber-700 mb-3">Las credenciales de Supabase están en modo placeholder. Podés probar la app en modo demo local.</p>
                     <button id="btn-activar-demo" class="w-full bg-amber-600 hover:bg-amber-700 text-white text-sm font-semibold py-2 rounded-lg transition-colors">
-                        <i class="fas fa-play-circle mr-2"></i>Usar modo demo local
+                        <i class="mdi mdi-play-circle-outline mr-2"></i>Usar modo demo local
                     </button>
                 </div>
                 <div id="demoCreds" class="hidden mt-6 p-4 bg-slate-50 rounded-lg border border-slate-100">
                     <p class="text-xs font-medium text-slate-500 mb-2">Credenciales de demostración:</p>
                     <div class="space-y-1 text-xs text-slate-600">
-                        <div class="flex justify-between"><span><i class="fas fa-shield-alt text-red-500 mr-1"></i>Admin:</span><span class="font-mono bg-white px-2 py-0.5 rounded border">asd123 / asd123</span></div>
-                        <div class="flex justify-between"><span><i class="fas fa-crown text-amber-500 mr-1"></i>Regente:</span><span class="font-mono bg-white px-2 py-0.5 rounded border">regente@gie.com / regente123</span></div>
-                        <div class="flex justify-between"><span><i class="fas fa-chalkboard-teacher text-blue-500 mr-1"></i>Docente:</span><span class="font-mono bg-white px-2 py-0.5 rounded border">docente@gie.com / docente123</span></div>
+                        <div class="flex justify-between"><span><i class="mdi mdi-shield-check-outline text-red-500 mr-1"></i>Admin:</span><span class="font-mono bg-white px-2 py-0.5 rounded border">asd123 / asd123</span></div>
+                        <div class="flex justify-between"><span><i class="mdi mdi-crown-outline text-amber-500 mr-1"></i>Regente:</span><span class="font-mono bg-white px-2 py-0.5 rounded border">regente@gie.com / regente123</span></div>
+                        <div class="flex justify-between"><span><i class="mdi mdi-human-male-board text-blue-500 mr-1"></i>Docente:</span><span class="font-mono bg-white px-2 py-0.5 rounded border">docente@gie.com / docente123</span></div>
                     </div>
                 </div>
             </div>
@@ -66,69 +66,80 @@
     <!-- APP CONTAINER -->
     <div id="appContainer" class="hidden">
 
-    <!-- Mobile Header -->
-    <header class="lg:hidden bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between sticky top-0 z-40">
-        <button id="menuBtn" class="p-2 hover:bg-slate-100 rounded-lg"><i class="fas fa-bars text-slate-600"></i></button>
-        <span class="font-semibold text-slate-700">GIE</span>
-        <div class="w-8"></div>
-    </header>
-
-    <!-- Sidebar -->
-    <aside id="sidebar" class="sidebar sidebar-hidden fixed inset-y-0 left-0 z-50 w-64 bg-slate-900 text-white flex flex-col overflow-y-auto">
-        <div class="p-6 border-b border-slate-700">
-            <div class="flex items-center gap-3">
-                <img src="/GIE_logo.png" alt="GIE" class="w-10 h-10 rounded-lg object-contain">
-                <div>
-                    <h2 class="font-bold text-lg">GIE</h2>
-                    <p class="text-xs text-slate-400">Gestor de Informes</p>
+    <!-- Header superior oscuro -->
+    <header class="fixed top-0 left-0 right-0 h-16 bg-slate-950 text-white z-50 flex items-center justify-between px-4 lg:px-6 border-b border-slate-800">
+        <div class="flex items-center gap-3">
+            <button id="menuBtn" class="lg:hidden p-2 -ml-2 hover:bg-slate-800 rounded-lg transition-colors">
+                <i class="mdi mdi-menu text-xl"></i>
+            </button>
+            <div class="flex items-center gap-2.5">
+                <img src="/GIE_logo.png" alt="GIE" class="w-8 h-8 rounded-lg object-contain">
+                <span class="font-semibold text-lg tracking-tight">GIE</span>
+            </div>
+            <div class="hidden md:flex items-center gap-2 text-sm text-slate-400 ml-4">
+                <span>Panel</span>
+                <i class="mdi mdi-chevron-right text-xs"></i>
+                <span id="headerSectionTitle" class="text-slate-200 font-medium">Dashboard</span>
+            </div>
+        </div>
+        <div class="flex items-center gap-4">
+            <div class="hidden md:block relative">
+                <div class="flex items-center gap-2 bg-slate-900 border border-slate-800 rounded-lg px-3 py-1.5 text-sm text-slate-300 min-w-[260px] focus-within:border-blue-500 focus-within:ring-1 focus-within:ring-blue-500 transition-all">
+                    <i class="mdi mdi-magnify text-slate-400"></i>
+                    <input type="text" id="headerSearchInput" placeholder="Buscar alumnos, informes, docentes..." class="bg-transparent border-none outline-none text-sm w-full placeholder-slate-500">
+                </div>
+                <div id="headerSearchResults" class="hidden absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-slate-200 py-2 max-h-80 overflow-y-auto z-50"></div>
+            </div>
+            <div class="flex items-center gap-3 pl-2 border-l border-slate-800">
+                <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-sm font-bold">
+                    <span id="headerUserInitials">U</span>
+                </div>
+                <div class="hidden lg:block leading-tight">
+                    <p class="text-sm font-medium" id="headerUserName">Usuario</p>
+                    <p class="text-xs text-slate-400 capitalize" id="headerUserRole">rol</p>
                 </div>
             </div>
         </div>
-        <nav class="flex-1 p-4 space-y-1">
-            <button class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" data-section="dashboard">
-                <i class="fas fa-chart-pie w-5"></i><span>Dashboard</span>
+    </header>
+
+    <!-- Sidebar -->
+    <aside id="sidebar" class="sidebar sidebar-hidden fixed top-16 bottom-0 left-0 z-40 w-64 bg-slate-900 text-white flex flex-col overflow-y-auto border-r border-slate-800">
+        <nav class="flex-1 p-3 space-y-1">
+            <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 transition-colors text-left text-sm" data-section="dashboard">
+                <i class="mdi mdi-chart-pie text-lg"></i><span>Dashboard</span>
             </button>
-            <button class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" data-section="nuevo">
-                <i class="fas fa-plus-circle w-5"></i><span>Nuevo Informe</span>
+            <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 transition-colors text-left text-sm" data-section="nuevo">
+                <i class="mdi mdi-plus-circle-outline text-lg"></i><span>Nuevo Informe</span>
             </button>
-            <button class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" data-section="informes">
-                <i class="fas fa-file-alt w-5"></i><span>Informes</span>
+            <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 transition-colors text-left text-sm" data-section="informes">
+                <i class="mdi mdi-file-document-outline text-lg"></i><span>Informes</span>
             </button>
-            <button class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" data-section="alumnos">
-                <i class="fas fa-user-graduate w-5"></i><span>Alumnos</span>
+            <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 transition-colors text-left text-sm" data-section="alumnos">
+                <i class="mdi mdi-school-outline text-lg"></i><span>Alumnos</span>
             </button>
-            <button class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" data-section="docentes">
-                <i class="fas fa-chalkboard-teacher w-5"></i><span>Docentes</span>
+            <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 transition-colors text-left text-sm" data-section="docentes">
+                <i class="mdi mdi-human-male-board text-lg"></i><span>Docentes</span>
             </button>
-            <button class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" data-section="usuarios">
-                <i class="fas fa-users w-5"></i><span>Usuarios</span>
+            <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 transition-colors text-left text-sm" data-section="usuarios">
+                <i class="mdi mdi-account-group-outline text-lg"></i><span>Usuarios</span>
             </button>
-            <button class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" data-section="estadisticas">
-                <i class="fas fa-chart-bar w-5"></i><span>Estadísticas</span>
+            <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 transition-colors text-left text-sm" data-section="estadisticas">
+                <i class="mdi mdi-chart-bar text-lg"></i><span>Estadísticas</span>
             </button>
-            <button class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors text-left" data-section="ajustes">
-                <i class="fas fa-cog w-5"></i><span>Ajustes</span>
+            <button class="nav-btn w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800 transition-colors text-left text-sm" data-section="ajustes">
+                <i class="mdi mdi-cog-outline text-lg"></i><span>Ajustes</span>
             </button>
         </nav>
-        <div class="p-4 border-t border-slate-700">
-            <div class="flex items-center gap-3 px-4 py-3 rounded-lg bg-slate-800 mb-3">
-                <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-sm font-bold">
-                    <span id="userInitials">U</span>
-                </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium truncate" id="userName">Usuario</p>
-                    <p class="text-xs text-slate-400 capitalize" id="userRole">rol</p>
-                </div>
-            </div>
-            <button id="btn-logout" class="w-full flex items-center gap-3 px-4 py-2 text-red-400 hover:bg-slate-800 rounded-lg transition-colors">
-                <i class="fas fa-sign-out-alt w-5"></i><span>Cerrar sesión</span>
+        <div class="p-3 border-t border-slate-800">
+            <button id="btn-logout" class="w-full flex items-center gap-3 px-3 py-2 text-red-400 hover:bg-slate-800 rounded-lg transition-colors text-sm">
+                <i class="mdi mdi-logout-variant text-lg"></i><span>Cerrar sesión</span>
             </button>
         </div>
     </aside>
 
-    <div id="overlay" class="fixed inset-0 bg-black/50 z-40 hidden lg:hidden"></div>
+    <div id="overlay" class="fixed inset-0 bg-black/50 z-30 hidden lg:hidden"></div>
 
-    <main class="lg:ml-64 min-h-screen">
+    <main class="lg:ml-64 min-h-screen pt-16 bg-slate-50">
         <!-- DASHBOARD -->
         <section id="dashboard" class="section hidden p-6 max-w-7xl mx-auto animate-fade-in">
             <!-- Skeleton Dashboard -->
@@ -208,37 +219,39 @@
             </div>
 
             <div id="content-dashboard" class="section-content hidden">
-            <h1 class="text-2xl font-bold text-slate-800 mb-6 animate-enter">Panel de Regente</h1>
-
             <!-- Stats cards -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 animate-enter animate-delay-100">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center"><i class="fas fa-clock text-amber-600"></i></div>
-                        <span class="text-xl font-bold text-slate-800" id="dashPendientes">0</span>
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center"><i class="mdi mdi-clock-outline text-amber-600 text-lg"></i></div>
+                        <span class="text-2xl font-bold text-slate-800" id="dashPendientes">0</span>
                     </div>
-                    <p class="text-xs text-slate-500">Pendientes</p>
+                    <p class="text-sm font-medium text-slate-600">Pendientes</p>
+                    <p class="text-xs text-slate-400 mt-1">Informes por revisar</p>
                 </div>
                 <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 animate-enter animate-delay-150">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center"><i class="fas fa-check-circle text-green-600"></i></div>
-                        <span class="text-xl font-bold text-slate-800" id="dashAprobados">0</span>
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center"><i class="mdi mdi-check-circle-outline text-green-600 text-lg"></i></div>
+                        <span class="text-2xl font-bold text-slate-800" id="dashAprobados">0</span>
                     </div>
-                    <p class="text-xs text-slate-500">Revisados</p>
+                    <p class="text-sm font-medium text-slate-600">Revisados</p>
+                    <p class="text-xs text-slate-400 mt-1">Aprobados este mes</p>
                 </div>
                 <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 animate-enter animate-delay-200">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center"><i class="fas fa-times-circle text-red-600"></i></div>
-                        <span class="text-xl font-bold text-slate-800" id="dashRechazados">0</span>
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-10 h-10 bg-red-100 rounded-lg flex items-center justify-center"><i class="mdi mdi-close-circle-outline text-red-600 text-lg"></i></div>
+                        <span class="text-2xl font-bold text-slate-800" id="dashRechazados">0</span>
                     </div>
-                    <p class="text-xs text-slate-500">Derivados</p>
+                    <p class="text-sm font-medium text-slate-600">Derivados</p>
+                    <p class="text-xs text-slate-400 mt-1">En seguimiento</p>
                 </div>
                 <div class="bg-white rounded-xl p-5 shadow-sm border border-slate-200 animate-enter animate-delay-250">
-                    <div class="flex items-center justify-between mb-2">
-                        <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center"><i class="fas fa-file-alt text-purple-600"></i></div>
-                        <span class="text-xl font-bold text-slate-800" id="dashTotal">0</span>
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center"><i class="mdi mdi-file-document-outline text-purple-600 text-lg"></i></div>
+                        <span class="text-2xl font-bold text-slate-800" id="dashTotal">0</span>
                     </div>
-                    <p class="text-xs text-slate-500">Total</p>
+                    <p class="text-sm font-medium text-slate-600">Total</p>
+                    <p class="text-xs text-slate-400 mt-1">Informes registrados</p>
                 </div>
             </div>
 
@@ -246,28 +259,28 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-[480px] flex flex-col animate-enter animate-delay-300">
                     <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2 shrink-0">
-                        <i class="fas fa-calendar-check text-blue-500"></i> Reuniones programadas
+                        <i class="mdi mdi-calendar-check text-blue-500"></i> Reuniones programadas
                     </h3>
                     <!-- Calendario -->
                     <div id="calendarioReuniones" class="mb-4 select-none shrink-0">
                         <div class="flex justify-between items-center mb-3">
-                            <button id="calPrev" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"><i class="fas fa-chevron-left text-xs"></i></button>
+                            <button id="calPrev" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"><i class="mdi mdi-chevron-left text-xs"></i></button>
                             <span id="calMesAnio" class="text-sm font-semibold text-slate-700"></span>
-                            <button id="calNext" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"><i class="fas fa-chevron-right text-xs"></i></button>
+                            <button id="calNext" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 text-slate-500 transition-colors"><i class="mdi mdi-chevron-right text-xs"></i></button>
                         </div>
                         <div class="grid grid-cols-7 gap-1 text-center text-[10px] font-medium text-slate-400 mb-1">
                             <div>Dom</div><div>Lun</div><div>Mar</div><div>Mié</div><div>Jue</div><div>Vie</div><div>Sáb</div>
                         </div>
                         <div id="calGrid" class="grid grid-cols-7 gap-1"></div>
                         <button id="calVerTodos" class="mt-2 w-full text-xs text-blue-600 hover:text-blue-800 font-medium py-1 rounded-lg hover:bg-blue-50 transition-colors hidden">
-                            <i class="fas fa-list mr-1"></i> Ver todos los pendientes del mes
+                            <i class="mdi mdi-format-list-bulleted mr-1"></i> Ver todos los pendientes del mes
                         </button>
                     </div>
                     <div id="dashReuniones" class="space-y-2 flex-1 overflow-y-auto border-t border-slate-100 pt-3 min-h-0"></div>
                 </div>
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 h-[480px] flex flex-col animate-enter animate-delay-400">
                     <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2 shrink-0">
-                        <i class="fas fa-gavel text-amber-500"></i> Pendientes de revisión
+                        <i class="mdi mdi-gavel text-amber-500"></i> Pendientes de revisión
                     </h3>
                     <div id="dashPendientesLista" class="space-y-3 flex-1 overflow-y-auto min-h-0"></div>
                 </div>
@@ -277,13 +290,13 @@
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div class="lg:col-span-2 bg-white rounded-xl shadow-sm border border-slate-200 p-6 animate-enter animate-delay-500">
                     <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
-                        <i class="fas fa-history text-slate-500"></i> Historial reciente
+                        <i class="mdi mdi-history text-slate-500"></i> Historial reciente
                     </h3>
                     <div id="dashHistorial" class="space-y-3 max-h-80 overflow-y-auto"></div>
                 </div>
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 animate-enter animate-delay-600">
                     <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
-                        <i class="fas fa-chart-pie text-red-500"></i> Distribución por Gravedad
+                        <i class="mdi mdi-chart-pie text-red-500"></i> Distribución por Gravedad
                     </h3>
                     <div class="relative h-64">
                         <canvas id="dashChart"></canvas>
@@ -326,20 +339,19 @@
             </div>
             <div id="content-informes" class="section-content hidden">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 animate-enter">
-                <h1 class="text-2xl font-bold text-slate-800">Informes</h1>
                 <div class="flex gap-2">
                 <button onclick="exportarPDFEnBlanco()" class="bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm" title="Imprimir informe en blanco">
-                    <i class="fas fa-print"></i><span class="sm:hidden">Imprimir</span><span class="hidden sm:inline">Imprimir en blanco</span>
+                    <i class="mdi mdi-printer-outline"></i><span class="sm:hidden">Imprimir</span><span class="hidden sm:inline">Imprimir en blanco</span>
                 </button>
                 <button id="btn-nuevo-informe" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center gap-2 transition-colors shadow-sm">
-                    <i class="fas fa-plus"></i><span>Nuevo Informe</span>
+                    <i class="mdi mdi-plus"></i><span>Nuevo Informe</span>
                 </button>
                 </div>
             </div>
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6 animate-enter animate-delay-100">
                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
                     <div class="relative">
-                        <i class="fas fa-search absolute left-3 top-3 text-slate-400"></i>
+                        <i class="mdi mdi-magnify absolute left-3 top-3 text-slate-400"></i>
                         <input type="text" id="filtroBusqueda" placeholder="Buscar alumno o título..."
                             class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none">
                     </div>
@@ -392,7 +404,7 @@
             </div>
             <div id="listaInformes" class="space-y-3"></div>
             <div id="sinResultados" class="hidden text-center py-12 text-slate-400">
-                <i class="fas fa-inbox text-4xl mb-3"></i>
+                <i class="mdi mdi-inbox-outline text-4xl mb-3"></i>
                 <p>No se encontraron informes</p>
             </div>
             </div>
@@ -401,7 +413,7 @@
         <!-- NUEVO/EDITAR INFORME -->
         <section id="nuevo" class="section hidden p-6 max-w-3xl mx-auto animate-fade-in">
             <div class="flex items-center gap-3 mb-6">
-                <button id="btn-volver-nuevo" class="text-slate-400 hover:text-slate-600"><i class="fas fa-arrow-left text-xl"></i></button>
+                <button id="btn-volver-nuevo" class="text-slate-400 hover:text-slate-600"><i class="mdi mdi-arrow-left text-xl"></i></button>
                 <h1 class="text-2xl font-bold text-slate-800" id="tituloForm">Nuevo Informe</h1>
             </div>
             <form id="formInforme" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 space-y-6">
@@ -417,21 +429,21 @@
                         </div>
                     </div>
                     <div id="alumnoSeleccionado" class="hidden mt-2 p-3 bg-blue-50 border border-blue-200 rounded-lg flex items-center gap-3">
-                        <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold"><i class="fas fa-user"></i></div>
+                        <div class="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white text-sm font-bold"><i class="mdi mdi-account-outline"></i></div>
                         <div>
                             <p class="font-medium text-sm" id="alumnoNombre"></p>
                             <p class="text-xs text-slate-500" id="alumnoCurso"></p>
                         </div>
-                        <button type="button" id="btn-limpiar-alumno" class="ml-auto text-slate-400 hover:text-red-500"><i class="fas fa-times"></i></button>
+                        <button type="button" id="btn-limpiar-alumno" class="ml-auto text-slate-400 hover:text-red-500"><i class="mdi mdi-close"></i></button>
                     </div>
                     <button type="button" id="btn-cambiar-alumno" onclick="limpiarAlumno()" class="hidden mt-2 text-sm text-blue-600 hover:text-blue-800 font-medium flex items-center gap-1">
-                        <i class="fas fa-exchange-alt"></i> Cambiar alumno
+                        <i class="mdi mdi-swap-horizontal"></i> Cambiar alumno
                     </button>
                 </div>
                 <div>
                     <div class="flex justify-between items-center mb-2">
                         <label class="text-sm font-medium text-slate-700">Plantilla rápida <span class="text-xs text-slate-400 font-normal">(opcional)</span></label>
-                        <button type="button" onclick="abrirModalPlantillas()" class="text-xs text-blue-600 hover:text-blue-800 font-medium"><i class="fas fa-cog mr-1"></i>Gestionar</button>
+                        <button type="button" onclick="abrirModalPlantillas()" class="text-xs text-blue-600 hover:text-blue-800 font-medium"><i class="mdi mdi-cog-outline mr-1"></i>Gestionar</button>
                     </div>
                     <select id="plantillaInforme" class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
                         <option value="">Seleccionar plantilla...</option>
@@ -458,7 +470,7 @@
                 <div>
                     <div class="flex justify-between items-center mb-2">
                         <label class="text-sm font-medium text-slate-700">Categoría *</label>
-                        <button type="button" onclick="abrirModalCategorias()" class="text-xs text-blue-600 hover:text-blue-800 font-medium"><i class="fas fa-cog mr-1"></i>Gestionar</button>
+                        <button type="button" onclick="abrirModalCategorias()" class="text-xs text-blue-600 hover:text-blue-800 font-medium"><i class="mdi mdi-cog-outline mr-1"></i>Gestionar</button>
                     </div>
                     <select id="categoriaInforme" required class="w-full px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white">
                         <option value="">Seleccione...</option>
@@ -477,7 +489,7 @@
                 </div>
                 <div class="flex gap-3 pt-4">
                     <button type="submit" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 rounded-lg transition-colors shadow-sm">
-                        <i class="fas fa-save mr-2"></i><span id="txtBtnGuardar">Guardar Informe</span>
+                        <i class="mdi mdi-content-save-outline mr-2"></i><span id="txtBtnGuardar">Guardar Informe</span>
                     </button>
                     <button type="button" id="btn-cancelar-form" class="px-6 py-2.5 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">Cancelar</button>
                 </div>
@@ -509,7 +521,6 @@
             </div>
             <div id="content-alumnos" class="section-content hidden">
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                <h1 class="text-2xl font-bold text-slate-800">Alumnos</h1>
             </div>
             <div id="tabsAlumnos" class="flex gap-2 mb-4 overflow-x-auto hidden">
                 <button id="tabAlumnosTodos" onclick="setTabAlumnos('todos')" class="tab-alumnos px-4 py-2 rounded-lg text-sm font-medium transition-colors bg-blue-600 text-white">
@@ -580,7 +591,7 @@
             </div>
             <div id="listaAlumnos" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
             <div id="alumnosEmpty" class="hidden text-center py-12">
-                <i class="fas fa-search text-4xl text-slate-300 mb-3"></i>
+                <i class="mdi mdi-magnify text-4xl text-slate-300 mb-3"></i>
                 <p class="text-slate-500">No se encontraron alumnos</p>
             </div>
             </div>
@@ -622,7 +633,6 @@
                 </div>
             </div>
             <div id="content-docentes" class="section-content hidden">
-                <h1 class="text-2xl font-bold text-slate-800 mb-6">Docentes y Personal</h1>
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
@@ -673,7 +683,7 @@
                     <div id="listaDocentesMobile" class="md:hidden divide-y divide-slate-100"></div>
                 </div>
                 <div id="docentesEmpty" class="hidden text-center py-12">
-                    <i class="fas fa-search text-4xl text-slate-300 mb-3"></i>
+                    <i class="mdi mdi-magnify text-4xl text-slate-300 mb-3"></i>
                     <p class="text-slate-500">No se encontraron docentes</p>
                 </div>
             </div>
@@ -714,8 +724,6 @@
                 </div>
             </div>
             <div id="content-usuarios" class="section-content hidden">
-                <h1 class="text-2xl font-bold text-slate-800 mb-6">Usuarios del Sistema</h1>
-
                 <!-- Formulario de creación -->
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-4 mb-6">
                     <h2 class="text-sm font-semibold text-slate-700 mb-3">Crear nuevo usuario</h2>
@@ -749,7 +757,7 @@
                     </div>
                     <div class="mt-4 flex justify-end">
                         <button onclick="crearUsuario()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
-                            <i class="fas fa-plus mr-2"></i>Crear usuario
+                            <i class="mdi mdi-plus mr-2"></i>Crear usuario
                         </button>
                     </div>
                 </div>
@@ -773,7 +781,7 @@
                     <div id="listaUsuariosMobile" class="md:hidden divide-y divide-slate-100"></div>
                 </div>
                 <div id="usuariosEmpty" class="hidden text-center py-12">
-                    <i class="fas fa-search text-4xl text-slate-300 mb-3"></i>
+                    <i class="mdi mdi-magnify text-4xl text-slate-300 mb-3"></i>
                     <p class="text-slate-500">No se encontraron usuarios</p>
                 </div>
             </div>
@@ -810,7 +818,6 @@
                 </div>
             </div>
             <div id="content-estadisticas" class="section-content hidden">
-            <h1 class="text-2xl font-bold text-slate-800 mb-6">Estadísticas</h1>
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
                 <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                     <h3 class="font-semibold text-slate-700 mb-4">Informes por Año/Grado</h3>
@@ -819,7 +826,7 @@
                     <div id="drillDownAnio" class="hidden mt-4 pt-4 border-t border-slate-100">
                         <div class="flex items-center justify-between mb-3">
                             <h4 id="drillDownTitulo" class="font-semibold text-slate-700 text-sm"></h4>
-                            <button onclick="cerrarDrillDownAnio()" class="text-xs text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i> Cerrar</button>
+                            <button onclick="cerrarDrillDownAnio()" class="text-xs text-slate-400 hover:text-slate-600"><i class="mdi mdi-close"></i> Cerrar</button>
                         </div>
                         <div id="drillDownContenido" class="space-y-1"></div>
                     </div>
@@ -928,12 +935,10 @@
                 </div>
             </div>
             <div id="content-ajustes" class="section-content hidden">
-            <h1 class="text-2xl font-bold text-slate-800 mb-6">Ajustes</h1>
-
             <!-- Espacio de Base de Datos -->
             <div id="cardDbSpace" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
                 <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
-                    <i class="fas fa-database text-blue-500"></i> Base de datos
+                    <i class="mdi mdi-database-outline text-blue-500"></i> Base de datos
                 </h3>
                 <div class="space-y-3">
                     <div class="flex items-end justify-between mb-2">
@@ -948,14 +953,14 @@
                     <div class="w-full bg-slate-100 rounded-full h-4 overflow-hidden">
                         <div id="dbSpaceBar" class="h-full rounded-full transition-all duration-500 bg-blue-500" style="width: 0%"></div>
                     </div>
-                    <p id="dbSpaceAlert" class="hidden text-xs font-medium text-red-600"><i class="fas fa-exclamation-triangle mr-1"></i> Se alcanzó el umbral de advertencia</p>
+                    <p id="dbSpaceAlert" class="hidden text-xs font-medium text-red-600"><i class="mdi mdi-alert-outline mr-1"></i> Se alcanzó el umbral de advertencia</p>
                 </div>
             </div>
 
             <!-- Mis cursos (visible para docentes/preceptores) -->
             <div id="cardMisCursos" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
                 <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
-                    <i class="fas fa-chalkboard-teacher text-blue-500"></i> Mis cursos
+                    <i class="mdi mdi-human-male-board text-blue-500"></i> Mis cursos
                 </h3>
                 <div class="flex gap-2 mb-3">
                     <select id="ajustesCursoAnio" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
@@ -987,7 +992,7 @@
             <!-- Mis alumnos PAT (visible solo para PAT) -->
             <div id="cardMisAlumnosPAT" class="hidden bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
                 <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
-                    <i class="fas fa-users text-blue-500"></i> Mis alumnos PAT
+                    <i class="mdi mdi-account-group-outline text-blue-500"></i> Mis alumnos PAT
                 </h3>
                 <div class="relative mb-3">
                     <input type="text" id="inputBuscarAlumnoPAT" placeholder="Buscar alumno..." oninput="buscarAlumnoPAT(this.value)" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
@@ -999,51 +1004,51 @@
             <!-- Novedades de la versión -->
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
                 <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
-                    <i class="fas fa-sparkles text-amber-500"></i> Novedades v1.6.2
+                    <i class="mdi mdi-sparkles text-amber-500"></i> Novedades v1.6.2
                 </h3>
                 <ul class="space-y-2 text-sm text-slate-600">
                     <li class="flex items-start gap-2">
-                        <i class="fas fa-check-circle text-green-500 mt-0.5 text-xs"></i>
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
                         <span><strong>Sincronización automática</strong> de alumnos desde el sistema de gestión escolar.</span>
                     </li>
                     <li class="flex items-start gap-2">
-                        <i class="fas fa-check-circle text-green-500 mt-0.5 text-xs"></i>
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
                         <span>Sincronización de <strong>especialidad</strong> de cada alumno desde Nexus (Computación, Automotores, etc.).</span>
                     </li>
                     <li class="flex items-start gap-2">
-                        <i class="fas fa-check-circle text-green-500 mt-0.5 text-xs"></i>
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
                         <span>Gestor de <strong>categorías personalizadas</strong> para informes.</span>
                     </li>
                     <li class="flex items-start gap-2">
-                        <i class="fas fa-check-circle text-green-500 mt-0.5 text-xs"></i>
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
                         <span>Opción de <strong>desarchivar y desanular</strong> informes (los regentes pueden volverlos a revisados).</span>
                     </li>
                     <li class="flex items-start gap-2">
-                        <i class="fas fa-check-circle text-green-500 mt-0.5 text-xs"></i>
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
                         <span>Sección <strong>Recientes</strong> en la lista de informes con botón "Mostrar más".</span>
                     </li>
                     <li class="flex items-start gap-2">
-                        <i class="fas fa-check-circle text-green-500 mt-0.5 text-xs"></i>
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
                         <span>Corrección del filtro de tabs <strong>Archivados / Anulados</strong>.</span>
                     </li>
                     <li class="flex items-start gap-2">
-                        <i class="fas fa-check-circle text-green-500 mt-0.5 text-xs"></i>
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
                         <span><strong>Derivación de informes</strong> a cualquier usuario (incluyendo DOE y PAT) con seguimiento en historial.</span>
                     </li>
                     <li class="flex items-start gap-2">
-                        <i class="fas fa-check-circle text-green-500 mt-0.5 text-xs"></i>
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
                         <span><strong>Historial prolijo</strong> con badges de acción, actor y detalle por cada movimiento del informe.</span>
                     </li>
                     <li class="flex items-start gap-2">
-                        <i class="fas fa-check-circle text-green-500 mt-0.5 text-xs"></i>
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
                         <span>Nueva instancia: <strong>Consejo de Aula</strong> (entre Muy Grave y Consejo Escolar).</span>
                     </li>
                     <li class="flex items-start gap-2">
-                        <i class="fas fa-check-circle text-green-500 mt-0.5 text-xs"></i>
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
                         <span><strong>Numeración automática de informes</strong>: cada informe tiene un número único con formato AÑO + SECUENCIAL (ej: Informe N° 2600001).</span>
                     </li>
                     <li class="flex items-start gap-2">
-                        <i class="fas fa-check-circle text-green-500 mt-0.5 text-xs"></i>
+                        <i class="mdi mdi-check-circle-outline text-green-500 mt-0.5 text-xs"></i>
                         <span><strong>Nuevo sistema de observaciones por alumno</strong>: registro de acciones, entrevistas, seguimientos y tipos personalizados con fecha de evento, autor y gestión de tipos desde la vista del alumno.</span>
                     </li>
                 </ul>
@@ -1051,7 +1056,7 @@
 
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                 <h3 class="font-semibold text-slate-700 mb-4 flex items-center gap-2">
-                    <i class="fas fa-info-circle text-blue-500"></i> Acerca de
+                    <i class="mdi mdi-information-outline text-blue-500"></i> Acerca de
                 </h3>
                 <div class="space-y-3 text-sm text-slate-600">
                     <p><strong class="text-slate-800">GIE - Gestor de Informes Escolares</strong></p>
@@ -1064,7 +1069,7 @@
                     </ul>
                     <p class="pt-2 text-slate-500">Versión <span class="font-mono font-medium text-slate-700">v1.6.2</span></p>
                     <div class="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                        <p class="text-sm text-amber-800"><i class="fas fa-bug mr-2"></i><strong>¿Encontraste un error?</strong></p>
+                        <p class="text-sm text-amber-800"><i class="mdi mdi-bug-outline mr-2"></i><strong>¿Encontraste un error?</strong></p>
                         <p class="text-sm text-amber-700 mt-1">En caso de errores o fallas, notificar a <a href="mailto:nicohung0302@gmail.com" class="underline hover:text-amber-900 font-medium">nicohung0302@gmail.com</a></p>
                     </div>
                 </div>
@@ -1112,7 +1117,7 @@
             </div>
             <div id="content-vistaAlumno" class="section-content hidden">
             <div class="flex items-center gap-3 mb-6">
-                <button id="btn-volver-alumno" class="text-slate-400 hover:text-slate-600"><i class="fas fa-arrow-left text-xl"></i></button>
+                <button id="btn-volver-alumno" class="text-slate-400 hover:text-slate-600"><i class="mdi mdi-arrow-left text-xl"></i></button>
                 <h1 class="text-2xl font-bold text-slate-800">Resumen del Alumno</h1>
             </div>
             <div id="tarjetaAlumno" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6">
@@ -1135,14 +1140,14 @@
             <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 flex flex-col">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="font-semibold text-slate-700">Observaciones y Acciones</h3>
-                    <button id="btnToggleFormObs" onclick="toggleFormObservacion()" class="text-sm text-blue-600 hover:text-blue-800 font-medium hidden"><i class="fas fa-plus mr-1"></i>Agregar</button>
+                    <button id="btnToggleFormObs" onclick="toggleFormObservacion()" class="text-sm text-blue-600 hover:text-blue-800 font-medium hidden"><i class="mdi mdi-plus mr-1"></i>Agregar</button>
                 </div>
                 <div id="formObservacionAlumno" class="hidden mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200 space-y-3">
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
                             <div class="flex justify-between items-center mb-1">
                                 <label class="block text-xs font-medium text-slate-600">Tipo</label>
-                                <button type="button" onclick="abrirModalTiposObservacion()" class="text-xs text-blue-600 hover:text-blue-800 font-medium"><i class="fas fa-cog mr-1"></i>Gestionar</button>
+                                <button type="button" onclick="abrirModalTiposObservacion()" class="text-xs text-blue-600 hover:text-blue-800 font-medium"><i class="mdi mdi-cog-outline mr-1"></i>Gestionar</button>
                             </div>
                             <select id="obsTipo" onchange="onChangeObsTipo(this.value)" class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 bg-white">
                                 <option value="observacion">Observación</option>
@@ -1217,7 +1222,7 @@
             </div>
             <div id="content-vistaDocente" class="section-content hidden">
                 <div class="flex items-center gap-3 mb-6">
-                    <button id="btn-volver-docente" class="text-slate-400 hover:text-slate-600"><i class="fas fa-arrow-left text-xl"></i></button>
+                    <button id="btn-volver-docente" class="text-slate-400 hover:text-slate-600"><i class="mdi mdi-arrow-left text-xl"></i></button>
                     <h1 class="text-2xl font-bold text-slate-800">Resumen del Docente</h1>
                 </div>
                 <div id="tarjetaDocente" class="bg-white rounded-xl shadow-sm border border-slate-200 p-6 mb-6"></div>
@@ -1244,7 +1249,7 @@
         <div class="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] flex flex-col animate-fade-in">
             <div class="p-6 border-b border-slate-200 flex justify-between items-center shrink-0">
                 <h3 class="text-lg font-bold text-slate-800">Detalle del Informe</h3>
-                <button id="btn-cerrar-modal" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
+                <button id="btn-cerrar-modal" class="text-slate-400 hover:text-slate-600"><i class="mdi mdi-close text-xl"></i></button>
             </div>
             <div id="contenidoModal" class="p-6 space-y-4 overflow-y-auto"></div>
             <div id="accionesModal" class="p-6 border-t border-slate-200 bg-slate-50 flex flex-wrap gap-3 shrink-0"></div>
@@ -1256,7 +1261,7 @@
         <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] flex flex-col animate-fade-in">
             <div class="p-6 border-b border-slate-200 flex justify-between items-center shrink-0">
                 <h3 id="tituloModalGrupo" class="text-lg font-bold text-slate-800">Informes</h3>
-                <button id="btn-cerrar-modal-grupo" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
+                <button id="btn-cerrar-modal-grupo" class="text-slate-400 hover:text-slate-600"><i class="mdi mdi-close text-xl"></i></button>
             </div>
             <div id="contenidoModalGrupo" class="p-6 space-y-3 overflow-y-auto"></div>
         </div>
@@ -1310,7 +1315,7 @@
         <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-fade-in">
             <div class="p-6 border-b border-slate-200 flex justify-between items-center">
                 <h3 class="text-lg font-bold text-slate-800">Gestionar Plantillas</h3>
-                <button onclick="cerrarModalPlantillas()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
+                <button onclick="cerrarModalPlantillas()" class="text-slate-400 hover:text-slate-600"><i class="mdi mdi-close text-xl"></i></button>
             </div>
             <div class="p-6 space-y-4">
                 <div class="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-3">
@@ -1325,7 +1330,7 @@
                         <option value="consejo">Consejo Escolar de Convivencia</option>
                     </select>
                     <textarea id="newPlantillaResumen" rows="3" maxlength="2000" placeholder="Resumen / descripción..." class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none resize-none text-sm"></textarea>
-                    <button onclick="crearPlantilla()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors"><i class="fas fa-plus mr-1"></i> Agregar plantilla</button>
+                    <button onclick="crearPlantilla()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors"><i class="mdi mdi-plus mr-1"></i> Agregar plantilla</button>
                 </div>
                 <div>
                     <h4 class="text-sm font-semibold text-slate-700 mb-2">Mis plantillas</h4>
@@ -1340,7 +1345,7 @@
         <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-fade-in">
             <div class="p-6 border-b border-slate-200 flex justify-between items-center">
                 <h3 class="text-lg font-bold text-slate-800">Gestionar Categorías</h3>
-                <button onclick="cerrarModalCategorias()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
+                <button onclick="cerrarModalCategorias()" class="text-slate-400 hover:text-slate-600"><i class="mdi mdi-close text-xl"></i></button>
             </div>
             <div class="p-6 space-y-4">
                 <div class="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-3">
@@ -1350,7 +1355,7 @@
                         <label class="text-sm text-slate-600">Color:</label>
                         <input type="color" id="newCategoriaColor" value="#3b82f6" class="w-12 h-8 px-1 py-1 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm cursor-pointer">
                     </div>
-                    <button onclick="crearCategoria()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors"><i class="fas fa-plus mr-1"></i> Agregar categoría</button>
+                    <button onclick="crearCategoria()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors"><i class="mdi mdi-plus mr-1"></i> Agregar categoría</button>
                 </div>
                 <div>
                     <h4 class="text-sm font-semibold text-slate-700 mb-2">Categorías existentes</h4>
@@ -1365,7 +1370,7 @@
         <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-fade-in">
             <div class="p-6 border-b border-slate-200 flex justify-between items-center">
                 <h3 class="text-lg font-bold text-slate-800">Gestionar Tipos de Observación</h3>
-                <button onclick="cerrarModalTiposObservacion()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
+                <button onclick="cerrarModalTiposObservacion()" class="text-slate-400 hover:text-slate-600"><i class="mdi mdi-close text-xl"></i></button>
             </div>
             <div class="p-6 space-y-4">
                 <div class="bg-slate-50 rounded-lg border border-slate-200 p-4 space-y-3">
@@ -1375,7 +1380,7 @@
                         <label class="text-sm text-slate-600">Color:</label>
                         <input type="color" id="newTipoObsColor" value="#64748b" class="w-12 h-8 px-1 py-1 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm cursor-pointer">
                     </div>
-                    <button onclick="crearTipoObservacion()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors"><i class="fas fa-plus mr-1"></i> Agregar tipo</button>
+                    <button onclick="crearTipoObservacion()" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition-colors"><i class="mdi mdi-plus mr-1"></i> Agregar tipo</button>
                 </div>
                 <div>
                     <h4 class="text-sm font-semibold text-slate-700 mb-2">Tipos existentes</h4>
@@ -1416,7 +1421,7 @@
         <div class="bg-white rounded-xl shadow-2xl max-w-md w-full animate-fade-in">
             <div class="p-6 border-b border-slate-200 flex justify-between items-center">
                 <h3 class="text-lg font-bold text-slate-800">Gestionar Reunión</h3>
-                <button onclick="cerrarModalGestionReunion()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
+                <button onclick="cerrarModalGestionReunion()" class="text-slate-400 hover:text-slate-600"><i class="mdi mdi-close text-xl"></i></button>
             </div>
             <div class="p-6 space-y-4">
                 <input type="hidden" id="gestionReunionInformeId">
@@ -1427,8 +1432,8 @@
             </div>
             <div class="p-6 border-t border-slate-200 bg-slate-50 flex flex-wrap gap-3">
                 <button onclick="guardarCambioReunion()" class="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors">Guardar cambio</button>
-                <button onclick="posponerReunion(7)" class="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg transition-colors text-sm"><i class="fas fa-calendar-plus mr-1"></i>+7 días</button>
-                <button onclick="eliminarReunion()" class="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg transition-colors text-sm"><i class="fas fa-trash mr-1"></i>Eliminar</button>
+                <button onclick="posponerReunion(7)" class="px-4 py-2 bg-amber-50 hover:bg-amber-100 text-amber-700 border border-amber-200 rounded-lg transition-colors text-sm"><i class="mdi mdi-calendar-plus mr-1"></i>+7 días</button>
+                <button onclick="eliminarReunion()" class="px-4 py-2 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-lg transition-colors text-sm"><i class="mdi mdi-delete-outline mr-1"></i>Eliminar</button>
             </div>
         </div>
     </div>
@@ -1438,7 +1443,7 @@
         <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto animate-fade-in">
             <div class="p-6 border-b border-slate-200 flex justify-between items-center">
                 <h3 id="tituloModalUsuario" class="text-lg font-bold text-slate-800">Nuevo usuario</h3>
-                <button onclick="cerrarModalUsuario()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-xl"></i></button>
+                <button onclick="cerrarModalUsuario()" class="text-slate-400 hover:text-slate-600"><i class="mdi mdi-close text-xl"></i></button>
             </div>
             <div class="p-6 space-y-4">
                 <input type="hidden" id="usuarioId">
@@ -1482,7 +1487,7 @@
                     <label class="block text-xs font-medium text-slate-500 mb-1">Cursos asignados</label>
                     <div class="flex gap-2">
                         <input type="text" id="usuarioNuevoCurso" placeholder="Ej: 1° A" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-sm">
-                        <button onclick="agregarCursoUsuario()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm"><i class="fas fa-plus"></i></button>
+                        <button onclick="agregarCursoUsuario()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm"><i class="mdi mdi-plus"></i></button>
                     </div>
                     <div id="usuarioCursosChips" class="flex flex-wrap gap-2 mt-2"></div>
                 </div>
@@ -1492,7 +1497,7 @@
                         <select id="usuarioNuevoAlumnoPAT" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none bg-white text-sm">
                             <option value="">Seleccionar alumno...</option>
                         </select>
-                        <button onclick="agregarAlumnoPATUsuario()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm"><i class="fas fa-plus"></i></button>
+                        <button onclick="agregarAlumnoPATUsuario()" class="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm"><i class="mdi mdi-plus"></i></button>
                     </div>
                     <div id="usuarioAlumnosPATChips" class="flex flex-wrap gap-2 mt-2"></div>
                 </div>
@@ -1535,7 +1540,7 @@
         <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full animate-fade-in">
             <div class="p-6 text-center">
                 <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-exclamation-triangle text-red-600 text-xl"></i>
+                    <i class="mdi mdi-alert-outline text-red-600 text-xl"></i>
                 </div>
                 <h3 class="text-lg font-bold text-slate-800 mb-2">¿Eliminar usuario?</h3>
                 <p class="text-sm text-slate-500 mb-2">Esta acción no se puede deshacer.</p>
@@ -1556,7 +1561,7 @@
         <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full animate-fade-in">
             <div class="p-6 text-center">
                 <div class="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i class="fas fa-sign-out-alt text-red-600 text-xl"></i>
+                    <i class="mdi mdi-logout-variant text-red-600 text-xl"></i>
                 </div>
                 <h3 class="text-lg font-bold text-slate-800 mb-2">¿Cerrar sesión?</h3>
                 <p class="text-sm text-slate-500 mb-6">Vas a salir de tu cuenta. Los cambios no guardados se perderán.</p>
@@ -1572,7 +1577,7 @@
 
     <!-- Toast -->
     <div id="toast" class="fixed bottom-4 right-4 bg-slate-800 text-white px-6 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center gap-3">
-        <i id="toastIcon" class="fas fa-check-circle text-green-400"></i>
+        <i id="toastIcon" class="mdi mdi-check-circle-outline text-green-400"></i>
         <span id="toastMsg">Operación exitosa</span>
     </div>
 

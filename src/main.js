@@ -330,6 +330,29 @@ function setupEventListeners() {
         });
     });
 
+    // Buscador global del header
+    const headerSearchInput = document.getElementById('headerSearchInput');
+    const headerSearchResults = document.getElementById('headerSearchResults');
+    let headerSearchDebounce;
+    if (headerSearchInput) {
+        headerSearchInput.addEventListener('input', (e) => {
+            clearTimeout(headerSearchDebounce);
+            headerSearchDebounce = setTimeout(() => buscarGlobal(e.target.value), 200);
+        });
+        headerSearchInput.addEventListener('focus', () => {
+            if (headerSearchInput.value.trim()) buscarGlobal(headerSearchInput.value);
+        });
+        headerSearchInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') cerrarHeaderSearch();
+        });
+    }
+    document.addEventListener('click', (e) => {
+        if (!headerSearchInput || !headerSearchResults) return;
+        if (!headerSearchInput.contains(e.target) && !headerSearchResults.contains(e.target)) {
+            headerSearchResults.classList.add('hidden');
+        }
+    });
+
     let debounceTimer;
     const searchAlumno = document.getElementById('searchAlumno');
     const resultadosAlumno = document.getElementById('resultadosAlumno');
@@ -544,11 +567,28 @@ function ocultarSkeleton(sectionId) {
     if (content) content.classList.remove('hidden');
 }
 
+const SECTION_TITLES = {
+    dashboard: 'Dashboard',
+    nuevo: 'Nuevo Informe',
+    informes: 'Informes',
+    alumnos: 'Alumnos',
+    docentes: 'Docentes',
+    usuarios: 'Usuarios',
+    estadisticas: 'Estadísticas',
+    ajustes: 'Ajustes',
+    vistaAlumno: 'Alumno',
+    vistaDocente: 'Docente'
+};
+
 function showSection(sectionId) {
     const target = document.getElementById(sectionId);
     if (!target || !target.classList.contains('hidden')) return;
     document.querySelectorAll('.section').forEach(s => s.classList.add('hidden'));
     target.classList.remove('hidden');
+
+    const headerTitle = document.getElementById('headerSectionTitle');
+    if (headerTitle) headerTitle.textContent = SECTION_TITLES[sectionId] || sectionId;
+
     document.querySelectorAll('.nav-btn').forEach(b => {
         if (b.dataset.section === sectionId) b.classList.add('bg-slate-800', 'text-blue-400');
         else b.classList.remove('bg-slate-800', 'text-blue-400');
@@ -775,9 +815,9 @@ function mostrarToast(mensaje, tipo = 'success') {
     const msg = document.getElementById('toastMsg');
     msg.textContent = mensaje;
     const iconMap = {
-        error: 'fas fa-exclamation-circle text-red-400',
-        info: 'fas fa-spinner fa-spin text-blue-400',
-        success: 'fas fa-check-circle text-green-400'
+        error: 'mdi mdi-alert-circle-outline text-red-400',
+        info: 'mdi mdi-loading animate-spin text-blue-400',
+        success: 'mdi mdi-check-circle-outline text-green-400'
     };
     icon.className = iconMap[tipo] || iconMap.success;
     toast.classList.remove('translate-y-20', 'opacity-0');
@@ -815,6 +855,136 @@ function buscarAlumno(query) {
             </div>`).join('');
     }
     resultados.classList.remove('hidden');
+}
+
+function buscarGlobal(query) {
+    const input = document.getElementById('headerSearchInput');
+    const dropdown = document.getElementById('headerSearchResults');
+    if (!input || !dropdown) return;
+
+    query = (query || '').toLowerCase().trim();
+    if (!query) {
+        dropdown.classList.add('hidden');
+        dropdown.innerHTML = '';
+        return;
+    }
+
+    const maxPorCategoria = 5;
+    const resultados = [];
+
+    // Alumnos
+    const alumnosMatch = alumnos.filter(a =>
+        `${a.nombre || ''} ${a.apellido || ''}`.toLowerCase().includes(query) ||
+        `${a.apellido || ''}, ${a.nombre || ''}`.toLowerCase().includes(query) ||
+        (a.curso || '').toLowerCase().includes(query) ||
+        (a.division || '').toLowerCase().includes(query) ||
+        (a.dni && String(a.dni).includes(query))
+    ).slice(0, maxPorCategoria);
+
+    // Informes
+    const informesMatch = informes.filter(i => {
+        const alumno = getAlumno(i.alumno_id);
+        return (i.titulo || '').toLowerCase().includes(query) ||
+               (i.resumen || '').toLowerCase().includes(query) ||
+               (i.numero && String(i.numero).includes(query)) ||
+               `${alumno?.apellido || ''} ${alumno?.nombre || ''}`.toLowerCase().includes(query);
+    }).slice(0, maxPorCategoria);
+
+    // Usuarios / Docentes
+    const usuariosMatch = usuarios.filter(u =>
+        `${u.nombre || ''} ${u.apellido || ''}`.toLowerCase().includes(query) ||
+        `${u.apellido || ''}, ${u.nombre || ''}`.toLowerCase().includes(query) ||
+        (u.email || '').toLowerCase().includes(query) ||
+        (u.rol || '').toLowerCase().includes(query)
+    ).slice(0, maxPorCategoria);
+
+    const secciones = [];
+
+    if (alumnosMatch.length) {
+        secciones.push({
+            titulo: 'Alumnos',
+            icono: 'mdi-school-outline',
+            items: alumnosMatch.map(a => ({
+                label: `${escapeHtml(a.apellido)}, ${escapeHtml(a.nombre)}`,
+                meta: `${escapeHtml(a.curso || '')} ${escapeHtml(a.division || '')}`,
+                onClick: () => { verAlumno(a.id); cerrarHeaderSearch(); }
+            }))
+        });
+    }
+
+    if (informesMatch.length) {
+        secciones.push({
+            titulo: 'Informes',
+            icono: 'mdi-file-document-outline',
+            items: informesMatch.map(i => {
+                const alumno = getAlumno(i.alumno_id);
+                return {
+                    label: escapeHtml(i.titulo || 'Sin título'),
+                    meta: alumno ? `${escapeHtml(alumno.apellido)}, ${escapeHtml(alumno.nombre)}` : 'Alumno desconocido',
+                    onClick: () => { verDetalle(i.id); cerrarHeaderSearch(); }
+                };
+            })
+        });
+    }
+
+    if (usuariosMatch.length) {
+        secciones.push({
+            titulo: 'Docentes / Usuarios',
+            icono: 'mdi-human-male-board',
+            items: usuariosMatch.map(u => ({
+                label: `${escapeHtml(u.apellido || '')}, ${escapeHtml(u.nombre || '')}`,
+                meta: escapeHtml(u.email || ''),
+                onClick: () => { verDocente(u.id); cerrarHeaderSearch(); }
+            }))
+        });
+    }
+
+    if (secciones.length === 0) {
+        dropdown.innerHTML = `
+            <div class="px-4 py-6 text-center">
+                <i class="mdi mdi-magnify text-slate-300 text-2xl mb-2"></i>
+                <p class="text-sm text-slate-500">No se encontraron resultados</p>
+            </div>
+        `;
+        dropdown.classList.remove('hidden');
+        return;
+    }
+
+    dropdown.innerHTML = secciones.map(sec => `
+        <div class="px-3 py-2">
+            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1 flex items-center gap-1">
+                <i class="mdi ${sec.icono}"></i> ${escapeHtml(sec.titulo)}
+            </p>
+            ${sec.items.map(item => `
+                <button class="w-full text-left px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors">
+                    <p class="text-sm font-medium text-slate-700">${item.label}</p>
+                    <p class="text-xs text-slate-500">${item.meta}</p>
+                </button>
+            `).join('')}
+        </div>
+    `).join('');
+
+    // Asignar event listeners a los botones generados
+    let idx = 0;
+    secciones.forEach(sec => {
+        sec.items.forEach(item => {
+            const btn = dropdown.querySelectorAll('button')[idx];
+            if (btn) btn.addEventListener('click', item.onClick);
+            idx++;
+        });
+    });
+
+    dropdown.classList.remove('hidden');
+}
+
+function cerrarHeaderSearch() {
+    const input = document.getElementById('headerSearchInput');
+    const dropdown = document.getElementById('headerSearchResults');
+    if (input) input.value = '';
+    if (dropdown) {
+        dropdown.classList.add('hidden');
+        dropdown.innerHTML = '';
+    }
 }
 
 function seleccionarAlumno(id, nombre, apellido, curso, division, turno = '', especialidad = '') {
@@ -945,7 +1115,7 @@ function renderizarAlumnos(lista, informesPorAlumno) {
             </div>
             <div class="flex items-center justify-between pt-3 border-t border-slate-100">
                 <span class="text-xs ${cant > 0 ? 'text-amber-600 font-semibold' : 'text-slate-500'}">${cant} informe${cant !== 1 ? 's' : ''}</span>
-                <span class="text-xs text-blue-600 font-medium">Ver historial <i class="fas fa-arrow-right text-xs"></i></span>
+                <span class="text-xs text-blue-600 font-medium">Ver historial <i class="mdi mdi-arrow-right text-xs"></i></span>
             </div>
         </div>
     `}).join('');
@@ -1105,10 +1275,10 @@ function renderCardInforme(i) {
     const accionesRapidas = (esRegente && i.estado === 'pendiente') ? `
         <div class="flex gap-2 mt-3 pt-3 border-t border-slate-100">
             <button onclick="event.stopPropagation(); verDetalle('${i.id}')" class="flex-1 bg-blue-50 hover:bg-blue-100 text-blue-700 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1">
-                <i class="fas fa-eye"></i> Revisar
+                <i class="mdi mdi-eye-outline"></i> Revisar
             </button>
             <button onclick="event.stopPropagation(); accionRapidaAnular('${i.id}', this)" class="flex-1 bg-red-50 hover:bg-red-100 text-red-700 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center justify-center gap-1">
-                <i class="fas fa-ban"></i> Anular
+                <i class="mdi mdi-cancel"></i> Anular
             </button>
         </div>` : '';
     return `
@@ -1121,13 +1291,13 @@ function renderCardInforme(i) {
                     ${i.numero !== null && i.numero !== undefined ? `<span class="text-xs font-mono font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">Informe N° ${escapeHtml(i.numero)}</span>` : `<span class="text-xs text-red-500 italic">Sin numerar</span>`}
                 </div>
                 <h3 class="font-semibold text-slate-800 mb-1">${escapeHtml(i.titulo)}</h3>
-                <p class="text-sm text-slate-600 mb-2"><i class="fas fa-user mr-1"></i>${alumno ? `${escapeHtml(alumno.apellido)}, ${escapeHtml(alumno.nombre)}` : 'Desconocido'} • ${alumno ? `${escapeHtml(alumno.curso)} ${escapeHtml(alumno.division)}${alumno.turno ? ' · ' + escapeHtml(alumno.turno) : ''}${alumno.especialidad && alumno.especialidad !== 'Sin especialidad' ? ' · ' + escapeHtml(alumno.especialidad) : ''}` : ''}</p>
-                ${i.estado === 'derivado' && i.derivado_a ? `<p class="text-sm text-green-600 mb-2"><i class="fas fa-share mr-1"></i>Derivado a ${escapeHtml(getNombreUsuario(i.derivado_a))}</p>` : ''}
+                <p class="text-sm text-slate-600 mb-2"><i class="mdi mdi-account-outline mr-1"></i>${alumno ? `${escapeHtml(alumno.apellido)}, ${escapeHtml(alumno.nombre)}` : 'Desconocido'} • ${alumno ? `${escapeHtml(alumno.curso)} ${escapeHtml(alumno.division)}${alumno.turno ? ' · ' + escapeHtml(alumno.turno) : ''}${alumno.especialidad && alumno.especialidad !== 'Sin especialidad' ? ' · ' + escapeHtml(alumno.especialidad) : ''}` : ''}</p>
+                ${i.estado === 'derivado' && i.derivado_a ? `<p class="text-sm text-green-600 mb-2"><i class="mdi mdi-share-variant-outline mr-1"></i>Derivado a ${escapeHtml(getNombreUsuario(i.derivado_a))}</p>` : ''}
                 <p class="text-sm text-slate-500 line-clamp-2">${escapeHtml(i.resumen)}</p>
             </div>
             <div class="flex items-center gap-2">
-                ${['muy_grave','consejo_aula','consejo'].includes(i.instancia) ? `<i class="fas fa-exclamation-triangle ${i.instancia === 'muy_grave' ? 'text-red-500' : i.instancia === 'consejo_aula' ? 'text-pink-600' : 'text-purple-600'}" title="${i.instancia === 'muy_grave' ? 'Muy Grave' : i.instancia === 'consejo_aula' ? 'Consejo de Aula' : 'Consejo Escolar'}"></i>` : ''}
-                <i class="fas fa-chevron-right text-slate-400"></i>
+                ${['muy_grave','consejo_aula','consejo'].includes(i.instancia) ? `<i class="mdi mdi-alert-outline ${i.instancia === 'muy_grave' ? 'text-red-500' : i.instancia === 'consejo_aula' ? 'text-pink-600' : 'text-purple-600'}" title="${i.instancia === 'muy_grave' ? 'Muy Grave' : i.instancia === 'consejo_aula' ? 'Consejo de Aula' : 'Consejo Escolar'}"></i>` : ''}
+                <i class="mdi mdi-chevron-right text-slate-400"></i>
             </div>
         </div>
         ${accionesRapidas}
@@ -1221,7 +1391,7 @@ window.revisarConAnimacion = async function(id, btn) {
     btn.disabled = true;
     btn.innerHTML = '<span class="btn-spinner mr-2"></span> Revisando...';
     await new Promise(r => setTimeout(r, 500));
-    btn.innerHTML = '<i class="fas fa-check animate-pop mr-2"></i> Revisado';
+    btn.innerHTML = '<i class="mdi mdi-check animate-pop mr-2"></i> Revisado';
     btn.classList.remove('bg-green-600', 'hover:bg-green-700');
     btn.classList.add('bg-green-700');
     await new Promise(r => setTimeout(r, 400));
@@ -1443,7 +1613,7 @@ function verDetalle(id) {
                 <p class="text-xs text-slate-500 mb-1">Alumno</p>
                 <p class="font-medium">${alumno ? `${escapeHtml(alumno.apellido)}, ${escapeHtml(alumno.nombre)}` : 'Desconocido'}</p>
                 <p class="text-sm text-slate-600">${alumno ? `${escapeHtml(alumno.curso)} ${escapeHtml(alumno.division)}${alumno.turno ? ' · ' + escapeHtml(alumno.turno) : ''}${alumno.especialidad && alumno.especialidad !== 'Sin especialidad' ? ' · ' + escapeHtml(alumno.especialidad) : ''}` : ''}</p>
-                <p class="text-xs text-blue-600 mt-1"><i class="fas fa-eye mr-1"></i>Ver resumen</p>
+                <p class="text-xs text-blue-600 mt-1"><i class="mdi mdi-eye-outline mr-1"></i>Ver resumen</p>
             </div>
             <div class="p-3 bg-slate-50 rounded-lg">
                 <p class="text-xs text-slate-500 mb-1">Creado por</p>
@@ -1463,17 +1633,17 @@ function verDetalle(id) {
 
             ${informe.observaciones ? `<div class="p-3 bg-blue-50 border border-blue-200 rounded-lg"><p class="text-sm font-medium text-blue-800 mb-1">Observaciones previas</p><p class="text-blue-700 whitespace-pre-wrap">${escapeHtml(informe.observaciones)}</p></div>` : ''}
             ${informe.motivo_rechazo ? `<div class="p-3 bg-red-50 border border-red-200 rounded-lg"><p class="text-sm font-medium text-red-800 mb-1">Motivo de la anulación</p><p class="text-red-700">${escapeHtml(informe.motivo_rechazo)}</p></div>` : ''}
-            ${informe.fecha_revision ? `<div class="text-sm text-slate-500"><i class="fas fa-check-double mr-1"></i>Revisado por ${escapeHtml(getNombreUsuario(informe.revisado_por))} el ${formatearFecha(informe.fecha_revision)}</div>` : ''}
+            ${informe.fecha_revision ? `<div class="text-sm text-slate-500"><i class="mdi mdi-check-all mr-1"></i>Revisado por ${escapeHtml(getNombreUsuario(informe.revisado_por))} el ${formatearFecha(informe.fecha_revision)}</div>` : ''}
         </div>
         
         <div class="mt-6 border-t border-slate-200 pt-4">
-            <h4 class="text-sm font-semibold text-slate-700 mb-3"><i class="fas fa-history mr-2 text-blue-500"></i>Historial del informe</h4>
+            <h4 class="text-sm font-semibold text-slate-700 mb-3"><i class="mdi mdi-history mr-2 text-blue-500"></i>Historial del informe</h4>
             <div id="historialInforme">Cargando historial...</div>
         </div>
         
         ${(!esDOE || informe.estado === 'derivado') && informe.estado !== 'archivado' && informe.estado !== 'anulado' ? `
         <div class="mt-6 border-t border-slate-200 pt-4 space-y-4">
-            <h4 class="text-sm font-semibold text-slate-700"><i class="fas fa-plus-circle mr-2 text-green-500"></i>Agregar seguimiento</h4>
+            <h4 class="text-sm font-semibold text-slate-700"><i class="mdi mdi-plus-circle-outline mr-2 text-green-500"></i>Agregar seguimiento</h4>
             
             <div class="p-3 bg-slate-50 rounded-lg space-y-2">
                 <label class="text-xs font-medium text-slate-600">Nueva observación</label>
@@ -1498,30 +1668,30 @@ function verDetalle(id) {
 
     acciones.innerHTML = '';
     if (puedeEditar) {
-        acciones.innerHTML += `<button onclick="editarInforme('${informe.id}')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-edit mr-2"></i>Editar</button>`;
+        acciones.innerHTML += `<button onclick="editarInforme('${informe.id}')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="mdi mdi-pencil-outline mr-2"></i>Editar</button>`;
     }
     if (esRegente) {
         if (informe.estado === 'pendiente') {
             acciones.innerHTML += `
-                <button id="btn-modal-revisar-${informe.id}" onclick="revisarConAnimacion('${informe.id}', this)" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-eye mr-2"></i>Revisado</button>
-                <button onclick="mostrarAnulacion('${informe.id}')" class="flex-1 min-w-[120px] bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-ban mr-2"></i>Anular</button>`;
+                <button id="btn-modal-revisar-${informe.id}" onclick="revisarConAnimacion('${informe.id}', this)" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="mdi mdi-eye-outline mr-2"></i>Revisado</button>
+                <button onclick="mostrarAnulacion('${informe.id}')" class="flex-1 min-w-[120px] bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition-colors"><i class="mdi mdi-cancel mr-2"></i>Anular</button>`;
         }
         if (informe.estado === 'revisado') {
             acciones.innerHTML += `
-                <button onclick="cambiarEstado('${informe.id}', 'archivado')" class="flex-1 min-w-[120px] bg-slate-600 hover:bg-slate-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-archive mr-2"></i>Archivar</button>
-                <button onclick="mostrarDerivacion('${informe.id}')" class="flex-1 min-w-[120px] bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-share mr-2"></i>Derivar</button>`;
+                <button onclick="cambiarEstado('${informe.id}', 'archivado')" class="flex-1 min-w-[120px] bg-slate-600 hover:bg-slate-700 text-white py-2 rounded-lg transition-colors"><i class="mdi mdi-archive-outline mr-2"></i>Archivar</button>
+                <button onclick="mostrarDerivacion('${informe.id}')" class="flex-1 min-w-[120px] bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg transition-colors"><i class="mdi mdi-share-variant-outline mr-2"></i>Derivar</button>`;
         }
         if (informe.estado === 'archivado') {
-            acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'revisado')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-undo mr-2"></i>Guardar en revisados</button>`;
+            acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'revisado')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="mdi mdi-undo-variant mr-2"></i>Guardar en revisados</button>`;
         }
         if (informe.estado === 'anulado') {
-            acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'revisado')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-undo mr-2"></i>Guardar en revisados</button>`;
+            acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'revisado')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="mdi mdi-undo-variant mr-2"></i>Guardar en revisados</button>`;
         }
     }
     if ((esRegente || esDestinatario) && informe.estado === 'derivado') {
-        acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'pendiente')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-undo mr-2"></i>Volver a pendiente</button>`;
+        acciones.innerHTML += `<button onclick="cambiarEstado('${informe.id}', 'pendiente')" class="flex-1 min-w-[120px] bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg transition-colors"><i class="mdi mdi-undo-variant mr-2"></i>Volver a pendiente</button>`;
     }
-    acciones.innerHTML += `<button onclick="exportarPDF('${informe.id}')" class="min-w-[120px] bg-slate-600 hover:bg-slate-700 text-white py-2 rounded-lg transition-colors"><i class="fas fa-file-pdf mr-2"></i><span class="sm:hidden">Imprimir</span><span class="hidden sm:inline">PDF</span></button>`;
+    acciones.innerHTML += `<button onclick="exportarPDF('${informe.id}')" class="min-w-[120px] bg-slate-600 hover:bg-slate-700 text-white py-2 rounded-lg transition-colors"><i class="mdi mdi-file-pdf-box mr-2"></i><span class="sm:hidden">Imprimir</span><span class="hidden sm:inline">PDF</span></button>`;
     modal.classList.remove('hidden');
     document.body.classList.add('overflow-hidden');
 }
@@ -1956,7 +2126,7 @@ function renderReunionesDiaSeleccionado() {
                 <p class="text-xs text-slate-500">${alumno ? `${alumno.apellido}, ${alumno.nombre}` : 'Desconocido'} • ${formatearFechaCorta(i.fecha_reunion)}</p>
             </div>
             <div class="flex gap-1">
-                <button onclick="event.stopPropagation(); mostrarModalGestionReunion('${i.id}', '${i.fecha_reunion}')" class="text-xs text-blue-600 hover:text-blue-800 p-1" title="Gestionar"><i class="fas fa-edit"></i></button>
+                <button onclick="event.stopPropagation(); mostrarModalGestionReunion('${i.id}', '${i.fecha_reunion}')" class="text-xs text-blue-600 hover:text-blue-800 p-1" title="Gestionar"><i class="mdi mdi-pencil-outline"></i></button>
             </div>
         </div>`;
     }).join('');
@@ -1997,8 +2167,8 @@ function actualizarDashboard() {
                     </div>
                 </div>
                 <div class="flex gap-2 shrink-0">
-                    <button onclick="event.stopPropagation(); verDetalle('${i.id}')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors"><i class="fas fa-eye mr-1"></i>Revisar</button>
-                    <button onclick="event.stopPropagation(); anularDesdeDashboard('${i.id}', this)" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg transition-colors"><i class="fas fa-ban mr-1"></i>Anular</button>
+                    <button onclick="event.stopPropagation(); verDetalle('${i.id}')" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg transition-colors"><i class="mdi mdi-eye-outline mr-1"></i>Revisar</button>
+                    <button onclick="event.stopPropagation(); anularDesdeDashboard('${i.id}', this)" class="px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white text-xs rounded-lg transition-colors"><i class="mdi mdi-cancel mr-1"></i>Anular</button>
                 </div>
             </div>`;
         }).join('');
@@ -2518,8 +2688,8 @@ function verAlumno(alumnoId) {
                     <p class="text-sm text-slate-600 line-clamp-2">${escapeHtml(i.resumen)}</p>
                 </div>
                 <div class="flex items-center gap-2">
-                    ${['muy_grave','consejo_aula','consejo'].includes(i.instancia) ? `<i class="fas fa-exclamation-triangle ${i.instancia === 'muy_grave' ? 'text-red-500' : i.instancia === 'consejo_aula' ? 'text-pink-600' : 'text-purple-600'}" title="${i.instancia === 'muy_grave' ? 'Muy Grave' : i.instancia === 'consejo_aula' ? 'Consejo de Aula' : 'Consejo Escolar'}"></i>` : ''}
-                    <i class="fas fa-chevron-right text-slate-400"></i>
+                    ${['muy_grave','consejo_aula','consejo'].includes(i.instancia) ? `<i class="mdi mdi-alert-outline ${i.instancia === 'muy_grave' ? 'text-red-500' : i.instancia === 'consejo_aula' ? 'text-pink-600' : 'text-purple-600'}" title="${i.instancia === 'muy_grave' ? 'Muy Grave' : i.instancia === 'consejo_aula' ? 'Consejo de Aula' : 'Consejo Escolar'}"></i>` : ''}
+                    <i class="mdi mdi-chevron-right text-slate-400"></i>
                 </div>
             </div>
         </div>
@@ -2558,9 +2728,9 @@ function renderizarObservacionesAlumno(alumnoId) {
                 <div class="flex items-center gap-2 flex-wrap">
                     <span class="px-2 py-0.5 rounded-full text-xs font-medium capitalize" style="background-color:${escapeAttr(tipoInfo.color)}26;color:${escapeAttr(tipoInfo.color)}">${escapeHtml(tipoInfo.label)}</span>
                     <span class="text-xs text-slate-500">${formatearFechaCorta(o.fecha_creacion)}</span>
-                    ${o.fecha_evento ? `<span class="text-xs text-slate-500"><i class="far fa-calendar-alt mr-1"></i>${formatearFechaCorta(o.fecha_evento + 'T00:00:00')}</span>` : ''}
+                    ${o.fecha_evento ? `<span class="text-xs text-slate-500"><i class="mdi mdi-calendar-outline mr-1"></i>${formatearFechaCorta(o.fecha_evento + 'T00:00:00')}</span>` : ''}
                 </div>
-                ${puedeEliminar ? `<button onclick="eliminarObservacionAlumno('${o.id}')" class="text-xs text-red-500 hover:text-red-700" title="Eliminar"><i class="fas fa-trash"></i></button>` : ''}
+                ${puedeEliminar ? `<button onclick="eliminarObservacionAlumno('${o.id}')" class="text-xs text-red-500 hover:text-red-700" title="Eliminar"><i class="mdi mdi-delete-outline"></i></button>` : ''}
             </div>
             <p class="text-sm text-slate-700 whitespace-pre-wrap">${escapeHtml(o.descripcion)}</p>
             <p class="text-xs text-slate-400 mt-2">Por: ${creador}</p>
@@ -2706,7 +2876,7 @@ function renderizarListaTiposObservacion() {
                 <span class="w-4 h-4 rounded-full inline-block" style="background-color:${escapeAttr(t.color)};"></span>
                 <span class="text-sm font-medium text-slate-700">${escapeHtml(t.nombre)}</span>
             </div>
-            <button onclick="eliminarTipoObservacion('${t.id}')" class="text-xs text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>
+            <button onclick="eliminarTipoObservacion('${t.id}')" class="text-xs text-red-500 hover:text-red-700"><i class="mdi mdi-delete-outline"></i></button>
         </div>
     `).join('');
 }
@@ -2871,7 +3041,7 @@ function verDocente(userId) {
             <h4 class="font-semibold text-slate-800">${i.titulo}</h4>
             <p class="text-sm text-slate-600 line-clamp-2">${i.resumen}</p>
             <p class="text-xs text-slate-500 mt-1">${alumno ? `${alumno.apellido}, ${alumno.nombre} · ${alumno.curso} ${alumno.division}${alumno.especialidad && alumno.especialidad !== 'Sin especialidad' ? ' · ' + alumno.especialidad : ''}` : 'Alumno desconocido'}</p>
-            <button onclick="verDetalle('${i.id}')" class="text-sm text-blue-600 hover:text-blue-700 mt-2">Ver detalle <i class="fas fa-arrow-right text-xs"></i></button>
+            <button onclick="verDetalle('${i.id}')" class="text-sm text-blue-600 hover:text-blue-700 mt-2">Ver detalle <i class="mdi mdi-arrow-right text-xs"></i></button>
         </div>
     `;
     }).join('');
@@ -2978,9 +3148,9 @@ async function cargarUsuarios() {
 
     document.getElementById('listaUsuariosDesktop').innerHTML = lista.map(u => {
         const puedeModificar = u.id !== perfilActual?.id && u.email !== 'admin@gie.com';
-        const btnEditar = `<button onclick="abrirModalUsuario('${u.id}')" class="text-sm font-medium text-blue-600 hover:text-blue-700 mr-3" title="Editar"><i class="fas fa-edit mr-1"></i>Editar</button>`;
+        const btnEditar = `<button onclick="abrirModalUsuario('${u.id}')" class="text-sm font-medium text-blue-600 hover:text-blue-700 mr-3" title="Editar"><i class="mdi mdi-pencil-outline mr-1"></i>Editar</button>`;
         const btnEliminar = puedeModificar
-            ? `<button onclick="eliminarUsuario('${u.id}')" class="text-sm font-medium text-red-600 hover:text-red-700 mr-3" title="Eliminar definitivamente"><i class="fas fa-trash mr-1"></i>Eliminar</button>`
+            ? `<button onclick="eliminarUsuario('${u.id}')" class="text-sm font-medium text-red-600 hover:text-red-700 mr-3" title="Eliminar definitivamente"><i class="mdi mdi-delete-outline mr-1"></i>Eliminar</button>`
             : '';
         const accion = puedeModificar
             ? `${btnEditar}${btnEliminar}<button onclick="toggleUsuario('${u.id}', ${u.activo === false})" class="text-sm font-medium ${u.activo === false ? 'text-green-600 hover:text-green-700' : 'text-red-600 hover:text-red-700'}">${u.activo === false ? 'Activar' : 'Desactivar'}</button>`
@@ -2998,9 +3168,9 @@ async function cargarUsuarios() {
 
     document.getElementById('listaUsuariosMobile').innerHTML = lista.map(u => {
         const puedeModificar = u.id !== perfilActual?.id && u.email !== 'admin@gie.com';
-        const btnEditar = `<button onclick="abrirModalUsuario('${u.id}')" class="text-xs font-medium text-blue-600 hover:text-blue-700 mr-2" title="Editar"><i class="fas fa-edit mr-1"></i>Editar</button>`;
+        const btnEditar = `<button onclick="abrirModalUsuario('${u.id}')" class="text-xs font-medium text-blue-600 hover:text-blue-700 mr-2" title="Editar"><i class="mdi mdi-pencil-outline mr-1"></i>Editar</button>`;
         const btnEliminar = puedeModificar
-            ? `<button onclick="eliminarUsuario('${u.id}')" class="text-xs font-medium text-red-600 hover:text-red-700 mr-2" title="Eliminar definitivamente"><i class="fas fa-trash mr-1"></i>Eliminar</button>`
+            ? `<button onclick="eliminarUsuario('${u.id}')" class="text-xs font-medium text-red-600 hover:text-red-700 mr-2" title="Eliminar definitivamente"><i class="mdi mdi-delete-outline mr-1"></i>Eliminar</button>`
             : '';
         const accion = puedeModificar
             ? `${btnEditar}${btnEliminar}<button onclick="toggleUsuario('${u.id}', ${u.activo === false})" class="text-xs font-medium ${u.activo === false ? 'text-green-600 hover:text-green-700' : 'text-red-600 hover:text-red-700'}">${u.activo === false ? 'Activar' : 'Desactivar'}</button>`
@@ -3106,7 +3276,7 @@ function renderizarChipsCursos(containerId, cursos, onRemove) {
     container.innerHTML = cursos.map(c => `
         <span class="inline-flex items-center gap-1 bg-blue-50 text-blue-700 text-xs font-medium px-2.5 py-1 rounded-full border border-blue-100">
             ${c}
-            <button onclick="${onRemove}('${c}')" class="hover:text-blue-900 ml-0.5" title="Quitar"><i class="fas fa-times"></i></button>
+            <button onclick="${onRemove}('${c}')" class="hover:text-blue-900 ml-0.5" title="Quitar"><i class="mdi mdi-close"></i></button>
         </span>
     `).join('');
 }
@@ -3130,7 +3300,7 @@ function renderizarChipsAlumnosPAT(containerId, alumnoIds, onRemove) {
         return `
         <span class="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs font-medium px-2.5 py-1 rounded-full border border-indigo-100">
             ${label}
-            <button onclick="${onRemove}('${id}')" class="hover:text-indigo-900 ml-0.5" title="Quitar"><i class="fas fa-times"></i></button>
+            <button onclick="${onRemove}('${id}')" class="hover:text-indigo-900 ml-0.5" title="Quitar"><i class="mdi mdi-close"></i></button>
         </span>`;
     }).join('');
 }
@@ -3727,7 +3897,7 @@ function renderizarListaCategorias() {
                 <p class="text-sm font-medium text-slate-700 truncate">${c.nombre}</p>
             </div>
             ${puedeEliminar ? `<button onclick="eliminarCategoria('${c.id}')" class="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 text-xs font-medium rounded-md transition-colors border border-red-200" title="Eliminar categoría">
-                <i class="fas fa-trash"></i> Eliminar
+                <i class="mdi mdi-delete-outline"></i> Eliminar
             </button>` : ''}
         </div>
     `).join('');
@@ -3825,7 +3995,7 @@ function renderizarListaPlantillas() {
                     <p class="text-xs text-slate-500 capitalize">${p.instancia}</p>
                 </div>
                 <button onclick="eliminarPlantilla('${p.id}')" class="flex items-center gap-1.5 px-3 py-1.5 bg-red-50 hover:bg-red-100 text-red-600 hover:text-red-700 text-xs font-medium rounded-md transition-colors border border-red-200" title="Eliminar plantilla">
-                    <i class="fas fa-trash"></i> Eliminar
+                    <i class="mdi mdi-delete-outline"></i> Eliminar
                 </button>
             </div>`;
         });

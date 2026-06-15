@@ -6,6 +6,7 @@
 
 body {
     font-family: 'Inter', sans-serif;
+    background-color: #f8fafc;
 }
 
 .sidebar {
@@ -129,6 +130,18 @@ body {
     background: #94a3b8;
 }
 
+/* Scrollbar oscuro para sidebar */
+.sidebar::-webkit-scrollbar {
+    width: 4px;
+}
+.sidebar::-webkit-scrollbar-track {
+    background: transparent;
+}
+.sidebar::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 2px;
+}
+
 .line-clamp-2 {
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -225,6 +238,12 @@ body {
 
 @keyframes spin {
     to { transform: rotate(360deg); }
+}
+
+/* Spinner para iconos MDI */
+.mdi-spin {
+    animation: spin 1s linear infinite;
+    display: inline-block;
 }
 
 /* Skeleton screens */

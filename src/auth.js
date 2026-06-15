@@ -105,9 +105,26 @@ export async function doLogout() {
 // ==================== UI HELPERS ====================
 export function updateAuthUI() {
     if (!_perfil) return;
-    document.getElementById('userName').textContent = `${_perfil.nombre} ${_perfil.apellido}`;
-    document.getElementById('userInitials').textContent = `${_perfil.nombre[0]}${_perfil.apellido[0]}`;
-    document.getElementById('userRole').textContent = _perfil.rol;
+    const nombreCompleto = `${_perfil.nombre} ${_perfil.apellido}`;
+    const iniciales = `${_perfil.nombre[0]}${_perfil.apellido[0]}`;
+
+    const userName = document.getElementById('userName');
+    if (userName) userName.textContent = nombreCompleto;
+
+    const userInitials = document.getElementById('userInitials');
+    if (userInitials) userInitials.textContent = iniciales;
+
+    const userRole = document.getElementById('userRole');
+    if (userRole) userRole.textContent = _perfil.rol;
+
+    const headerUserName = document.getElementById('headerUserName');
+    if (headerUserName) headerUserName.textContent = nombreCompleto;
+
+    const headerUserInitials = document.getElementById('headerUserInitials');
+    if (headerUserInitials) headerUserInitials.textContent = iniciales;
+
+    const headerUserRole = document.getElementById('headerUserRole');
+    if (headerUserRole) headerUserRole.textContent = _perfil.rol;
 }
 
 export function setupLoginForm(onSuccess, onError) {
