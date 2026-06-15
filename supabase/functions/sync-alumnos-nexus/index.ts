@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.7";
+import { createClient } from "jsr:@supabase/supabase-js@2";
 
 const ALLOWED_ORIGINS = [
   "https://hung-nicolas.github.io",
@@ -32,6 +32,7 @@ function corsHeaders(req: Request): Record<string, string> {
     "Access-Control-Allow-Origin": allowed,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
     "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-gie-auth",
+    "Access-Control-Max-Age": "86400",
     "Vary": "Origin",
   };
 }
@@ -145,6 +146,7 @@ async function fetchNexusTabla<T>(
 }
 
 Deno.serve(async (req) => {
+  // Responder inmediatamente al preflight CORS para evitar bloqueos del navegador.
   if (req.method === "OPTIONS") {
     return new Response(null, { status: 204, headers: corsHeaders(req) });
   }
@@ -161,15 +163,25 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get("authorization") || "";
     const xGieAuth = req.headers.get("x-gie-auth") || "";
-    const gieJwt = xGieAuth || authHeader.replace(/^Bearer\s+/i, "");
+    const gieJwt = xGieAuth || authHeader.replace(/^Bearer\s+/i, "").trim();
 
     if (!gieJwt) {
       return errorResponse(req, 401, "Falta token de autenticación de GIE");
     }
 
-    const gieUrl = Deno.env.get("SUPABASE_URL")!;
-    const gieAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const gieServiceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const gieUrl = Deno.env.get("SUPABASE_URL");
+    const gieAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    const gieServiceRole = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
+    if (!gieUrl || !gieAnonKey || !gieServiceRole) {
+      const faltantes = [
+        !gieUrl && "SUPABASE_URL",
+        !gieAnonKey && "SUPABASE_ANON_KEY",
+        !gieServiceRole && "SUPABASE_SERVICE_ROLE_KEY",
+      ].filter(Boolean);
+      console.error("[sync-alumnos-nexus] Faltan variables de entorno:", faltantes.join(", "));
+      return errorResponse(req, 500, `Configuración incompleta: faltan ${faltantes.join(", ")}`);
+    }
 
     const gieClient = createClient(gieUrl, gieAnonKey, {
       auth: { autoRefreshToken: false, persistSession: false },
@@ -199,12 +211,20 @@ Deno.serve(async (req) => {
       return errorResponse(req, 403, "Solo regentes pueden sincronizar alumnos");
     }
 
-    const nexusGatewayUrl = Deno.env.get("NEXUS_GATEWAY_URL")!;
-    const nexusApiKey = Deno.env.get("NEXUS_API_KEY")!;
+    const nexusGatewayUrl = Deno.env.get("NEXUS_GATEWAY_URL");
+    const nexusApiKey = Deno.env.get("NEXUS_API_KEY");
 
     if (!nexusGatewayUrl || !nexusApiKey) {
-      console.error("[sync-alumnos-nexus] Faltan NEXUS_GATEWAY_URL o NEXUS_API_KEY");
-      return errorResponse(req, 500, "Configuración de Nexus incompleta");
+      const faltantes = [
+        !nexusGatewayUrl && "NEXUS_GATEWAY_URL",
+        !nexusApiKey && "NEXUS_API_KEY",
+      ].filter(Boolean);
+      console.error("[sync-alumnos-nexus] Faltan variables de entorno de Nexus:", faltantes.join(", "));
+      return errorResponse(
+        req,
+        500,
+        `Configuración de Nexus incompleta: faltan ${faltantes.join(", ")}`
+      );
     }
 
     // Leer catálogo de cursos y alumnos desde el gateway de Nexus.

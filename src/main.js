@@ -143,6 +143,15 @@ async function cargarAlumnos() {
         selectTurnoInf.innerHTML = '<option value="">Todos los turnos</option>';
         turnos.forEach(t => selectTurnoInf.innerHTML += `<option value="${t}">${t}</option>`);
     }
+    // Poblar filtro de especialidades (alumnos)
+    const especialidades = [...new Set(alumnos.map(a => a.especialidad).filter(e => e && e !== 'Sin especialidad'))].sort();
+    const selectEspecialidad = document.getElementById('filtroAlumnoEspecialidad');
+    if (selectEspecialidad) {
+        const valorActual = selectEspecialidad.value;
+        selectEspecialidad.innerHTML = '<option value="">Todas</option>';
+        especialidades.forEach(e => selectEspecialidad.innerHTML += `<option value="${escapeHtml(e)}">${escapeHtml(e)}</option>`);
+        if (valorActual) selectEspecialidad.value = valorActual;
+    }
 }
 
 async function cargarInformes() {
@@ -485,7 +494,7 @@ function setupEventListeners() {
     const btnLogout = document.getElementById('btn-logout');
     if (btnLogout) btnLogout.addEventListener('click', logout);
 
-    ['filtroAlumnoCurso', 'filtroAlumnoDivision', 'filtroAlumnoTurno'].forEach(id => {
+    ['filtroAlumnoCurso', 'filtroAlumnoDivision', 'filtroAlumnoTurno', 'filtroAlumnoEspecialidad'].forEach(id => {
         const el = document.getElementById(id);
         if (!el) return;
         el.addEventListener('change', () => {
@@ -642,7 +651,7 @@ function showSection(sectionId) {
         mostrarSkeleton('alumnos');
         requestAnimationFrame(() => {
             setTimeout(() => {
-                ['filtroAlumnoCurso', 'filtroAlumnoDivision', 'filtroAlumnoTurno', 'filtroAlumnoNombre'].forEach(id => {
+                ['filtroAlumnoCurso', 'filtroAlumnoDivision', 'filtroAlumnoTurno', 'filtroAlumnoEspecialidad', 'filtroAlumnoNombre'].forEach(id => {
                     const el = document.getElementById(id);
                     if (!el) return;
                     const saved = sessionStorage.getItem('gie_filtro_' + id);
@@ -1011,6 +1020,7 @@ function filtrarAlumnos() {
     const curso = document.getElementById('filtroAlumnoCurso')?.value || '';
     const division = document.getElementById('filtroAlumnoDivision')?.value || '';
     const turno = document.getElementById('filtroAlumnoTurno')?.value || '';
+    const especialidad = document.getElementById('filtroAlumnoEspecialidad')?.value || '';
     const nombre = document.getElementById('filtroAlumnoNombre')?.value.toLowerCase().trim() || '';
     const orden = document.getElementById('ordenAlumnos')?.value || 'informes_desc';
     const misCursos = getPerfil()?.cursos || [];
@@ -1024,12 +1034,13 @@ function filtrarAlumnos() {
         const matchCurso = !curso || a.curso === curso;
         const matchDivision = !division || a.division === division;
         const matchTurno = !turno || a.turno === turno;
+        const matchEspecialidad = !especialidad || a.especialidad === especialidad;
         const matchNombre = !nombre ||
             `${a.nombre} ${a.apellido}`.toLowerCase().includes(nombre) ||
             `${a.apellido} ${a.nombre}`.toLowerCase().includes(nombre);
         const matchMisCursos = tabAlumnosActivo !== 'mis_cursos' || misCursos.includes(`${a.curso || ''}${a.division || ''}`);
         const matchMisAlumnos = tabAlumnosActivo !== 'mis_alumnos' || misAlumnosPAT.includes(a.id);
-        return matchCurso && matchDivision && matchTurno && matchNombre && matchMisCursos && matchMisAlumnos;
+        return matchCurso && matchDivision && matchTurno && matchEspecialidad && matchNombre && matchMisCursos && matchMisAlumnos;
     });
 
     // Calcular cantidad de informes por alumno para ordenamiento
