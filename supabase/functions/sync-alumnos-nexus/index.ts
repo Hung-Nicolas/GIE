@@ -72,11 +72,6 @@ interface NexusAlumno {
   nombre?: string;
   apellido?: string;
   email?: string;
-  especialidad?: string;
-  division?: string;
-  turno?: string;
-  email_padre?: string;
-  telefono?: string;
   id_curso?: number;
 }
 
@@ -243,7 +238,7 @@ Deno.serve(async (req) => {
           nexusGatewayUrl,
           nexusApiKey,
           "alumnos",
-          "id, dni, nombre, apellido, email, especialidad, division, turno, email_padre, telefono, id_curso",
+          "id, dni, nombre, apellido, email, id_curso",
           { columna: "apellido", ascendente: true }
         ),
       ]);
@@ -260,6 +255,10 @@ Deno.serve(async (req) => {
     }
 
     const cursoPorId = new Map((nexusCursos || []).map((c) => [c.id_curso, c]));
+    console.log("[sync-alumnos-nexus] Cursos cargados:", nexusCursos?.length);
+    console.log("[sync-alumnos-nexus] Primeros cursos:", JSON.stringify(nexusCursos?.slice(0, 3)));
+    console.log("[sync-alumnos-nexus] Alumnos cargados:", nexusAlumnos?.length);
+    console.log("[sync-alumnos-nexus] Primeros alumnos:", JSON.stringify(nexusAlumnos?.slice(0, 3)));
 
     const { data: gieAlumnos, error: gieError } = await gieAdmin
       .from("alumnos")
@@ -294,13 +293,14 @@ Deno.serve(async (req) => {
         }
 
         const curso = na.id_curso ? cursoPorId.get(na.id_curso) : undefined;
-        const divisionAlumno = sanitizeString(na.division, 50) || "";
+        if (!curso && na.id_curso) {
+          console.log(`[sync-alumnos-nexus] Curso no encontrado para alumno id=${na.id}, id_curso=${na.id_curso}, tipo=${typeof na.id_curso}`);
+          console.log("[sync-alumnos-nexus] Keys de cursoPorId:", JSON.stringify([...cursoPorId.keys()].slice(0, 10)));
+        }
         const divisionCurso = sanitizeString(curso?.division, 50) || "";
-        const cursoNexus = curso?.anio ? `${curso.anio}°` : divisionAlumno;
-        const divisionNexus = divisionAlumno || divisionCurso;
-        const turnoNexus = normalizeTurno(
-          sanitizeString(na.turno, 50) || sanitizeString(curso?.turno, 50)
-        );
+        const cursoNexus = curso?.anio ? `${curso.anio}°` : divisionCurso;
+        const divisionNexus = divisionCurso;
+        const turnoNexus = normalizeTurno(sanitizeString(curso?.turno, 50));
         const especialidadNexus = sanitizeString(curso?.especialidad, 100) || "Sin especialidad";
 
         const existente = giePorDni.get(dniStr);
