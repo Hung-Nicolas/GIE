@@ -105,7 +105,7 @@ const PLANTILLAS_INFORME = {
 async function cargarCategorias() {
     if (!USE_SUPABASE) return;
     const { data, error } = await supabaseClient.from('categorias').select('*').eq('activo', true).order('nombre');
-    if (error) { console.error('[GIE] Error cargando categorías:', error); return; }
+    if (error) return;
     categorias = data || [];
     renderizarSelectCategorias();
 }
@@ -162,7 +162,7 @@ async function cargarInformes() {
     const { data, error } = await query;
     if (error) { mostrarToast('Error cargando informes', 'error'); return; }
     informes = data || [];
-    console.log('[GIE] Informes cargados:', informes.length, 'Primer informe numero:', informes[0]?.numero);
+
     // Informes cargados
 }
 
@@ -173,7 +173,7 @@ async function cargarTiposObservacion() {
         .select('*')
         .eq('activo', true)
         .order('nombre');
-    if (error) { console.error('[GIE] Error cargando tipos de observación:', error); return; }
+    if (error) return;
     tiposObservacion = data || [];
     renderizarSelectTiposObservacion();
 }
@@ -184,7 +184,7 @@ async function cargarObservacionesAlumnos() {
         .from('observaciones_alumno')
         .select('*, creador:perfiles(nombre, apellido)')
         .order('fecha_creacion', { ascending: false });
-    if (error) { console.error('[GIE] Error cargando observaciones:', error); return; }
+    if (error) return;
     observacionesAlumnos = data || [];
 }
 
@@ -194,7 +194,6 @@ async function cargarUsuariosSupa() {
     // Los perfiles con roles/cursos reales viven en GIE
     const { data: perfiles, error: errPerfiles } = await supabaseClient.from('perfiles').select('*');
     if (errPerfiles) {
-        console.error('[GIE] Error cargando perfiles desde GIE:', errPerfiles);
         mostrarToast('Error cargando usuarios', 'error');
         return;
     }
@@ -209,7 +208,7 @@ async function cargarUsuariosSupa() {
         cursos: p.cursos || [],
         alumnos_pat: p.alumnos_pat || []
     }));
-    console.log('[GIE] Usuarios cargados desde GIE:', usuarios.length);
+
 }
 
 // --- Helpers de acceso sincrónico ---
@@ -1509,7 +1508,7 @@ async function registrarHistorial(informeId, accion, detalle) {
         accion,
         detalle
     });
-    if (error) console.error('[GIE] Error registrando historial:', error);
+
 }
 window.registrarHistorial = registrarHistorial;
 
@@ -1520,7 +1519,7 @@ async function cargarHistorial(informeId) {
         .select('*')
         .eq('informe_id', informeId)
         .order('fecha', { ascending: true });
-    if (error) { console.error('[GIE] Error cargando historial:', error); return []; }
+    if (error) return [];
     return data || [];
 }
 window.cargarHistorial = cargarHistorial;
@@ -1829,7 +1828,6 @@ async function cambiarEstado(id, nuevoEstado, options = {}) {
     }
     
     if (error) {
-        console.error('[GIE] Error actualizando estado:', error);
         return mostrarToast('Error al actualizar el estado del informe', 'error');
     }
     
@@ -2773,7 +2771,7 @@ async function guardarObservacionAlumno() {
         descripcion,
         fecha_evento: fechaEvento
     });
-    if (error) { console.error('[GIE] Error guardando observación:', error); return mostrarToast('Error guardando observación', 'error'); }
+    if (error) return mostrarToast('Error guardando observación', 'error');
     mostrarToast('Observación guardada correctamente');
     document.getElementById('obsDescripcion').value = '';
     document.getElementById('obsFechaEvento').value = '';
@@ -2799,7 +2797,7 @@ function onChangeObsTipo(valor) {
 async function eliminarObservacionAlumno(id) {
     if (!USE_SUPABASE || !confirm('¿Eliminar esta observación?')) return;
     const { error } = await supabaseClient.from('observaciones_alumno').delete().eq('id', id);
-    if (error) { console.error('[GIE] Error eliminando observación:', error); return mostrarToast('Error eliminando observación', 'error'); }
+    if (error) return mostrarToast('Error eliminando observación', 'error');
     mostrarToast('Observación eliminada');
     await cargarObservacionesAlumnos();
     if (alumnoActualId) renderizarObservacionesAlumno(alumnoActualId);
@@ -2858,7 +2856,7 @@ async function crearTipoObservacion() {
     if (tiposObservacion.some(t => t.nombre.toLowerCase() === nombre.toLowerCase())) return mostrarToast('Ya existe un tipo con ese nombre', 'error');
 
     const { error } = await supabaseClient.from('tipos_observacion_alumno').insert({ nombre, color });
-    if (error) { console.error('[GIE] Error creando tipo:', error); return mostrarToast('Error creando tipo', 'error'); }
+    if (error) return mostrarToast('Error creando tipo', 'error');
     mostrarToast('Tipo creado correctamente');
     document.getElementById('newTipoObsNombre').value = '';
     await cargarTiposObservacion();
@@ -2868,7 +2866,7 @@ async function crearTipoObservacion() {
 async function eliminarTipoObservacion(id) {
     if (!USE_SUPABASE || !confirm('¿Eliminar este tipo de observación?')) return;
     const { error } = await supabaseClient.from('tipos_observacion_alumno').update({ activo: false }).eq('id', id);
-    if (error) { console.error('[GIE] Error eliminando tipo:', error); return mostrarToast('Error eliminando tipo', 'error'); }
+    if (error) return mostrarToast('Error eliminando tipo', 'error');
     mostrarToast('Tipo eliminado');
     await cargarTiposObservacion();
     renderizarListaTiposObservacion();
@@ -3253,7 +3251,6 @@ window.crearUsuario = async function() {
         await cargarUsuarios();
         mostrarToast('Usuario creado correctamente', 'success');
     } catch (err) {
-        console.error('[GIE] Error creando usuario:', err);
         mostrarToast(err.message || 'Error creando usuario', 'error');
     }
 };
@@ -3558,7 +3555,6 @@ async function guardarUsuario() {
         cerrarModalUsuario();
         mostrarToast('Usuario guardado', 'success');
     } catch (err) {
-        console.error('[GIE] Error guardando usuario:', err);
         mostrarToast(err.message || 'Error guardando usuario', 'error');
     }
 }
@@ -3622,7 +3618,6 @@ window.cambiarPasswordUsuario = async function(userId, nuevaPassword = null) {
         if (!res.ok || json.error) throw new Error(json.error || `HTTP ${res.status}`);
         if (!nuevaPassword) mostrarToast('Contraseña actualizada', 'success');
     } catch (err) {
-        console.error('[GIE] Error cambiando contraseña:', err);
         if (!nuevaPassword) mostrarToast(err.message || 'Error cambiando contraseña', 'error');
         throw err;
     }
@@ -3692,7 +3687,6 @@ async function confirmarEliminarUsuario() {
 
         mostrarToast('Usuario eliminado', 'success');
     } catch (err) {
-        console.error('[GIE] Error eliminando usuario:', err);
         if (filaDesktop) filaDesktop.classList.remove('animate-slide-out');
         if (tarjetaMobile) tarjetaMobile.classList.remove('animate-slide-out');
         mostrarToast(err.message || 'Error eliminando usuario', 'error');
@@ -3737,20 +3731,16 @@ async function _persistirMisAlumnosPAT() {
     const alumnoIds = _normalizarArrayUUIDs(raw);
     const id = getPerfil()?.id;
     if (!id) {
-        console.error('[GIE] _persistirMisAlumnosPAT: sin perfil');
         return false;
     }
-    console.log('[GIE] Persistiendo alumnos PAT:', alumnoIds.length, alumnoIds);
     try {
         const { error } = await supabaseClient.from('perfiles').update({ alumnos_pat: alumnoIds }).eq('id', id);
         if (error) {
-            console.error('[GIE] Error guardando alumnos PAT:', error);
             mostrarToast('Error guardando alumnos PAT: ' + error.message, 'error');
             return false;
         }
         return true;
     } catch (err) {
-        console.error('[GIE] Excepción guardando alumnos PAT:', err);
         mostrarToast('Error inesperado guardando alumnos PAT', 'error');
         return false;
     }
@@ -3769,7 +3759,7 @@ window.seleccionarAlumnoPAT = async function(id, nombre, apellido) {
     const idStr = String(id).trim();
     if (previo.includes(idStr)) return mostrarToast('El alumno ya está agregado', 'error');
     const nuevos = [...previo, idStr];
-    console.log('[GIE] Agregando alumno PAT:', idStr, 'Total:', nuevos.length);
+
     setPerfil({ ...perfil, alumnos_pat: nuevos });
     renderizarChipsAlumnosPAT('ajustesAlumnosPATLista', nuevos, 'quitarAlumnoPAT');
     const ok = await _persistirMisAlumnosPAT();
@@ -3800,7 +3790,6 @@ async function _persistirMisCursos() {
     if (!id) return false;
     const { error } = await supabaseClient.from('perfiles').update({ cursos }).eq('id', id);
     if (error) {
-        console.error('[GIE] Error guardando mis cursos:', error);
         mostrarToast('Error guardando cursos', 'error');
         return false;
     }
@@ -4166,7 +4155,6 @@ async function exportarPDF(id) {
     try {
         await html2pdf().set({ margin: [8,8,8,8], filename: `informe_${alumno ? alumno.apellido : 'doc'}_${informe.fecha_creacion.split('T')[0]}.pdf`, html2canvas: { scale: 2, scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(container).save();
     } catch (e) {
-        console.error('[GIE] Error generando PDF:', e);
         mostrarToast('Error generando PDF', 'error');
     }
     document.body.removeChild(container);
@@ -4270,7 +4258,6 @@ async function exportarPDFEnBlanco() {
     try {
         await html2pdf().set({ margin: [8,8,8,8], filename: `informe_en_blanco_${new Date().toISOString().split('T')[0]}.pdf`, html2canvas: { scale: 2, scrollY: 0 }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } }).from(container).save();
     } catch (e) {
-        console.error('[GIE] Error generando PDF:', e);
         mostrarToast('Error generando PDF', 'error');
     }
     document.body.removeChild(container);
@@ -4317,7 +4304,6 @@ async function cargarEspacioBD() {
     const { data, error } = await supabaseClient.rpc('obtener_espacio_bd');
     if (error || !data || !data.length) {
         document.getElementById('dbSpaceUsedLabel').textContent = 'Error';
-        console.error('[GIE] Error obteniendo espacio BD:', error);
         return;
     }
     const row = data[0];

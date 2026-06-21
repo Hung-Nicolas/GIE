@@ -10,13 +10,11 @@ let _lastAlumnosSync = 0;
  */
 export async function sincronizarAlumnosDesdeEdge(forzar = false) {
     if (!USE_SUPABASE || !supabaseClient) {
-        console.warn('[GIE] Cliente no configurado. Saltando sincronización.');
         return { ok: false, error: 'Cliente no configurado', sincronizados: 0 };
     }
 
     const ahora = Date.now();
     if (!forzar && (ahora - _lastAlumnosSync) < MIN_SYNC_INTERVAL_MS) {
-        console.log('[GIE] Sincronización reciente. Saltando.');
         return { ok: true, sincronizados: 0 };
     }
 
@@ -28,7 +26,7 @@ export async function sincronizarAlumnosDesdeEdge(forzar = false) {
     if (typeof window !== 'undefined' && typeof window.mostrarToast === 'function') {
         window.mostrarToast('Sincronizando alumnos...', 'info');
     }
-    console.log('[GIE] Solicitando sincronización de alumnos desde Nexus...');
+
 
     try {
         const res = await fetch(`${GIE_URL}/functions/v1/sync-alumnos-nexus`, {
@@ -47,10 +45,9 @@ export async function sincronizarAlumnosDesdeEdge(forzar = false) {
         }
 
         _lastAlumnosSync = ahora;
-        console.log('[GIE] Sincronización de alumnos completada:', json);
+        console.log('[GIE] Nexus conectado correctamente');
         return { ok: true, ...json };
     } catch (err) {
-        console.error('[GIE] Error sincronizando alumnos:', err);
         return { ok: false, error: err.message, sincronizados: 0 };
     }
 }
