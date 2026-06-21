@@ -4,20 +4,25 @@ Aplicación web para la gestión de informes disciplinarios y académicos escola
 
 **Versión actual:** 1.6.2
 
-## Tecnologías
+---
 
-- **Frontend:** HTML, JavaScript vanilla (ES modules), Tailwind CSS v3
-- **Bundler:** Vite 5.4.10
-- **Backend:** Supabase (PostgreSQL + Auth + Realtime)
-- **Gráficos:** Chart.js v4.4.6
-- **Exportación PDF:** html2pdf.js v0.10.2
-- **Iconografía:** Font Awesome 6.4.0
-- **Tipografía:** Inter (Google Fonts)
+## Herramientas
 
-## Requisitos previos
+<div align="center">
 
-- [Node.js](https://nodejs.org/) (versión 22 o superior recomendada)
-- Cuenta en [Supabase](https://supabase.com)
+| | Tecnología | Descripción |
+|:---:|:---|:---|
+| <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/html5/html5-original.svg" width="32"/> | **HTML5** | Estructura del frontend |
+| <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/javascript/javascript-original.svg" width="32"/> | **JavaScript (ES Modules)** | Lógica del frontend en vanilla JS |
+| <img src="https://upload.wikimedia.org/wikipedia/commons/d/d5/Tailwind_CSS_Logo.svg" width="32"/> | **Tailwind CSS v3** | Estilos y diseño utilitario |
+| <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/vitejs/vitejs-original.svg" width="32"/> | **Vite 5.4.10** | Bundler y servidor de desarrollo |
+| <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/supabase/supabase-original.svg" width="32"/> | **Supabase** | Backend: PostgreSQL + Auth + Realtime |
+| <img src="https://www.chartjs.org/img/chartjs-logo.svg" width="32"/> | **Chart.js v4.4.6** | Gráficos e indicadores visuales |
+| <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/postgresql/postgresql-original.svg" width="32"/> | **PostgreSQL** | Base de datos relacional vía Supabase |
+
+</div>
+
+---
 
 ## Roles de usuario
 
@@ -27,6 +32,8 @@ Aplicación web para la gestión de informes disciplinarios y académicos escola
 | **Docente / Preceptor** | Crear, ver y editar sus propios informes. No pueden editar informes finalizados. Acceso a listado de alumnos (todos o "Mis cursos" según asignación). |
 | **DOE** | Visualización de informes derivados, archivados y anulados. Puede agregar observaciones y acciones en informes derivados, y devolverlos a estado `pendiente`. |
 | **PAT** | Seguimiento de alumnos asignados. Acceso limitado a la información de sus alumnos designados. |
+
+---
 
 ## Funcionalidades principales
 
@@ -69,9 +76,11 @@ Aplicación web para la gestión de informes disciplinarios y académicos escola
 - Gestión de tipos de observación personalizados (colores, activación/desactivación).
 - Modal de novedades con historial de versiones.
 
-## 🔗 Integración con Nexus (Base de Datos Escolar Maestra)
+---
 
-GIE puede integrarse con **Nexus**, la BD escolar centralizada, únicamente para la sincronización de alumnos.
+## Integración con Nexus (Base de Datos Escolar Maestra)
+
+GIE se integra con **Nexus**, la BD escolar centralizada, únicamente para la sincronización de alumnos.
 
 ### Autenticación
 - El login se realiza directamente contra **Supabase Auth de GIE**.
@@ -80,5 +89,3 @@ GIE puede integrarse con **Nexus**, la BD escolar centralizada, únicamente para
 ### Sincronización de datos
 - **Nexus → GIE:** alumnos vía Edge Function `sync-alumnos-nexus`, que corre en el servidor de GIE y no expone las credenciales de Nexus al frontend.
 - **GIE → Nexus:** no hay sincronización de informes ni usuarios hacia Nexus.
-
-
