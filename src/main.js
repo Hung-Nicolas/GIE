@@ -3166,11 +3166,11 @@ async function cargarUsuarios() {
             : `${btnEditar}<span class="text-xs text-slate-400">-</span>`;
         return `
         <tr id="fila-usuario-${u.id}" class="hover:bg-slate-50 transition-colors">
-            <td class="px-4 py-3 font-medium">${escapeHtml(u.apellido || '')}, ${escapeHtml(u.nombre || '')}</td>
-            <td class="px-4 py-3 text-slate-500">${escapeHtml(u.email)}</td>
+            <td class="px-4 py-3 font-medium truncate" title="${escapeAttr(u.apellido || '')}, ${escapeAttr(u.nombre || '')}">${escapeHtml(u.apellido || '')}, ${escapeHtml(u.nombre || '')}</td>
+            <td class="px-4 py-3 text-slate-500 truncate" title="${escapeAttr(u.email)}">${escapeHtml(u.email)}</td>
             <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-medium capitalize ${rolColor[u.rol] || 'bg-slate-100 text-slate-600'}">${escapeHtml(rolLabel[u.rol] || u.rol)}</span></td>
             <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-medium ${u.activo === false ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}">${u.activo === false ? 'Inactivo' : 'Activo'}</span></td>
-            <td class="px-4 py-3 text-center">${accion}</td>
+            <td class="px-4 py-3 text-center whitespace-nowrap overflow-hidden text-ellipsis">${accion}</td>
         </tr>
     `;
     }).join('');
