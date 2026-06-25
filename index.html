@@ -1562,6 +1562,27 @@
         </div>
     </div>
 
+    <!-- Modal Confirmar Cambio de Estado de Usuario -->
+    <div id="modalConfirmarEstadoUsuario" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full animate-fade-in">
+            <div class="p-6 text-center">
+                <div id="iconoConfirmarEstadoUsuario" class="w-12 h-12 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i id="iconoConfirmarEstadoUsuarioInner" class="mdi text-xl"></i>
+                </div>
+                <h3 id="tituloConfirmarEstadoUsuario" class="text-lg font-bold text-slate-800 mb-2"></h3>
+                <p id="textoConfirmarEstadoUsuario" class="text-sm text-slate-500 mb-6"></p>
+                <input type="hidden" id="estadoUsuarioId">
+                <input type="hidden" id="estadoUsuarioActivo">
+                <div class="flex gap-3">
+                    <button onclick="cerrarModalConfirmarEstadoUsuario()" class="flex-1 px-4 py-2 border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors">Cancelar</button>
+                    <button id="btnConfirmarEstadoUsuario" onclick="confirmarCambioEstadoUsuario()" class="flex-1 px-4 py-2 text-white rounded-lg transition-colors">
+                        Confirmar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Confirmar Logout -->
     <div id="modalLogout" class="fixed inset-0 bg-black/50 z-50 hidden flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl max-w-sm w-full animate-fade-in">

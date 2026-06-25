@@ -3255,15 +3255,61 @@ window.crearUsuario = async function() {
     }
 };
 
-window.toggleUsuario = async function(id, activo) {
+window.toggleUsuario = function(id, activo) {
+    if (!esRegente()) return mostrarToast('Solo el regente puede cambiar el estado', 'error');
+    abrirModalConfirmarEstadoUsuario(id, activo);
+};
+
+function abrirModalConfirmarEstadoUsuario(userId, activo) {
+    if (!esRegente()) return;
+    const u = usuarios.find(x => x.id === userId);
+    if (!u) return;
+    if (u.id === getPerfil()?.id) return mostrarToast('No podés cambiar tu propio estado', 'error');
+    if (u.email === 'admin@gie.com') return mostrarToast('No podés desactivar al administrador', 'error');
+
+    document.getElementById('estadoUsuarioId').value = userId;
+    document.getElementById('estadoUsuarioActivo').value = activo ? 'true' : 'false';
+
+    const iconoContainer = document.getElementById('iconoConfirmarEstadoUsuario');
+    const iconoInner = document.getElementById('iconoConfirmarEstadoUsuarioInner');
+    const titulo = document.getElementById('tituloConfirmarEstadoUsuario');
+    const texto = document.getElementById('textoConfirmarEstadoUsuario');
+    const btn = document.getElementById('btnConfirmarEstadoUsuario');
+
+    if (activo) {
+        iconoContainer.className = 'w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4';
+        iconoInner.className = 'mdi mdi-check-circle-outline text-green-600 text-xl';
+        titulo.textContent = '¿Activar usuario?';
+        texto.innerHTML = `¿Confirmás que querés activar a <span class="font-medium text-slate-700">${escapeHtml(u.apellido || '')}, ${escapeHtml(u.nombre || '')}</span>?`;
+        btn.className = 'flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors';
+        btn.textContent = 'Activar';
+    } else {
+        iconoContainer.className = 'w-12 h-12 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4';
+        iconoInner.className = 'mdi mdi-alert-outline text-amber-600 text-xl';
+        titulo.textContent = '¿Desactivar usuario?';
+        texto.innerHTML = `¿Confirmás que querés desactivar a <span class="font-medium text-slate-700">${escapeHtml(u.apellido || '')}, ${escapeHtml(u.nombre || '')}</span>?`;
+        btn.className = 'flex-1 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition-colors';
+        btn.textContent = 'Desactivar';
+    }
+
+    document.getElementById('modalConfirmarEstadoUsuario').classList.remove('hidden');
+}
+
+function cerrarModalConfirmarEstadoUsuario() {
+    document.getElementById('modalConfirmarEstadoUsuario').classList.add('hidden');
+}
+
+window.confirmarCambioEstadoUsuario = async function() {
+    const id = document.getElementById('estadoUsuarioId').value;
+    const activo = document.getElementById('estadoUsuarioActivo').value === 'true';
+
+    cerrarModalConfirmarEstadoUsuario();
+
     if (!esRegente()) return mostrarToast('Solo el regente puede cambiar el estado', 'error');
     const u = usuarios.find(x => x.id === id);
     if (!u) return;
     if (u.id === getPerfil()?.id) return mostrarToast('No podés cambiar tu propio estado', 'error');
     if (u.email === 'admin@gie.com') return mostrarToast('No podés desactivar al administrador', 'error');
-
-    const accion = activo ? 'activar' : 'desactivar';
-    if (!confirm(`¿${accion.charAt(0).toUpperCase() + accion.slice(1)} el usuario ${u.nombre} ${u.apellido}?`)) return;
 
     const { error } = await supabaseClient.from('perfiles').update({ activo }).eq('id', id);
     if (error) return mostrarToast(error.message, 'error');
@@ -4498,6 +4544,8 @@ window.quitarAlumnoPATUsuario = quitarAlumnoPATUsuario;
 window.eliminarUsuario = abrirModalConfirmarEliminarUsuario;
 window.cerrarModalConfirmarEliminarUsuario = cerrarModalConfirmarEliminarUsuario;
 window.confirmarEliminarUsuario = confirmarEliminarUsuario;
+window.abrirModalConfirmarEstadoUsuario = abrirModalConfirmarEstadoUsuario;
+window.cerrarModalConfirmarEstadoUsuario = cerrarModalConfirmarEstadoUsuario;
 
 // ==================== VER CONTRASEÑA ====================
 window.abrirModalCambiarPassword = abrirModalCambiarPassword;
