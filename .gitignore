@@ -55,5 +55,6 @@ reset-*.js
 # Project docs / SQL scripts
 AGENTS.md
 PLANTILLA_AGENTE.md
+TESTING.md
 *.sql
 scripts/

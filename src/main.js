@@ -3268,6 +3268,12 @@ window.toggleUsuario = async function(id, activo) {
     const { error } = await supabaseClient.from('perfiles').update({ activo }).eq('id', id);
     if (error) return mostrarToast(error.message, 'error');
 
+    // Actualizar estado local inmediatamente para que el botón cambie sin esperar recarga
+    const idx = usuarios.findIndex(x => x.id === id);
+    if (idx !== -1) {
+        usuarios[idx] = { ...usuarios[idx], activo };
+    }
+
     await cargarUsuarios();
     mostrarToast(`Usuario ${activo ? 'activado' : 'desactivado'}`, 'success');
 };
@@ -3635,6 +3641,12 @@ window.cambiarEstadoUsuario = async function(userId, activo) {
 
     const { error } = await supabaseClient.from('perfiles').update({ activo }).eq('id', userId);
     if (error) return mostrarToast(error.message, 'error');
+
+    // Actualizar estado local inmediatamente para reflejar el cambio en la UI
+    const idx = usuarios.findIndex(x => x.id === userId);
+    if (idx !== -1) {
+        usuarios[idx] = { ...usuarios[idx], activo };
+    }
 
     await cargarUsuariosSupa();
     filtrarDocentes();
