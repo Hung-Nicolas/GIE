@@ -16,8 +16,16 @@
     "vite": "^8.0.16"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.104.0",
-    "chart.js": "^4.4.6",
+    "@supabase/supabase-js": "^2.110.0",
+    "chart.js": "^4.5.1",
     "html2pdf.js": "^0.14.0"
+  },
+  "overrides": {
+    "html2pdf.js": {
+      "dompurify": "^3.2.6"
+    },
+    "jspdf": {
+      "dompurify": "^3.2.6"
+    }
   }
 }

@@ -71,8 +71,17 @@ export async function restoreSession() {
 export async function clearSession() {
     if (supabaseClient) await supabaseClient.auth.signOut();
     _perfil = null;
-    sessionStorage.clear();
-    localStorage.clear();
+    // Limpiar solo las claves de GIE, no todo el storage del origen
+    const limpiarStorage = (storage) => {
+        const keys = [];
+        for (let i = 0; i < storage.length; i++) {
+            const key = storage.key(i);
+            if (key && (key.startsWith('gie-') || key.startsWith('sb-'))) keys.push(key);
+        }
+        keys.forEach(key => storage.removeItem(key));
+    };
+    limpiarStorage(sessionStorage);
+    limpiarStorage(localStorage);
 }
 
 // ==================== LOGIN ====================

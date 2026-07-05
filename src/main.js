@@ -1898,6 +1898,13 @@ async function confirmarAnulacion() {
         return mostrarToast('Debe indicar un motivo', 'error');
     }
 
+    function restaurarBoton() {
+        if (btnConfirmar) {
+            btnConfirmar.innerHTML = btnConfirmar.dataset.originalText || 'Rechazar';
+            btnConfirmar.disabled = false;
+        }
+    }
+
     // Animación del botón
     if (btnConfirmar) {
         btnConfirmar.dataset.originalText = btnConfirmar.innerHTML;
@@ -1905,36 +1912,36 @@ async function confirmarAnulacion() {
         btnConfirmar.disabled = true;
     }
 
-    // Si venía desde la lista, animar slide-out del item y remover del DOM
-    const vinoDesdeLista = !!window._rechazoItemEl;
-    if (window._rechazoItemEl) {
-        window._rechazoItemEl.classList.add('animate-slide-out');
-        await new Promise(r => setTimeout(r, 400));
-        window._rechazoItemEl.remove();
-    }
+    try {
+        // Si venía desde la lista, animar slide-out del item y remover del DOM
+        const vinoDesdeLista = !!window._rechazoItemEl;
+        if (window._rechazoItemEl) {
+            window._rechazoItemEl.classList.add('animate-slide-out');
+            await new Promise(r => setTimeout(r, 400));
+            window._rechazoItemEl.remove();
+        }
 
-    const updates = {
-        estado: 'anulado',
-        motivo_rechazo: motivo,
-        revisado_por: getPerfil().id,
-        fecha_revision: new Date().toISOString()
-    };
-    mostrarToast('Anulando informe...', 'info');
-    const { error } = await supabaseClient.from('informes').update(updates).eq('id', anulacionId);
-    if (error) { return mostrarToast('Error rechazando informe', 'error'); }
-    // Informe rechazado
-    await registrarHistorial(anulacionId, 'anulado', `Informe anulado por ${getNombreUsuario(getPerfil().id)}. Motivo: ${motivo}`);
-    await cargarInformes();
+        const updates = {
+            estado: 'anulado',
+            motivo_rechazo: motivo,
+            revisado_por: getPerfil().id,
+            fecha_revision: new Date().toISOString()
+        };
+        mostrarToast('Anulando informe...', 'info');
+        const { error } = await supabaseClient.from('informes').update(updates).eq('id', anulacionId);
+        if (error) { throw new Error('Error rechazando informe'); }
+        // Informe rechazado
+        await registrarHistorial(anulacionId, 'anulado', `Informe anulado por ${getNombreUsuario(getPerfil().id)}. Motivo: ${motivo}`);
+        await cargarInformes();
 
-    mostrarToast('Informe anulado');
-    cerrarModalAnulacion();
-    if (!vinoDesdeLista) filtrarInformes();
-    actualizarDashboard();
-
-    // Restaurar botón
-    if (btnConfirmar) {
-        btnConfirmar.innerHTML = btnConfirmar.dataset.originalText || 'Rechazar';
-        btnConfirmar.disabled = false;
+        mostrarToast('Informe anulado');
+        cerrarModalAnulacion();
+        if (!vinoDesdeLista) filtrarInformes();
+        actualizarDashboard();
+    } catch (err) {
+        mostrarToast(err.message || 'Error anulando informe', 'error');
+    } finally {
+        restaurarBoton();
     }
 }
 
@@ -3356,11 +3363,12 @@ function renderizarChipsAlumnosPAT(containerId, alumnoIds, onRemove) {
     }
     container.innerHTML = ids.map(id => {
         const a = alumnos.find(x => x.id === id);
-        const label = a ? `${a.apellido}, ${a.nombre}` : id;
+        const labelRaw = a ? `${a.apellido}, ${a.nombre}` : id;
+        const label = escapeHtml(labelRaw);
         return `
         <span class="inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 text-xs font-medium px-2.5 py-1 rounded-full border border-indigo-100">
             ${label}
-            <button onclick="${onRemove}('${id}')" class="hover:text-indigo-900 ml-0.5" title="Quitar"><i class="mdi mdi-close"></i></button>
+            <button onclick="${escapeAttr(onRemove)}('${escapeJsString(id)}')" class="hover:text-indigo-900 ml-0.5" title="Quitar"><i class="mdi mdi-close"></i></button>
         </span>`;
     }).join('');
 }
@@ -3378,10 +3386,10 @@ function _buscarAlumnoGenerico(query, resultadosId, onSelectFn) {
     } else {
         resultados.innerHTML = filtrados.map(a => `
             <div tabindex="0"
-                onclick="${onSelectFn}('${a.id}', '${a.nombre.replace(/'/g, "\\'")}', '${a.apellido.replace(/'/g, "\\'")}')"
+                onclick="${escapeAttr(onSelectFn)}('${escapeJsString(a.id)}', '${escapeJsString(a.nombre)}', '${escapeJsString(a.apellido)}')"
                 class="p-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100 last:border-0 outline-none">
-                <p class="font-medium text-sm">${a.apellido}, ${a.nombre}</p>
-                <p class="text-xs text-slate-500">${a.curso} ${a.division}${a.turno ? ' · ' + a.turno : ''}${a.especialidad && a.especialidad !== 'Sin especialidad' ? ' · ' + a.especialidad : ''}</p>
+                <p class="font-medium text-sm">${escapeHtml(a.apellido)}, ${escapeHtml(a.nombre)}</p>
+                <p class="text-xs text-slate-500">${escapeHtml(a.curso || '')} ${escapeHtml(a.division || '')}${a.turno ? ' · ' + escapeHtml(a.turno) : ''}${a.especialidad && a.especialidad !== 'Sin especialidad' ? ' · ' + escapeHtml(a.especialidad) : ''}</p>
             </div>`).join('');
     }
     resultados.classList.remove('hidden');

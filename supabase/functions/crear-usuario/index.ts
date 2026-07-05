@@ -55,7 +55,13 @@ function isValidUuid(value: string): boolean {
 }
 
 function isValidPassword(password: string): boolean {
-  return typeof password === "string" && password.length >= 1;
+  return (
+    typeof password === "string" &&
+    password.length >= 8 &&
+    /[A-Z]/.test(password) &&
+    /[a-z]/.test(password) &&
+    /[0-9]/.test(password)
+  );
 }
 
 function getEnvVars(req: Request):
@@ -166,7 +172,7 @@ Deno.serve(async (req) => {
     }
 
     if (!password || !isValidPassword(password)) {
-      return errorResponse(req, 400, "La contraseña es requerida");
+      return errorResponse(req, 400, "La contraseña debe tener al menos 8 caracteres, incluyendo mayúscula, minúscula y número");
     }
 
     if (!nombre || !apellido || typeof nombre !== "string" || typeof apellido !== "string") {

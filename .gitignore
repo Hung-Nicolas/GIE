@@ -58,3 +58,4 @@ PLANTILLA_AGENTE.md
 TESTING.md
 *.sql
 scripts/
+/docs

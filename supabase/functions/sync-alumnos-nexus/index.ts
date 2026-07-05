@@ -158,7 +158,7 @@ Deno.serve(async (req) => {
   try {
     const authHeader = req.headers.get("authorization") || "";
     const xGieAuth = req.headers.get("x-gie-auth") || "";
-    const gieJwt = xGieAuth || authHeader.replace(/^Bearer\s+/i, "").trim();
+    const gieJwt = authHeader.replace(/^Bearer\s+/i, "").trim();
 
     if (!gieJwt) {
       return errorResponse(req, 401, "Falta token de autenticación de GIE");

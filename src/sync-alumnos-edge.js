@@ -33,8 +33,7 @@ export async function sincronizarAlumnosDesdeEdge(forzar = false) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${GIE_KEY}`,
-                'x-gie-auth': session.access_token
+                'Authorization': `Bearer ${session.access_token}`
             },
             body: JSON.stringify({ forzar })
         });

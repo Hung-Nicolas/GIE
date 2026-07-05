@@ -49,7 +49,13 @@ function isValidUuid(value: string): boolean {
 }
 
 function isValidPassword(password: string): boolean {
-  return typeof password === "string" && password.length >= 1;
+  return (
+    typeof password === "string" &&
+    password.length >= 8 &&
+    /[A-Z]/.test(password) &&
+    /[a-z]/.test(password) &&
+    /[0-9]/.test(password)
+  );
 }
 
 function getEnvVars(req: Request):
@@ -159,7 +165,7 @@ Deno.serve(async (req) => {
     }
 
     if (!new_password || !isValidPassword(new_password)) {
-      return errorResponse(req, 400, "La contraseña es requerida");
+      return errorResponse(req, 400, "La contraseña debe tener al menos 8 caracteres, incluyendo mayúscula, minúscula y número");
     }
 
     const adminClient = createClient(env.supabaseUrl, env.serviceRoleKey, {
