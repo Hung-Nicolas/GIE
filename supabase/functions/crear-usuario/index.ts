@@ -113,6 +113,7 @@ async function obtenerUsuarioAutenticado(req: Request, supabaseUrl: string, supa
 }
 
 async function verificarRolRegente(
+  req: Request,
   supabaseUrl: string,
   supabaseAnonKey: string,
   userId: string,
@@ -162,7 +163,7 @@ Deno.serve(async (req) => {
     const authHeader = req.headers.get("Authorization") || "";
     const xGieAuth = req.headers.get("x-gie-auth") || "";
     const token = authHeader.replace(/^Bearer\s+/i, "").trim() || xGieAuth.trim();
-    const rolCheck = await verificarRolRegente(env.supabaseUrl, env.supabaseAnonKey, auth.user.id, token);
+    const rolCheck = await verificarRolRegente(req, env.supabaseUrl, env.supabaseAnonKey, auth.user.id, token);
     if (!rolCheck.ok) return rolCheck.response;
 
     const { email, password, nombre, apellido, rol } = await req.json();
