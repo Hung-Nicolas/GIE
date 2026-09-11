@@ -5,6 +5,8 @@ const ALLOWED_ORIGINS = [
   "https://hung-nicolas.github.io",
   "http://localhost:3000",
   "http://127.0.0.1:3000",
+  "http://localhost:5173",
+  "http://127.0.0.1:5173",
 ];
 
 // Rate limiting en memoria (por IP)
