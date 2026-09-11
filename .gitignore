@@ -57,5 +57,6 @@ AGENTS.md
 PLANTILLA_AGENTE.md
 TESTING.md
 *.sql
+!supabase/**/*.sql
 scripts/
-/docs
+!/docs/SECURITY_MODEL.md
