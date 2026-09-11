@@ -76,7 +76,7 @@ export async function clearSession() {
         const keys = [];
         for (let i = 0; i < storage.length; i++) {
             const key = storage.key(i);
-            if (key && (key.startsWith('gie-') || key.startsWith('sb-'))) keys.push(key);
+            if (key && (key.startsWith('gie-') || key.startsWith('gie_') || key.startsWith('sb-'))) keys.push(key);
         }
         keys.forEach(key => storage.removeItem(key));
     };

@@ -1953,7 +1953,7 @@ function mostrarDerivacion(id) {
     const select = document.getElementById('selectDerivacionDestinatario');
     const perfilActual = getPerfil();
     const activos = usuarios.filter(u => u.activo !== false && u.id !== perfilActual?.id).sort((a, b) => `${a.apellido} ${a.nombre}`.localeCompare(`${b.apellido} ${b.nombre}`));
-    select.innerHTML = '<option value="">Seleccione un usuario...</option>' + activos.map(u => `<option value="${u.id}">${u.apellido}, ${u.nombre} (${u.rol})</option>`).join('');
+    select.innerHTML = '<option value="">Seleccione un usuario...</option>' + activos.map(u => `<option value="${escapeAttr(u.id)}">${escapeHtml(u.apellido)}, ${escapeHtml(u.nombre)} (${escapeHtml(u.rol)})</option>`).join('');
     const modalContent = document.getElementById('modalDerivacion').querySelector('.bg-white');
     if (modalContent) {
         modalContent.classList.remove('animate-fade-in');
